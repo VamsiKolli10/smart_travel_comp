@@ -1,18 +1,21 @@
-import { Routes, Route } from 'react-router-dom'
-import AppLayout from './components/layout/AppLayout'
+import { Routes, Route } from "react-router-dom";
+import { ThemeProvider, CssBaseline } from "@mui/material";
+import theme from "./theme";
+import AppLayout from "./components/layout/AppLayout";
 
-import Landing from './components/pages/Landing'
-import Dashboard from './components/pages/Dashboard'
-import Translation from './components/pages/Translation'
-import Phrasebook from './components/pages/Phrasebook'
-import Accommodation from './components/pages/Accommodation'
-import Emergency from './components/pages/Emergency'
-import CulturalGuide from './components/pages/CulturalGuide'
-import Destinations from './components/pages/Destinations'
+import Landing from "./components/pages/Landing";
+import Dashboard from "./components/pages/Dashboard";
+import Translation from "./components/pages/Translation";
+import Phrasebook from "./components/pages/Phrasebook";
+import Accommodation from "./components/pages/Accommodation";
+import Emergency from "./components/pages/Emergency";
+import CulturalGuide from "./components/pages/CulturalGuide";
+import Destinations from "./components/pages/Destinations";
 
-export default function App(){
+export default function App() {
   return (
-    <div className="app">
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route element={<AppLayout />}>
@@ -25,6 +28,6 @@ export default function App(){
           <Route path="destinations" element={<Destinations />} />
         </Route>
       </Routes>
-    </div>
-  )
+    </ThemeProvider>
+  );
 }

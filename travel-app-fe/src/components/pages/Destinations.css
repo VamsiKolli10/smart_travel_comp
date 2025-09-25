@@ -1,0 +1,535 @@
+/* Destinations Component Styles */
+.destinations {
+  padding: 24px 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: #fcfcf9;
+  min-height: calc(100vh - 120px);
+}
+
+.destinations-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.destinations-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #13343b;
+  margin: 0 0 12px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.destinations-header p {
+  font-size: 18px;
+  color: #626c71;
+  margin: 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.destinations-controls {
+  margin-bottom: 32px;
+}
+
+.search-section {
+  margin-bottom: 24px;
+}
+
+.search-form {
+  display: flex;
+  gap: 12px;
+  max-width: 500px;
+  margin: 0 auto;
+  background-color: #fffffd;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e8e8e8;
+}
+
+.search-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid #e8e8e8;
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+  color: #13343b;
+  background-color: #fffffd;
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #21808d;
+  box-shadow: 0 0 0 3px rgba(33, 128, 141, 0.1);
+}
+
+.search-input::placeholder {
+  color: #626c71;
+}
+
+.search-form .MuiButton-root {
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 500;
+  text-transform: none;
+  font-size: 14px;
+  border: 2px solid #21808d;
+  color: #21808d;
+  background-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.search-form .MuiButton-root:hover {
+  background-color: #21808d;
+  color: #fffffd;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(33, 128, 141, 0.25);
+}
+
+.category-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.category-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 2px solid #e8e8e8;
+  background-color: #fffffd;
+  color: #626c71;
+  border-radius: 20px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.category-filter:hover {
+  border-color: #21808d;
+  color: #21808d;
+  background-color: #f0f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(33, 128, 141, 0.15);
+}
+
+.category-filter.active {
+  background-color: #21808d;
+  border-color: #21808d;
+  color: #fffffd;
+  box-shadow: 0 2px 8px rgba(33, 128, 141, 0.25);
+}
+
+.filter-icon {
+  font-size: 16px;
+}
+
+.filter-name {
+  font-weight: 500;
+}
+
+.destinations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 24px;
+}
+
+.destination-card {
+  background-color: #fffffd;
+  border: 1px solid #e8e8e8;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.destination-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border-color: #21808d;
+}
+
+.destination-image {
+  height: 120px;
+  background: linear-gradient(135deg, #21808d, #4a9ba8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.destination-emoji {
+  font-size: 48px;
+  opacity: 0.9;
+}
+
+.destination-content {
+  padding: 24px;
+}
+
+.destination-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.destination-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: #13343b;
+  margin: 0;
+  line-height: 1.3;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.destination-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #f0f9fa;
+  padding: 4px 8px;
+  border-radius: 12px;
+  border: 1px solid #e0f2f4;
+}
+
+.rating-stars {
+  color: #ffc107;
+  font-size: 14px;
+}
+
+.rating-value {
+  color: #21808d;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.destination-meta {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.destination-type {
+  color: #21808d;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.destination-distance {
+  color: #626c71;
+  font-size: 14px;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.destination-description {
+  color: #626c71;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.destination-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: #626c71;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.detail-value {
+  font-size: 14px;
+  color: #13343b;
+  font-weight: 500;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.destination-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.feature-tag {
+  background-color: #f0f9fa;
+  color: #21808d;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid #e0f2f4;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.feature-tag.more {
+  background-color: #e8e8e8;
+  color: #626c71;
+  border-color: #d0d0d0;
+}
+
+.destination-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.destination-actions .MuiButton-root {
+  font-size: 12px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  text-transform: none;
+  font-weight: 500;
+  min-width: auto;
+  height: 36px;
+}
+
+.destination-actions .MuiButton-contained {
+  background-color: #21808d;
+  color: #fffffd;
+  border: none;
+}
+
+.destination-actions .MuiButton-contained:hover {
+  background-color: #1a6b75;
+  box-shadow: 0 2px 8px rgba(33, 128, 141, 0.25);
+}
+
+.destination-actions .MuiButton-outlined {
+  border-color: #e8e8e8;
+  color: #626c71;
+  background-color: transparent;
+}
+
+.destination-actions .MuiButton-outlined:hover {
+  border-color: #21808d;
+  color: #21808d;
+  background-color: #f0f9fa;
+}
+
+.no-results {
+  text-align: center;
+  padding: 60px 20px;
+  color: #626c71;
+}
+
+.no-results-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.no-results h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #13343b;
+  margin: 0 0 8px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.no-results p {
+  font-size: 16px;
+  margin: 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .destinations {
+    padding: 16px 12px;
+  }
+
+  .destinations-header h1 {
+    font-size: 28px;
+  }
+
+  .destinations-header p {
+    font-size: 16px;
+  }
+
+  .search-form {
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .search-input {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  .category-filters {
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .category-filter {
+    flex-shrink: 0;
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+
+  .destinations-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .destination-card {
+    margin: 0 4px;
+  }
+
+  .destination-content {
+    padding: 20px;
+  }
+
+  .destination-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .destination-name {
+    font-size: 18px;
+  }
+
+  .destination-details {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .destinations {
+    padding: 12px 8px;
+  }
+
+  .search-form {
+    padding: 12px;
+  }
+
+  .destination-content {
+    padding: 16px;
+  }
+
+  .destination-image {
+    height: 100px;
+  }
+
+  .destination-emoji {
+    font-size: 36px;
+  }
+
+  .destination-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .destination-actions .MuiButton-root {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Loading states */
+.destination-card.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.destination-card.loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 2px solid #e8e8e8;
+  border-top: 2px solid #21808d;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Focus states for accessibility */
+.search-input:focus,
+.category-filter:focus,
+.destination-card:focus {
+  outline: 2px solid #21808d;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .destination-card {
+    border-width: 2px;
+  }
+
+  .search-input {
+    border-width: 2px;
+  }
+
+  .category-filter {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .destination-card,
+  .category-filter,
+  .search-form .MuiButton-root {
+    transition: none;
+  }
+
+  .destination-card:hover {
+    transform: none;
+  }
+}

@@ -1,0 +1,437 @@
+/* Emergency Component Styles */
+.emergency {
+  padding: 24px 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: #fcfcf9;
+  min-height: calc(100vh - 120px);
+}
+
+.emergency-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.emergency-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #13343b;
+  margin: 0 0 12px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.emergency-header p {
+  font-size: 18px;
+  color: #626c71;
+  margin: 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.emergency-alert {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+  border: 2px solid #ffc107;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 32px;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
+}
+
+.alert-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.alert-content {
+  color: #856404;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.emergency-tips {
+  margin-bottom: 40px;
+}
+
+.emergency-tips h3 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #13343b;
+  margin: 0 0 20px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.tip-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background-color: #fffffd;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.tip-card:hover {
+  border-color: #21808d;
+  background-color: #f0f9fa;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 128, 141, 0.1);
+}
+
+.tip-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.tip-content {
+  flex: 1;
+}
+
+.tip-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #13343b;
+  margin: 0 0 8px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.tip-description {
+  font-size: 14px;
+  color: #626c71;
+  line-height: 1.5;
+  margin: 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.emergency-contacts h3 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #13343b;
+  margin: 0 0 24px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.contacts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 24px;
+}
+
+.emergency-contact {
+  background-color: #fffffd;
+  border: 2px solid #e8e8e8;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.emergency-contact::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: var(--contact-color);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.emergency-contact:hover {
+  border-color: var(--contact-color);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.emergency-contact:hover::before {
+  opacity: 1;
+}
+
+.emergency-contact.calling {
+  border-color: var(--contact-color);
+  background-color: rgba(33, 128, 141, 0.05);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.emergency-contact.calling::before {
+  opacity: 1;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: translateY(-2px) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.02);
+  }
+}
+
+.contact-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.contact-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.contact-info {
+  flex: 1;
+}
+
+.contact-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: #13343b;
+  margin: 0 0 8px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.contact-description {
+  font-size: 14px;
+  color: #626c71;
+  line-height: 1.4;
+  margin: 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.contact-number {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--contact-color);
+  text-align: center;
+  margin: 16px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.contact-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.contact-actions .MuiButton-root {
+  flex: 1;
+  font-size: 14px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  text-transform: none;
+  font-weight: 500;
+  height: 44px;
+}
+
+.contact-actions .MuiButton-contained {
+  background-color: var(--contact-color);
+  color: #fffffd;
+  border: none;
+}
+
+.contact-actions .MuiButton-contained:hover {
+  background-color: var(--contact-color);
+  filter: brightness(0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.contact-actions .MuiButton-outlined {
+  border-color: #e8e8e8;
+  color: #626c71;
+  background-color: transparent;
+}
+
+.contact-actions .MuiButton-outlined:hover {
+  border-color: var(--contact-color);
+  color: var(--contact-color);
+  background-color: rgba(33, 128, 141, 0.05);
+}
+
+.emergency-footer {
+  margin-top: 40px;
+  padding: 20px;
+  background-color: #f0f9fa;
+  border-radius: 12px;
+  border: 1px solid #e0f2f4;
+}
+
+.footer-note {
+  text-align: center;
+  color: #13343b;
+  font-size: 16px;
+  line-height: 1.5;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.footer-note strong {
+  color: #21808d;
+  font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .emergency {
+    padding: 16px 12px;
+  }
+
+  .emergency-header h1 {
+    font-size: 28px;
+  }
+
+  .emergency-header p {
+    font-size: 16px;
+  }
+
+  .emergency-alert {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .tips-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .tip-card {
+    padding: 16px;
+  }
+
+  .contacts-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .emergency-contact {
+    padding: 20px;
+  }
+
+  .contact-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .contact-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .emergency {
+    padding: 12px 8px;
+  }
+
+  .emergency-alert {
+    padding: 16px;
+  }
+
+  .alert-content {
+    font-size: 14px;
+  }
+
+  .tip-card {
+    padding: 12px;
+  }
+
+  .emergency-contact {
+    padding: 16px;
+  }
+
+  .contact-number {
+    font-size: 20px;
+  }
+
+  .footer-note {
+    font-size: 14px;
+  }
+}
+
+/* Loading states */
+.emergency-contact.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.emergency-contact.loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 2px solid #e8e8e8;
+  border-top: 2px solid var(--contact-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Focus states for accessibility */
+.emergency-contact:focus,
+.tip-card:focus {
+  outline: 2px solid #21808d;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .emergency-contact {
+    border-width: 3px;
+  }
+
+  .tip-card {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .emergency-contact,
+  .tip-card {
+    transition: none;
+  }
+
+  .emergency-contact:hover {
+    transform: none;
+  }
+
+  .emergency-contact.calling {
+    animation: none;
+  }
+}

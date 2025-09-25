@@ -1,0 +1,421 @@
+/* Dashboard Component Styles */
+.dashboard {
+  padding: 24px 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: #fcfcf9;
+  min-height: calc(100vh - 120px);
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.welcome-section h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #13343b;
+  margin: 0 0 8px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.welcome-section p {
+  font-size: 18px;
+  color: #626c71;
+  margin: 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.quick-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background-color: #fffffd;
+  border: 2px solid #e8e8e8;
+  border-radius: 24px;
+  color: #626c71;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.quick-action-btn:hover {
+  border-color: #21808d;
+  color: #21808d;
+  background-color: #f0f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(33, 128, 141, 0.15);
+}
+
+.action-icon {
+  font-size: 16px;
+}
+
+.action-label {
+  font-weight: 500;
+}
+
+.dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.dashboard-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background-color: #fffffd;
+  border: 2px solid #e8e8e8;
+  border-radius: 16px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: var(--card-color);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.dashboard-card:hover {
+  border-color: var(--card-color);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.dashboard-card:hover::before {
+  opacity: 1;
+}
+
+.card-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.card-content {
+  flex: 1;
+}
+
+.card-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #13343b;
+  margin: 0 0 8px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.card-description {
+  font-size: 14px;
+  color: #626c71;
+  line-height: 1.4;
+  margin: 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.card-arrow {
+  font-size: 20px;
+  color: #626c71;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dashboard-card:hover .card-arrow {
+  color: var(--card-color);
+  transform: translateX(4px);
+}
+
+.dashboard-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+.recent-activity h3,
+.dashboard-tips h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #13343b;
+  margin: 0 0 20px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background-color: #fffffd;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.activity-item:hover {
+  border-color: #21808d;
+  background-color: #f0f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(33, 128, 141, 0.1);
+}
+
+.activity-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.activity-content {
+  flex: 1;
+}
+
+.activity-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.activity-action {
+  font-size: 14px;
+  font-weight: 600;
+  color: #21808d;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.activity-detail {
+  font-size: 14px;
+  color: #626c71;
+  font-style: italic;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.activity-time {
+  font-size: 12px;
+  color: #626c71;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.tips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tip-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: #f0f9fa;
+  border: 1px solid #e0f2f4;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.tip-item:hover {
+  background-color: #e8f5f6;
+  border-color: #21808d;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(33, 128, 141, 0.1);
+}
+
+.tip-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.tip-text {
+  font-size: 14px;
+  color: #13343b;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 16px 12px;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .welcome-section h1 {
+    font-size: 28px;
+  }
+
+  .welcome-section p {
+    font-size: 16px;
+  }
+
+  .quick-actions {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .quick-action-btn {
+    flex-shrink: 0;
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+
+  .dashboard-cards {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .dashboard-card {
+    padding: 20px;
+  }
+
+  .dashboard-footer {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .activity-item {
+    padding: 12px;
+  }
+
+  .tip-item {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard {
+    padding: 12px 8px;
+  }
+
+  .dashboard-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 16px;
+  }
+
+  .card-icon {
+    font-size: 28px;
+  }
+
+  .card-arrow {
+    display: none;
+  }
+
+  .quick-action-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .action-icon {
+    font-size: 14px;
+  }
+}
+
+/* Loading states */
+.dashboard-card.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.dashboard-card.loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 2px solid #e8e8e8;
+  border-top: 2px solid var(--card-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Focus states for accessibility */
+.dashboard-card:focus,
+.quick-action-btn:focus {
+  outline: 2px solid #21808d;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .dashboard-card {
+    border-width: 3px;
+  }
+
+  .quick-action-btn {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-card,
+  .quick-action-btn,
+  .activity-item,
+  .tip-item {
+    transition: none;
+  }
+
+  .dashboard-card:hover {
+    transform: none;
+  }
+
+  .dashboard-card:hover .card-arrow {
+    transform: none;
+  }
+}

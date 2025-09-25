@@ -1,0 +1,302 @@
+/* Phrasebook Component Styles */
+.phrasebook {
+  padding: 24px 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: #fcfcf9;
+  min-height: calc(100vh - 120px);
+}
+
+.phrasebook-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.category-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.category-tab {
+  padding: 12px 20px;
+  border: 2px solid #e8e8e8;
+  background-color: #fffffd;
+  color: #626c71;
+  border-radius: 24px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.category-tab:hover {
+  border-color: #21808d;
+  color: #21808d;
+  background-color: #f0f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(33, 128, 141, 0.15);
+}
+
+.category-tab.active {
+  background-color: #21808d;
+  border-color: #21808d;
+  color: #fffffd;
+  box-shadow: 0 2px 8px rgba(33, 128, 141, 0.25);
+}
+
+.phrases-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.phrase-card {
+  background-color: #fffffd;
+  border: 1px solid #e8e8e8;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.phrase-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #21808d, #4a9ba8);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.phrase-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border-color: #21808d;
+}
+
+.phrase-card:hover::before {
+  opacity: 1;
+}
+
+.phrase-english {
+  font-size: 18px;
+  font-weight: 600;
+  color: #13343b;
+  margin-bottom: 12px;
+  line-height: 1.4;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.phrase-translation {
+  font-size: 16px;
+  color: #626c71;
+  margin-bottom: 20px;
+  line-height: 1.5;
+  font-style: italic;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.phrase-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.phrase-actions .MuiButton-root {
+  font-size: 12px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  text-transform: none;
+  font-weight: 500;
+  min-width: auto;
+  height: 36px;
+}
+
+.phrase-actions .MuiButton-contained {
+  background-color: #21808d;
+  color: #fffffd;
+  border: none;
+}
+
+.phrase-actions .MuiButton-contained:hover {
+  background-color: #1a6b75;
+  box-shadow: 0 2px 8px rgba(33, 128, 141, 0.25);
+}
+
+.phrase-actions .MuiButton-outlined {
+  border-color: #e8e8e8;
+  color: #626c71;
+  background-color: transparent;
+}
+
+.phrase-actions .MuiButton-outlined:hover {
+  border-color: #21808d;
+  color: #21808d;
+  background-color: #f0f9fa;
+}
+
+/* Add Phrase Button Styling */
+.phrasebook-controls .MuiButton-root {
+  align-self: center;
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-weight: 500;
+  text-transform: none;
+  font-size: 14px;
+  border: 2px solid #21808d;
+  color: #21808d;
+  background-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.phrasebook-controls .MuiButton-root:hover {
+  background-color: #21808d;
+  color: #fffffd;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(33, 128, 141, 0.25);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .phrasebook {
+    padding: 16px 12px;
+  }
+
+  .phrasebook-controls {
+    gap: 16px;
+  }
+
+  .category-tabs {
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .category-tab {
+    flex-shrink: 0;
+    font-size: 13px;
+    padding: 10px 16px;
+  }
+
+  .phrases-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .phrase-card {
+    padding: 20px;
+  }
+
+  .phrase-english {
+    font-size: 16px;
+  }
+
+  .phrase-translation {
+    font-size: 14px;
+  }
+
+  .phrase-actions {
+    gap: 6px;
+  }
+
+  .phrase-actions .MuiButton-root {
+    font-size: 11px;
+    padding: 6px 12px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .phrasebook {
+    padding: 12px 8px;
+  }
+
+  .phrase-card {
+    padding: 16px;
+  }
+
+  .phrase-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .phrase-actions .MuiButton-root {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Animation for loading states */
+.phrase-card.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.phrase-card.loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid #e8e8e8;
+  border-top: 2px solid #21808d;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Focus states for accessibility */
+.category-tab:focus,
+.phrase-actions .MuiButton-root:focus {
+  outline: 2px solid #21808d;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .phrase-card {
+    border-width: 2px;
+  }
+
+  .category-tab {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .phrase-card,
+  .category-tab,
+  .phrase-actions .MuiButton-root {
+    transition: none;
+  }
+
+  .phrase-card:hover {
+    transform: none;
+  }
+}
