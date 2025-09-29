@@ -1,0 +1,478 @@
+/* Login Page Styles - Matching Project Theme */
+.login-page {
+  min-height: 100vh;
+  background: linear-gradient(
+    135deg,
+    rgba(50, 184, 198, 0.1),
+    rgba(167, 169, 169, 0.1)
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.login-card {
+  background-color: #fffffd;
+  border: 2px solid #e8e8e8;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: #21808d;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.login-card:hover {
+  border-color: #21808d;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+}
+
+.login-card:hover::before {
+  opacity: 1;
+}
+
+/* Header */
+.login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.login-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: #21808d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  font-size: 32px;
+  transition: all 0.3s ease;
+}
+
+.login-card:hover .login-icon {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(33, 128, 141, 0.3);
+}
+
+.login-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #13343b;
+  margin: 0 0 8px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.login-header p {
+  font-size: 16px;
+  color: #626c71;
+  margin: 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+/* Error Alert */
+.error-alert {
+  background-color: #ffebee;
+  border: 1px solid #ffcdd2;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+  color: #c0152f;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error-alert::before {
+  content: "⚠️";
+  font-size: 16px;
+}
+
+/* Form */
+.login-form {
+  margin-bottom: 24px;
+}
+
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #13343b;
+  margin-bottom: 8px;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 16px;
+  font-size: 16px;
+  color: #626c71;
+  z-index: 1;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding: 16px 16px 16px 48px;
+  border: 2px solid #e8e8e8;
+  border-radius: 12px;
+  font-size: 16px;
+  color: #13343b;
+  background-color: #fffffd;
+  transition: all 0.3s ease;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.input-wrapper input:focus {
+  outline: none;
+  border-color: #21808d;
+  box-shadow: 0 0 0 3px rgba(33, 128, 141, 0.1);
+}
+
+.input-wrapper input:disabled {
+  background-color: #f5f5f5;
+  color: #626c71;
+  cursor: not-allowed;
+}
+
+.input-wrapper input::placeholder {
+  color: #a7a9a9;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #626c71;
+  transition: color 0.2s ease;
+  z-index: 1;
+}
+
+.password-toggle:hover {
+  color: #21808d;
+}
+
+.password-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Login Button */
+.login-button {
+  width: 100%;
+  padding: 16px;
+  background-color: #21808d;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-button:hover:not(:disabled) {
+  background-color: #1d7480;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(33, 128, 141, 0.3);
+}
+
+.login-button:disabled {
+  background-color: #a7a9a9;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.loading-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Divider */
+.divider {
+  text-align: center;
+  margin: 24px 0;
+  position: relative;
+}
+
+.divider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #e8e8e8;
+}
+
+.divider span {
+  background-color: #fffffd;
+  padding: 0 16px;
+  color: #626c71;
+  font-size: 14px;
+  font-weight: 500;
+  position: relative;
+  z-index: 1;
+}
+
+/* Demo Credentials */
+.demo-credentials {
+  background-color: #f0f9fa;
+  border: 1px solid #e0f2f4;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  transition: all 0.2s ease;
+}
+
+.demo-credentials:hover {
+  background-color: #e8f5f6;
+  border-color: #21808d;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(33, 128, 141, 0.1);
+}
+
+.demo-credentials h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #13343b;
+  margin: 0 0 12px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.demo-info p {
+  font-size: 14px;
+  color: #13343b;
+  margin: 8px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.demo-info strong {
+  color: #21808d;
+  font-weight: 600;
+}
+
+/* Footer */
+.login-footer {
+  text-align: center;
+}
+
+.login-footer p {
+  font-size: 14px;
+  color: #626c71;
+  margin: 8px 0;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.footer-link {
+  color: #21808d;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.footer-link:hover {
+  color: #1d7480;
+  text-decoration: underline;
+}
+
+.footer-link.secondary {
+  color: #626c71;
+}
+
+.footer-link.secondary:hover {
+  color: #21808d;
+}
+
+/* Back to Home */
+.back-to-home {
+  text-align: center;
+  margin-top: 24px;
+}
+
+.back-link {
+  color: #626c71;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+.back-link:hover {
+  color: #21808d;
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .login-page {
+    padding: 16px 12px;
+  }
+
+  .login-card {
+    padding: 24px;
+  }
+
+  .login-header h1 {
+    font-size: 24px;
+  }
+
+  .login-header p {
+    font-size: 14px;
+  }
+
+  .input-wrapper input {
+    padding: 14px 14px 14px 44px;
+    font-size: 14px;
+  }
+
+  .login-button {
+    padding: 14px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-page {
+    padding: 12px 8px;
+  }
+
+  .login-card {
+    padding: 20px;
+  }
+
+  .login-icon {
+    width: 56px;
+    height: 56px;
+    font-size: 28px;
+  }
+
+  .login-header h1 {
+    font-size: 22px;
+  }
+
+  .demo-credentials {
+    padding: 16px;
+  }
+}
+
+/* Focus states for accessibility */
+.input-wrapper input:focus,
+.login-button:focus,
+.password-toggle:focus,
+.footer-link:focus,
+.back-link:focus {
+  outline: 2px solid #21808d;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .login-card {
+    border-width: 3px;
+  }
+
+  .input-wrapper input {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .login-card,
+  .login-icon,
+  .login-button,
+  .demo-credentials,
+  .input-wrapper input {
+    transition: none;
+  }
+
+  .login-card:hover {
+    transform: none;
+  }
+
+  .login-button:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .demo-credentials:hover {
+    transform: none;
+  }
+
+  .spinner {
+    animation: none;
+  }
+}
