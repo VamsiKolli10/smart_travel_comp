@@ -4,6 +4,10 @@ import theme from "./theme";
 import AppLayout from "./components/layout/AppLayout";
 
 import Landing from "./components/pages/Landing";
+import Login from "./components/pages/Login";
+import Register from "./components/pages/Register";
+import ForgotPassword from "./components/pages/ForgotPassword";
+import ResetPassword from "./components/pages/ResetPassword";
 import Dashboard from "./components/pages/Dashboard";
 import Translation from "./components/pages/Translation";
 import Phrasebook from "./components/pages/Phrasebook";
@@ -18,6 +22,10 @@ export default function App() {
       <CssBaseline />
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route element={<AppLayout />}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="translation" element={<Translation />} />
