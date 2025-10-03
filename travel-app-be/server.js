@@ -5,8 +5,8 @@ const admin = require("firebase-admin");
 const cors = require("cors");
 const path = require("path");
 
-// ✅ Import translation routes
-const translationRoutes = require("./src/routes/translationRouters");
+// NEW: import translation route
+const translationRoutes = require("./routes/translationRoutes");
 
 const app = express();
 app.use(cors());
@@ -84,7 +84,6 @@ app.get("/api/profile", authenticate, async (req, res) => {
   });
 });
 
-// ✅ Translation API route
 app.use("/api/translate", translationRoutes);
 
 const PORT = process.env.PORT || 8000;
