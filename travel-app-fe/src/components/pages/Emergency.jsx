@@ -89,7 +89,7 @@ export default function Emergency() {
 
   return (
     <section className="emergency">
-      <div className="emergency-header">
+      {/* <div className="emergency-header">
         <h1>Emergency Contacts</h1>
         <p>Quick access to emergency services and important contacts.</p>
       </div>
@@ -165,7 +165,7 @@ export default function Emergency() {
           immediately. For non-emergency situations, use the appropriate service
           number.
         </div>
-      </div>
+      </div> */}
     </section>
   );
 }

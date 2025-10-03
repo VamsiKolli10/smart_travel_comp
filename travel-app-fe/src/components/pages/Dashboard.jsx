@@ -114,7 +114,7 @@ export default function Dashboard() {
         <div className="recent-activity">
           <h3>Recent Activity</h3>
           <div className="activity-list">
-            {recentActivity.map((activity, index) => (
+            {/* {recentActivity.map((activity, index) => (
               <div key={index} className="activity-item">
                 <div className="activity-icon">
                   {activity.action === "Translated"
@@ -131,7 +131,7 @@ export default function Dashboard() {
                   <div className="activity-time">{activity.time}</div>
                 </div>
               </div>
-            ))}
+            ))} */}
           </div>
         </div>
 
