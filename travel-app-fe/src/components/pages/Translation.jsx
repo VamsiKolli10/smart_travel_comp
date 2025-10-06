@@ -191,7 +191,11 @@ export default function Translation() {
           flexWrap: "wrap",
         }}
       >
-        <Button onClick={handleTranslate} variant="contained" disabled={loading}>
+        <Button
+          onClick={handleTranslate}
+          variant="contained"
+          disabled={loading}
+        >
           {loading ? "Translating…" : "Translate"}
         </Button>
         <Button
