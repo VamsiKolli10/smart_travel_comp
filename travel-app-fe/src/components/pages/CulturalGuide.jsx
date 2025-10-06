@@ -198,7 +198,7 @@ export default function CulturalGuide() {
 
   return (
     <section className="cultural-guide">
-      {/* <div className="cultural-guide-header">
+      <div className="cultural-guide-header">
         <h1>Cultural Guide</h1>
         <p>
           Learn greetings, etiquette, tipping, and local customs to avoid faux
@@ -259,7 +259,7 @@ export default function CulturalGuide() {
             ))}
           </div>
         )}
-      </div> */}
+      </div>
     </section>
   );
 }
