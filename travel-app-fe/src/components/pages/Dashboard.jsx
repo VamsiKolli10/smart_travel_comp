@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchProfile } from "../../services/user";
 import Button from "../common/Button";
 import "./Dashboard.css";
 
@@ -10,6 +11,7 @@ export default function Dashboard() {
     { action: "Saved phrase", text: "Thank you very much", time: "1 hour ago" },
     { action: "Viewed", text: "Museum of Fine Arts", time: "3 hours ago" },
   ]);
+  const [profile, setProfile] = useState(null);
 
   const dashboardCards = [
     {
@@ -70,6 +72,10 @@ export default function Dashboard() {
     },
   ];
 
+  useEffect(() => {
+    fetchProfile().then(setProfile);
+  }, []);
+  if (!profile) return null;
   return (
     <section className="dashboard">
       <div className="dashboard-header">

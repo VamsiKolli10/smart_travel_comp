@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Button from "../common/Button";
 import useNotification from "../../hooks/useNotification";
+import BackHomeButton from "../common/BackHomeButton";
+import { registerWithEmail, loginWithGoogle } from "../../services/auth";
 import "./Register.css";
 
 export default function Register() {
@@ -27,7 +29,6 @@ export default function Register() {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-    // Clear error when user starts typing
     if (error) setError("");
   };
 
@@ -72,17 +73,17 @@ export default function Register() {
         setLoading(false);
         return;
       }
+      console.log(formData);
 
-      // Simulate API call - replace with actual registration
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await registerWithEmail(formData);
 
-      // For demo purposes, accept any registration
       showNotification(
         "Account created successfully! Welcome to Travel Companion.",
         "success"
       );
       navigate("/dashboard");
     } catch (err) {
+      console.log(err.message);
       setError("Registration failed. Please try again.");
       showNotification("Registration failed. Please try again.", "error");
     } finally {
@@ -100,19 +101,18 @@ export default function Register() {
 
   return (
     <div className="register-page">
+      <BackHomeButton />
+
       <div className="register-container">
         <div className="register-card">
-          {/* Header */}
           <div className="register-header">
             <div className="register-icon">👤</div>
             <h1>Create Account</h1>
             <p>Join Travel Companion and start your journey</p>
           </div>
 
-          {/* Error Alert */}
           {error && <div className="error-alert">{error}</div>}
 
-          {/* Registration Form */}
           <form className="register-form" onSubmit={handleSubmit}>
             <div className="form-row">
               <div className="form-group">
@@ -186,6 +186,7 @@ export default function Register() {
                   className="password-toggle"
                   onClick={() => togglePasswordVisibility("password")}
                   disabled={loading}
+                  aria-label="Toggle password visibility"
                 >
                   {showPassword ? "🙈" : "👁️"}
                 </button>
@@ -214,6 +215,7 @@ export default function Register() {
                   className="password-toggle"
                   onClick={() => togglePasswordVisibility("confirmPassword")}
                   disabled={loading}
+                  aria-label="Toggle confirm password visibility"
                 >
                   {showConfirmPassword ? "🙈" : "👁️"}
                 </button>
@@ -263,27 +265,34 @@ export default function Register() {
             </Button>
           </form>
 
-          {/* Divider */}
           <div className="divider">
             <span>or</span>
           </div>
 
-          {/* Social Login Options */}
           <div className="social-login">
             <h3>Sign up with</h3>
             <div className="social-buttons">
-              <button className="social-button google">
+              <button
+                className="social-button google"
+                type="button"
+                disabled={loading}
+                aria-label="Sign up with Google"
+              >
                 <span className="social-icon">🔍</span>
-                Google
+                <span className="social-text">Google</span>
               </button>
-              <button className="social-button facebook">
+              <button
+                className="social-button facebook"
+                type="button"
+                disabled={loading}
+                aria-label="Sign up with Facebook"
+              >
                 <span className="social-icon">📘</span>
-                Facebook
+                <span className="social-text">Facebook</span>
               </button>
             </div>
           </div>
 
-          {/* Footer Links */}
           <div className="register-footer">
             <p>
               Already have an account?{" "}
@@ -292,13 +301,6 @@ export default function Register() {
               </Link>
             </p>
           </div>
-        </div>
-
-        {/* Back to Home */}
-        <div className="back-to-home">
-          <Link to="/" className="back-link">
-            ← Back to Home
-          </Link>
         </div>
       </div>
     </div>

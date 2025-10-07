@@ -4,10 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "lint": "eslint ."
+    "dev": "NODE_PATH=./src vite",
+    "build": "NODE_PATH=./src vite build",
+    "preview": "NODE_PATH=./src vite preview"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -16,11 +15,14 @@
     "@mui/lab": "^7.0.0-beta.17",
     "@mui/material": "^7.3.2",
     "@reduxjs/toolkit": "^2.9.0",
+    "axios": "^1.12.2",
     "express-validator": "^7.2.1",
+    "firebase": "^12.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-redux": "^9.2.0",
-    "react-router-dom": "^6.30.1"
+    "react-router-dom": "^6.30.1",
+    "redux-persist": "^6.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
