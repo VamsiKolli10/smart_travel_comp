@@ -28,3 +28,7 @@ export async function loginWithGoogle() {
   const provider = new GoogleAuthProvider();
   return await signInWithPopup(auth, provider);
 }
+
+export async function logout() {
+  await signOut(auth);
+}

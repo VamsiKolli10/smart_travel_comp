@@ -8,6 +8,7 @@ import {
 } from "@mui/material";
 import { NavLink, Link } from "react-router-dom";
 import { styled } from "@mui/material/styles";
+import LogoutButton from "../../components/common/LogoutButton";
 
 const StyledLink = styled(Link)(({ theme }) => ({
   color: theme.palette.primary.main,
@@ -61,6 +62,9 @@ export default function Navbar() {
             <StyledNavLink to="/destinations">Destinations</StyledNavLink>
           </Box>
         )}
+        <Box sx={{ marginLeft: "auto" }}>
+          <LogoutButton />
+        </Box>
       </Toolbar>
     </AppBar>
   );

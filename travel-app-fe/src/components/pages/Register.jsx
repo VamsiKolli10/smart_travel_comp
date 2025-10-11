@@ -73,7 +73,6 @@ export default function Register() {
         setLoading(false);
         return;
       }
-      console.log(formData);
 
       await registerWithEmail(formData);
 

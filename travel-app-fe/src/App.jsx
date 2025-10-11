@@ -36,7 +36,7 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route element={<Navigate to="/" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="translation" element={<Translation />} />
             <Route path="phrasebook" element={<Phrasebook />} />
