@@ -15,10 +15,11 @@ export default function LogoutButton() {
     try {
       await logout();
       dispatch(clearUser());
-      await persistor.purge();
+      // await persistor.purge();
       showNotification("Logged out successfully", "success");
       navigate("/");
     } catch (err) {
+      console.error("Logout failed", err);
       showNotification("Logout failed. Please try again.", "error");
     }
   };

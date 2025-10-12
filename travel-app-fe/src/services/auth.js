@@ -5,6 +5,7 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  signOut,
 } from "firebase/auth";
 
 export async function loginWithEmail(email, password) {
