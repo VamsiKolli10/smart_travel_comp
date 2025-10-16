@@ -72,7 +72,7 @@ export default function Landing() {
       >
         <Toolbar sx={{ justifyContent: "space-between" }}>
           <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-            Smart Travel Companion 🌍
+            {/* Smart Travel Companion 🌍 */}
           </Typography>
           <Box>
             <Button
@@ -102,6 +102,16 @@ export default function Landing() {
           <Typography
             variant="h1"
             gutterBottom
+            sx={{
+              color: `${theme.palette.primary.main} !important`,
+              fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" },
+            }}
+          >
+            Smart Travel Companion
+          </Typography>
+          <Typography
+            variant="h3"
+            gutterBottom
             sx={{ fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" } }}
           >
             Travel Smarter, Safer, and Happier
@@ -127,7 +137,7 @@ export default function Landing() {
             </Link>
           </Box>
 
-          <Grid
+          {/* <Grid
             container
             spacing={{ xs: 2, sm: 4 }}
             sx={{ maxWidth: 600, mx: "auto", justifyContent: "center" }}
@@ -154,7 +164,7 @@ export default function Landing() {
                 </Box>
               </Grid>
             ))}
-          </Grid>
+          </Grid> */}
         </Container>
       </Box>
       <Box

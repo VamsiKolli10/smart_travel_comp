@@ -268,7 +268,8 @@
   margin: 8px 0;
 }
 
-.checkbox-label {
+.checkbox-label,
+#tnc.checkbox-label {
   display: flex;
   align-items: flex-start;
   gap: 12px;

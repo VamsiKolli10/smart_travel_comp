@@ -222,7 +222,7 @@ export default function Register() {
             </div>
 
             <div className="form-group checkbox-group">
-              <label className="checkbox-label">
+              <label id="tnc" className="checkbox-label">
                 <input
                   type="checkbox"
                   name="agreeToTerms"
@@ -264,7 +264,7 @@ export default function Register() {
             </Button>
           </form>
 
-          <div className="divider">
+          {/* <div className="divider">
             <span>or</span>
           </div>
 
@@ -290,7 +290,7 @@ export default function Register() {
                 <span className="social-text">Facebook</span>
               </button>
             </div>
-          </div>
+          </div> */}
 
           <div className="register-footer">
             <p>

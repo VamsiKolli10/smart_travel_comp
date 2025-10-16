@@ -71,7 +71,7 @@ export default function Login() {
           {/* Header */}
           <div className="login-header">
             <div className="login-icon">🔐</div>
-            <h1>Welcome Back</h1>
+            <h1>Welcome</h1>
             <p>Sign in to your Travel Companion account</p>
           </div>
 

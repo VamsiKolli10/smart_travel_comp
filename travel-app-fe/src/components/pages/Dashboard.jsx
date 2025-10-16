@@ -3,9 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { fetchProfile } from "../../services/user";
 import Button from "../common/Button";
 import "./Dashboard.css";
+import { useDispatch, useSelector } from "react-redux";
+import { setUser } from "../../store/slices/authSlice";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const user = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+
   const [recentActivity] = useState([
     { action: "Translated", text: "Where is the bathroom?", time: "2 min ago" },
     { action: "Saved phrase", text: "Thank you very much", time: "1 hour ago" },
@@ -73,14 +78,14 @@ export default function Dashboard() {
   ];
 
   useEffect(() => {
-    fetchProfile().then(setProfile);
+    fetchProfile().then((resp) => dispatch(setUser(resp)));
   }, []);
-  if (!profile) return null;
+  if (!user) return null;
   return (
     <section className="dashboard">
       <div className="dashboard-header">
         <div className="welcome-section">
-          <h1>Welcome back</h1>
+          <h1>Welcome back, {user?.user?.name}</h1>
           <p>Boston, MA • Safe travels!</p>
         </div>
 
