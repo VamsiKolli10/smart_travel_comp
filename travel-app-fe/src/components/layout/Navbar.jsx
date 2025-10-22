@@ -8,6 +8,8 @@ import {
 } from "@mui/material";
 import { NavLink, Link } from "react-router-dom";
 import { styled } from "@mui/material/styles";
+import LogoutButton from "../../components/common/LogoutButton";
+import { useSelector } from "react-redux";
 
 const StyledLink = styled(Link)(({ theme }) => ({
   color: theme.palette.primary.main,
@@ -35,14 +37,16 @@ const StyledNavLink = styled(NavLink)(({ theme }) => ({
   },
 }));
 
-export default function Navbar() {
+export default function Navbar({}) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-
+  const user = useSelector((state) => state.auth);
   return (
     <AppBar position="sticky" elevation={1}>
       <Toolbar>
-        <StyledLink to="/">Smart Travel Companion</StyledLink>
+        <StyledLink to={user ? "/dashboard" : "/"}>
+          Smart Travel Companion
+        </StyledLink>
         {!isMobile && (
           <Box
             sx={{
@@ -61,6 +65,9 @@ export default function Navbar() {
             <StyledNavLink to="/destinations">Destinations</StyledNavLink>
           </Box>
         )}
+        <Box sx={{ marginLeft: "auto" }}>
+          <LogoutButton />
+        </Box>
       </Toolbar>
     </AppBar>
   );

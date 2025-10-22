@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   Typography,
-  Box,
   Grid,
   TextField,
   FormControl,
@@ -21,8 +20,9 @@ const languages = [
   { value: "en", label: "English" },
   { value: "es", label: "Spanish" },
   { value: "fr", label: "French" },
-  { value: "hi", label: "Hindi" },
-  { value: "zh", label: "Chinese" },
+  { value: "de", label: "German" },
+  // { value: "hi", label: "Hindi" },   // ❌ not supported by MarianMT yet
+  // { value: "zh", label: "Chinese" }, // ❌ not supported by MarianMT yet
 ];
 
 export default function Translation() {
@@ -30,6 +30,7 @@ export default function Translation() {
   const [target, setTarget] = useState("");
   const [sourceLang, setSourceLang] = useState("en");
   const [targetLang, setTargetLang] = useState("es");
+  const [loading, setLoading] = useState(false);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -44,9 +45,36 @@ export default function Translation() {
     setTarget(tempText);
   };
 
-  const handleTranslate = () => {
-    // Demo translation - reverse the text
-    setTarget(source.split("").reverse().join(""));
+  const handleTranslate = async () => {
+    if (!source.trim()) return;
+    if (sourceLang === targetLang) {
+      setTarget(source);
+      return;
+    }
+    setLoading(true);
+    setTarget("");
+
+    try {
+      const res = await fetch("http://localhost:8000/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: source,
+          langPair: `${sourceLang}-${targetLang}`,
+        }),
+      });
+      const data = await res.json();
+      if (data?.translation) {
+        setTarget(data.translation);
+      } else {
+        setTarget("Translation failed.");
+      }
+    } catch (err) {
+      console.error("Translation error:", err);
+      setTarget("Error contacting translation server.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -59,6 +87,7 @@ export default function Translation() {
         <Typography variant="h1">Translator</Typography>
       </Grid>
 
+      {/* Language selectors */}
       <Grid
         item
         sx={{
@@ -113,6 +142,7 @@ export default function Translation() {
         </FormControl>
       </Grid>
 
+      {/* Input + Output fields */}
       <Grid
         container
         justifyContent={"center"}
@@ -151,6 +181,7 @@ export default function Translation() {
         </Grid>
       </Grid>
 
+      {/* Action buttons */}
       <Grid
         item
         sx={{
@@ -160,16 +191,27 @@ export default function Translation() {
           flexWrap: "wrap",
         }}
       >
-        <Button onClick={handleTranslate} variant="contained">
-          Translate (demo)
+        <Button
+          onClick={handleTranslate}
+          variant="contained"
+          disabled={loading}
+        >
+          {loading ? "Translating…" : "Translate"}
         </Button>
         <Button
           variant="outlined"
           onClick={() => navigator.clipboard.writeText(target)}
+          disabled={!target}
         >
           Copy
         </Button>
-        <Button variant="outlined">Save to Phrasebook</Button>
+        <Button
+          variant="outlined"
+          onClick={() => alert("Save to Phrasebook not implemented yet")}
+          disabled={!target}
+        >
+          Save to Phrasebook
+        </Button>
       </Grid>
     </Grid>
   );

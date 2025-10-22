@@ -1,7 +1,8 @@
-// src/index.js
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 
 // Import Firebase configurations
 const { db: clientDb } = require("./config/firebase");
@@ -9,10 +10,25 @@ const { db: adminDb } = require("./config/firebaseAdmin");
 
 const app = express();
 const PORT = process.env.PORT || 8000;
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://your-prod-domain.com",
+];
+const limiter = rateLimit({ windowMs: 60 * 1000, max: 60 });
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin))
+        return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
+    },
+  })
+);
+app.use(helmet());
+app.use(express.json({ limit: "10kb" }));
+app.use("/api", limiter);
 
 // Test route
 app.get("/", (req, res) => {

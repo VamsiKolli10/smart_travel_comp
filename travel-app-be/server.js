@@ -5,6 +5,9 @@ const admin = require("firebase-admin");
 const cors = require("cors");
 const path = require("path");
 
+// ✅ Import translation routes
+const translationRoutes = require("./src/routes/translationRouters");
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -74,13 +77,15 @@ app.post("/api/users", authenticate, async (req, res) => {
 
 /** Example secured endpoint: get profile of logged-in user */
 app.get("/api/profile", authenticate, async (req, res) => {
-  // req.user contains Firebase auth token claims: uid, email, name etc
   res.json({
     uid: req.user.uid,
     email: req.user.email,
     name: req.user.name || null,
   });
 });
+
+// ✅ Translation API route
+app.use("/api/translate", translationRoutes);
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
