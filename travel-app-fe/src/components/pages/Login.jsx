@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Button from "../common/Button";
+import BackHomeButton from "../common/BackHomeButton";
 import useNotification from "../../hooks/useNotification";
+import { loginWithEmail } from "../../services/auth";
 import "./Login.css";
 
 export default function Login() {
@@ -22,7 +24,6 @@ export default function Login() {
       ...prev,
       [name]: value,
     }));
-    // Clear error when user starts typing
     if (error) setError("");
   };
 
@@ -32,7 +33,6 @@ export default function Login() {
     setError("");
 
     try {
-      // Basic validation
       if (!formData.email || !formData.password) {
         setError("Please fill in all fields");
         setLoading(false);
@@ -45,10 +45,8 @@ export default function Login() {
         return;
       }
 
-      // Simulate API call - replace with actual authentication
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await loginWithEmail(formData.email, formData.password);
 
-      // For demo purposes, accept any email/password
       showNotification("Login successful! Welcome back.", "success");
       navigate("/dashboard");
     } catch (err) {
@@ -65,12 +63,15 @@ export default function Login() {
 
   return (
     <div className="login-page">
+      {/* ✅ Back Home button on top-left */}
+      <BackHomeButton />
+
       <div className="login-container">
         <div className="login-card">
           {/* Header */}
           <div className="login-header">
             <div className="login-icon">🔐</div>
-            <h1>Welcome Back</h1>
+            <h1>Welcome</h1>
             <p>Sign in to your Travel Companion account</p>
           </div>
 
@@ -173,13 +174,6 @@ export default function Login() {
               </Link>
             </p>
           </div>
-        </div>
-
-        {/* Back to Home */}
-        <div className="back-to-home">
-          <Link to="/" className="back-link">
-            ← Back to Home
-          </Link>
         </div>
       </div>
     </div>

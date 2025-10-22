@@ -4,7 +4,7 @@ import "./Accommodation.css";
 export default function Accommodation() {
   return (
     <section className="accommodation">
-      <div className="accommodation-search">
+      {/* <div className="accommodation-search">
         <div className="search-form">
           <input className="form-control" placeholder="City or area..." />
           <Button>Search</Button>
@@ -38,7 +38,7 @@ export default function Accommodation() {
             </div>
           </article>
         ))}
-      </div>
+      </div> */}
     </section>
   );
 }

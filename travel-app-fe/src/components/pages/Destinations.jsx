@@ -141,7 +141,7 @@ export default function Destinations() {
 
   return (
     <section className="destinations">
-      <div className="destinations-header">
+      {/* <div className="destinations-header">
         <h1>Destinations</h1>
         <p>Explore popular places, trails, and museums in Boston.</p>
       </div>
@@ -243,7 +243,7 @@ export default function Destinations() {
           <h3>No destinations found</h3>
           <p>Try adjusting your search or filter criteria.</p>
         </div>
-      )}
+      )} */}
     </section>
   );
 }

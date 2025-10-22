@@ -1,15 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchProfile } from "../../services/user";
 import Button from "../common/Button";
 import "./Dashboard.css";
+import { useDispatch, useSelector } from "react-redux";
+import { setUser } from "../../store/slices/authSlice";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const user = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+
   const [recentActivity] = useState([
     { action: "Translated", text: "Where is the bathroom?", time: "2 min ago" },
     { action: "Saved phrase", text: "Thank you very much", time: "1 hour ago" },
     { action: "Viewed", text: "Museum of Fine Arts", time: "3 hours ago" },
   ]);
+  const [profile, setProfile] = useState(null);
 
   const dashboardCards = [
     {
@@ -70,11 +77,15 @@ export default function Dashboard() {
     },
   ];
 
+  useEffect(() => {
+    fetchProfile().then((resp) => dispatch(setUser(resp)));
+  }, []);
+  if (!user) return null;
   return (
     <section className="dashboard">
       <div className="dashboard-header">
         <div className="welcome-section">
-          <h1>Welcome back</h1>
+          <h1>Welcome back, {user?.user?.name}</h1>
           <p>Boston, MA • Safe travels!</p>
         </div>
 
@@ -114,7 +125,7 @@ export default function Dashboard() {
         <div className="recent-activity">
           <h3>Recent Activity</h3>
           <div className="activity-list">
-            {recentActivity.map((activity, index) => (
+            {/* {recentActivity.map((activity, index) => (
               <div key={index} className="activity-item">
                 <div className="activity-icon">
                   {activity.action === "Translated"
@@ -131,7 +142,7 @@ export default function Dashboard() {
                   <div className="activity-time">{activity.time}</div>
                 </div>
               </div>
-            ))}
+            ))} */}
           </div>
         </div>
 

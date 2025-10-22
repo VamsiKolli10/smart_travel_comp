@@ -6,6 +6,8 @@ import {
   CardContent,
   Container,
   useTheme,
+  AppBar,
+  Toolbar,
 } from "@mui/material";
 import {
   Translate as TranslateIcon,
@@ -13,10 +15,11 @@ import {
   Security as SecurityIcon,
 } from "@mui/icons-material";
 import Button from "../common/Button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Landing() {
   const theme = useTheme();
+  const navigate = useNavigate();
 
   const heroStats = [
     { number: "50K+", label: "Phrases" },
@@ -54,7 +57,37 @@ export default function Landing() {
 
   return (
     <Box>
-      {/* Hero Section */}
+      <AppBar
+        position="static"
+        color="transparent"
+        elevation={0}
+        sx={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          background: "rgba(255,255,255,0.9)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <Toolbar sx={{ justifyContent: "space-between" }}>
+          <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+            {/* Smart Travel Companion 🌍 */}
+          </Typography>
+          <Box>
+            <Button
+              color="primary"
+              onClick={() => navigate("/login")}
+              sx={{ mr: 1 }}
+            >
+              Login
+            </Button>
+            <Button variant="contained" onClick={() => navigate("/register")}>
+              Sign Up
+            </Button>
+          </Box>
+        </Toolbar>
+      </AppBar>
       <Box
         sx={{
           background: `linear-gradient(135deg, ${theme.palette.primary.light}20, ${theme.palette.secondary.light}20)`,
@@ -68,6 +101,16 @@ export default function Landing() {
         <Container maxWidth="md">
           <Typography
             variant="h1"
+            gutterBottom
+            sx={{
+              color: `${theme.palette.primary.main} !important`,
+              fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" },
+            }}
+          >
+            Smart Travel Companion
+          </Typography>
+          <Typography
+            variant="h3"
             gutterBottom
             sx={{ fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" } }}
           >
@@ -94,7 +137,7 @@ export default function Landing() {
             </Link>
           </Box>
 
-          <Grid
+          {/* <Grid
             container
             spacing={{ xs: 2, sm: 4 }}
             sx={{ maxWidth: 600, mx: "auto", justifyContent: "center" }}
@@ -121,10 +164,9 @@ export default function Landing() {
                 </Box>
               </Grid>
             ))}
-          </Grid>
+          </Grid> */}
         </Container>
       </Box>
-      {/* Features Section */}
       <Box
         sx={{
           padding: { xs: 4, sm: 6, md: 8 },

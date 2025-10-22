@@ -68,7 +68,7 @@ export default function Phrasebook() {
 
   return (
     <section className="phrasebook">
-      <div className="phrasebook-controls">
+      {/* <div className="phrasebook-controls">
         <div className="category-tabs">
           {categories.map((category) => (
             <button
@@ -111,7 +111,7 @@ export default function Phrasebook() {
             </div>
           </div>
         ))}
-      </div>
+      </div> */}
     </section>
   );
 }
