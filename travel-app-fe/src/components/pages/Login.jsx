@@ -142,12 +142,12 @@ export default function Login() {
           </form>
 
           {/* Divider */}
-          <div className="divider">
+          {/* <div className="divider">
             <span>or</span>
-          </div>
+          </div> */}
 
           {/* Demo Credentials */}
-          <div className="demo-credentials">
+          {/* <div className="demo-credentials">
             <h3>Demo Credentials:</h3>
             <div className="demo-info">
               <p>
@@ -157,7 +157,7 @@ export default function Login() {
                 <strong>Password:</strong> demo123
               </p>
             </div>
-          </div>
+          </div> */}
 
           {/* Footer Links */}
           <div className="login-footer">
