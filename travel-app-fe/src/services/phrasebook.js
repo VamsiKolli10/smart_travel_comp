@@ -12,7 +12,7 @@ import api from "./api";
  * @param {number} [params.count=10]   - 3..25 phrases
  */
 export async function generatePhrasebook({ topic, sourceLang, targetLang, count = 10 }) {
-  const { data } = await api.post("/api/phrasebook/generate", {
+  const { data } = await api.post("/phrasebook/generate", {
     topic, sourceLang, targetLang, count,
   });
   return data; // { topic, sourceLang, targetLang, phrases: [...] }
