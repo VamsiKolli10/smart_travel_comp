@@ -1,19 +1,26 @@
+// src/components/pages/StaysSearchPage.jsx
 import { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
-  Box, Grid, ToggleButton, ToggleButtonGroup, Switch, Typography, Divider
+  Box,
+  Grid,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+  Divider,
+  Button,
+  TextField,
 } from "@mui/material";
-import { searchStays } from "../../services/stays";
-import StaysSearchBar from "../stays/StaysSearchBar";
+
+import { searchStays } from "../../services/stays";        // ✅ ONLY searchStays
 import FiltersSidebar from "../stays/FiltersSidebar";
 import ResultsList from "../stays/ResultsList";
 import MapView from "../stays/MapView";
 
 export default function StaysSearchPage() {
   const [params, setParams] = useSearchParams();
-  const navigate = useNavigate();
 
-  // URL-state (shareable links)
+  // URL-backed state
   const [query, setQuery] = useState({
     dest: params.get("dest") || "Paris",
     distance: Number(params.get("distance") || 3),
@@ -26,13 +33,13 @@ export default function StaysSearchPage() {
     rating: params.get("rating") ? Number(params.get("rating")) : undefined,
   });
   const [view, setView] = useState(params.get("view") || "list"); // list | split | map
-  const [translateDynamic, setTranslateDynamic] = useState(params.get("tx") === "on");
+  const [page, setPage] = useState(Number(params.get("page") || 1));
 
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
 
-  // push current state back to URL
+  // Sync state to URL (shareable links)
   const syncUrl = (extra = {}) => {
     const merged = {
       dest: query.dest || undefined,
@@ -43,7 +50,7 @@ export default function StaysSearchPage() {
       amenities: filters.amenities?.join(",") || undefined,
       rating: filters.rating ?? undefined,
       view,
-      tx: translateDynamic ? "on" : undefined,
+      page,
       ...extra,
     };
     const clean = Object.fromEntries(
@@ -61,14 +68,13 @@ export default function StaysSearchPage() {
         type: filters.type?.join(","),
         amenities: filters.amenities?.join(","),
         rating: filters.rating,
-        // lang + tx are optional here; can be used later for translations
-        lang: localStorage.getItem("lang") || "en",
-        tx: translateDynamic ? "on" : "off",
+        page,
       });
       setItems(data.items || []);
-      syncUrl(); // keep URL updated with the latest state
+      syncUrl();
     } catch (e) {
       setError(e?.message || "Failed to fetch stays");
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -77,44 +83,103 @@ export default function StaysSearchPage() {
   useEffect(() => {
     runSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // initial load
+
+  // ——— UI bits used in the left column ———
+  const useMyLocation = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const next = { ...query, lat: coords.latitude, lng: coords.longitude };
+        delete next.dest;
+        setQuery(next);
+        setPage(1);
+        runSearch();
+      },
+      () => {}
+    );
+  };
 
   return (
     <Grid container spacing={2} sx={{ p: 2 }}>
-      {/* Left column: Search + Filters */}
+      {/* Left: Search + Filters */}
       <Grid item xs={12} md={3}>
-        <StaysSearchBar
-          query={query}
-          onChange={setQuery}
-          onSubmit={() => { syncUrl(); runSearch(); }}
-        />
-        <Divider sx={{ my: 2 }} />
-        <FiltersSidebar
-          filters={filters}
-          onChange={(next) => setFilters(next)}
-          onApply={() => { syncUrl(); runSearch(); }}
-        />
-      </Grid>
-
-      {/* Right column: Header controls + content */}
-      <Grid item xs={12} md={9}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" mb={1} gap={2} flexWrap="wrap">
-          <ToggleButtonGroup size="small" value={view} exclusive onChange={(_, v) => { if (v) { setView(v); syncUrl({ view: v }); }}}>
-            <ToggleButton value="list">List</ToggleButton>
-            <ToggleButton value="split">Split</ToggleButton>
-            <ToggleButton value="map">Map</ToggleButton>
-          </ToggleButtonGroup>
-
-          <Box display="flex" alignItems="center" gap={1}>
-            <Typography variant="body2">Translate content</Typography>
-            <Switch
-              checked={translateDynamic}
-              onChange={(e) => { setTranslateDynamic(e.target.checked); syncUrl({ tx: e.target.checked ? "on" : undefined }); }}
-            />
+        <Box display="grid" gap={1}>
+          <TextField
+            size="small"
+            label="Destination"
+            value={query.dest || ""}
+            onChange={(e) => setQuery((q) => ({ ...q, dest: e.target.value }))}
+            helperText="City name (or use my location)"
+          />
+          <TextField
+            size="small"
+            label="Distance (km)"
+            type="number"
+            value={query.distance ?? 3}
+            onChange={(e) =>
+              setQuery((q) => ({ ...q, distance: Number(e.target.value) }))
+            }
+          />
+          <Box display="flex" gap={1}>
+            <Button
+              variant="contained"
+              onClick={() => {
+                setPage(1);
+                runSearch();
+              }}
+            >
+              Search
+            </Button>
+            <Button variant="outlined" onClick={useMyLocation}>
+              Use my location
+            </Button>
           </Box>
         </Box>
 
-        {error && <Typography color="error" sx={{ mb: 1 }}>{error}</Typography>}
+        <Divider sx={{ my: 2 }} />
+
+        <FiltersSidebar
+          filters={filters}
+          onChange={setFilters}
+          onApply={() => {
+            setPage(1);
+            runSearch();
+          }}
+        />
+      </Grid>
+
+      {/* Right: View toggle + content */}
+      <Grid item xs={12} md={9}>
+        <Box
+          display="flex"
+          alignItems="center"
+          justifyContent="space-between"
+          mb={1}
+          gap={2}
+          flexWrap="wrap"
+        >
+          <ToggleButtonGroup
+            size="small"
+            value={view}
+            exclusive
+            onChange={(_, v) => {
+              if (!v) return;
+              setView(v);
+              syncUrl({ view: v });
+            }}
+          >
+            <ToggleButton value="list">LIST</ToggleButton>
+            <ToggleButton value="split">SPLIT</ToggleButton>
+            <ToggleButton value="map">MAP</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+
+        {error && (
+          <Typography color="error" sx={{ mb: 1 }}>
+            {error}
+          </Typography>
+        )}
 
         {view === "map" && <MapView items={items} />}
         {view === "list" && <ResultsList items={items} loading={loading} />}
@@ -128,6 +193,32 @@ export default function StaysSearchPage() {
             </Grid>
           </Grid>
         )}
+
+        {/* Simple pagination */}
+        <Box mt={2} display="flex" gap={1} alignItems="center">
+          <Button
+            size="small"
+            disabled={page <= 1}
+            onClick={() => {
+              const next = page - 1;
+              setPage(next);
+              runSearch();
+            }}
+          >
+            Prev
+          </Button>
+          <Button
+            size="small"
+            onClick={() => {
+              const next = page + 1;
+              setPage(next);
+              runSearch();
+            }}
+          >
+            Next
+          </Button>
+          <Typography variant="body2">Page {page}</Typography>
+        </Box>
       </Grid>
     </Grid>
   );
