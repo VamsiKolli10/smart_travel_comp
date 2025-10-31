@@ -59,7 +59,7 @@ export default function Navbar({}) {
             <StyledNavLink to="/dashboard">Dashboard</StyledNavLink>
             <StyledNavLink to="/translation">Translation</StyledNavLink>
             <StyledNavLink to="/phrasebook">Phrasebook</StyledNavLink>
-            <StyledNavLink to="/accommodation">Stays</StyledNavLink>
+            <StyledNavLink to="/stays">Stays</StyledNavLink>
             <StyledNavLink to="/emergency">Emergency</StyledNavLink>
             <StyledNavLink to="/cultural-guide">Culture</StyledNavLink>
             <StyledNavLink to="/destinations">Destinations</StyledNavLink>

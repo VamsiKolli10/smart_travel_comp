@@ -15,7 +15,9 @@ app.use(express.json());
 // tiny request logger
 app.use((req, _res, next) => {
   const hasAuth = (req.headers.authorization || "").startsWith("Bearer ");
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} auth:${hasAuth}`);
+  console.log(
+    `[${new Date().toISOString()}] ${req.method} ${req.originalUrl} auth:${hasAuth}`
+  );
   next();
 });
 
@@ -56,6 +58,9 @@ async function authenticate(req, res, next) {
 /** -------- Simple public endpoints -------- */
 app.get("/", (_req, res) => res.send("Hello from Firebase + Node backend"));
 
+// quick sanity check
+app.get("/api/ping", (_req, res) => res.send("pong"));
+
 app.get("/api/users", async (_req, res) => {
   try {
     const snapshot = await db.collection("users").limit(50).get();
@@ -81,13 +86,19 @@ app.get("/api/profile", authenticate, async (req, res) => {
 });
 
 /** -------- Routes (mount AFTER init, BEFORE listen) -------- */
-const translationRoutes = require("./src/routes/translationRouters");
+// ⚠️ Use the exact filenames you have on disk.
+// If your file is translationRouters.js, keep the 's' here; otherwise change to translationRoutes.
+const translationRoutes = require("./src/routes/translationRouters"); // or "./src/routes/translationRouters"
 const phrasebookRoutes  = require("./src/routes/phrasebookRoutes");
 const savedPhraseRoutes = require("./src/routes/savedPhraseRoutes");
 
-app.use("/api/translate", translationRoutes);
+// ✅ NEW: stays route (OSM provider)
+const staysRoutes = require("./src/routes/staysRoutes");
+
+app.use("/api/translate", translationRoutes);     // keep your existing prefix
 app.use("/api/phrasebook", phrasebookRoutes);
 app.use("/api/saved-phrases", authenticate, savedPhraseRoutes);
+app.use("/api/stays", staysRoutes);               // <-- NEW
 
 /** -------- TEMP debug endpoints (remove later) -------- */
 app.get("/_debug/firestore/collections", async (_req, res) => {
@@ -110,7 +121,9 @@ app.post("/_debug/firestore/write", async (_req, res) => {
 });
 
 /** -------- 404 -------- */
-app.use((req, res) => res.status(404).json({ error: "Not Found", path: req.originalUrl }));
+app.use((req, res) =>
+  res.status(404).json({ error: "Not Found", path: req.originalUrl })
+);
 
 /** -------- Start server -------- */
 const PORT = process.env.PORT || 8000;
