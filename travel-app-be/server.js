@@ -16,7 +16,9 @@ app.use(express.json());
 app.use((req, _res, next) => {
   const hasAuth = (req.headers.authorization || "").startsWith("Bearer ");
   console.log(
-    `[${new Date().toISOString()}] ${req.method} ${req.originalUrl} auth:${hasAuth}`
+    `[${new Date().toISOString()}] ${req.method} ${
+      req.originalUrl
+    } auth:${hasAuth}`
   );
   next();
 });
@@ -43,7 +45,9 @@ console.log("Firestore DB settings:", db._settings);
 async function authenticate(req, res, next) {
   const authHeader = req.headers.authorization || "";
   if (!authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Missing or invalid Authorization header" });
+    return res
+      .status(401)
+      .json({ error: "Missing or invalid Authorization header" });
   }
   try {
     const token = authHeader.split("Bearer ")[1];
@@ -54,12 +58,6 @@ async function authenticate(req, res, next) {
     res.status(401).json({ error: "Unauthorized" });
   }
 }
-
-/** -------- Simple public endpoints -------- */
-app.get("/", (_req, res) => res.send("Hello from Firebase + Node backend"));
-
-// quick sanity check
-app.get("/api/ping", (_req, res) => res.send("pong"));
 
 app.get("/api/users", async (_req, res) => {
   try {
@@ -82,43 +80,46 @@ app.post("/api/users", authenticate, async (req, res) => {
 });
 
 app.get("/api/profile", authenticate, async (req, res) => {
-  res.json({ uid: req.user.uid, email: req.user.email, name: req.user.name || null });
+  res.json({
+    uid: req.user.uid,
+    email: req.user.email,
+    name: req.user.name || null,
+  });
 });
 
 /** -------- Routes (mount AFTER init, BEFORE listen) -------- */
-// ⚠️ Use the exact filenames you have on disk.
-// If your file is translationRouters.js, keep the 's' here; otherwise change to translationRoutes.
-const translationRoutes = require("./src/routes/translationRouters"); // or "./src/routes/translationRouters"
-const phrasebookRoutes  = require("./src/routes/phrasebookRoutes");
+const translationRoutes = require("./src/routes/translationRoutes"); // or "./src/routes/translationRoutes"
+const phrasebookRoutes = require("./src/routes/phrasebookRoutes");
 const savedPhraseRoutes = require("./src/routes/savedPhraseRoutes");
-
-// ✅ NEW: stays route (OSM provider)
 const staysRoutes = require("./src/routes/staysRoutes");
 
-app.use("/api/translate", translationRoutes);     // keep your existing prefix
+app.use("/api/translate", translationRoutes);
 app.use("/api/phrasebook", phrasebookRoutes);
 app.use("/api/saved-phrases", authenticate, savedPhraseRoutes);
-app.use("/api/stays", staysRoutes);               // <-- NEW
+app.use("/api/stays", staysRoutes);
 
-/** -------- TEMP debug endpoints (remove later) -------- */
-app.get("/_debug/firestore/collections", async (_req, res) => {
-  try {
-    const cols = await admin.firestore().listCollections();
-    res.json({ ok: true, collections: cols.map((c) => c.id) });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message, code: e.code });
-  }
-});
+// app.get("/_debug/firestore/collections", async (_req, res) => {
+//   try {
+//     const cols = await admin.firestore().listCollections();
+//     res.json({ ok: true, collections: cols.map((c) => c.id) });
+//   } catch (e) {
+//     res.status(500).json({ ok: false, error: e.message, code: e.code });
+//   }
+// });
 
-app.post("/_debug/firestore/write", async (_req, res) => {
-  try {
-    const ref = admin.firestore().collection("debug_write").doc("ping");
-    await ref.set({ ok: true, ts: Date.now() });
-    res.json({ ok: true, path: ref.path, projectId: admin.app().options.projectId });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message, code: e.code });
-  }
-});
+// app.post("/_debug/firestore/write", async (_req, res) => {
+//   try {
+//     const ref = admin.firestore().collection("debug_write").doc("ping");
+//     await ref.set({ ok: true, ts: Date.now() });
+//     res.json({
+//       ok: true,
+//       path: ref.path,
+//       projectId: admin.app().options.projectId,
+//     });
+//   } catch (e) {
+//     res.status(500).json({ ok: false, error: e.message, code: e.code });
+//   }
+// });
 
 /** -------- 404 -------- */
 app.use((req, res) =>
