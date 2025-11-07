@@ -29,6 +29,7 @@ import { searchStays } from "../../services/stays";
 import FiltersSidebar from "../stays/FiltersSidebar";
 import ResultsList from "../stays/ResultsList";
 import MapView from "../stays/MapView";
+import { useAnalytics } from "../../contexts/AnalyticsContext.jsx";
 
 export default function StaysSearchPage() {
   const [params, setParams] = useSearchParams();
@@ -53,6 +54,11 @@ export default function StaysSearchPage() {
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
+  const { trackModuleView, trackEvent } = useAnalytics();
+
+  useEffect(() => {
+    trackModuleView("stays");
+  }, [trackModuleView]);
 
   const syncUrl = (extra = {}) => {
     const merged = {
@@ -75,30 +81,72 @@ export default function StaysSearchPage() {
     setParams(clean, { replace: true });
   };
 
-  // Fixed: performSearch accepts query as parameter to avoid async state delays
-  const performSearch = async (searchQuery = query) => {
+  // Fixed: performSearch accepts query and filters as parameters to avoid async state delays
+  const performSearch = async (
+    searchQuery = query,
+    searchFilters = filters
+  ) => {
     setLoading(true);
     setError("");
     try {
-      const data = await searchStays({
+      // Build search params - only include non-empty values
+      const searchParams = {
         ...searchQuery,
-        type: filters.type?.join(","),
-        amenities: filters.amenities?.join(","),
-        rating: filters.rating,
         page,
-      });
+      };
+
+      // Add type filter only if there are selected types
+      if (searchFilters.type?.length > 0) {
+        searchParams.type = searchFilters.type.join(",");
+      }
+
+      // Add amenities filter only if there are selected amenities
+      if (searchFilters.amenities?.length > 0) {
+        searchParams.amenities = searchFilters.amenities.join(",");
+      }
+
+      // Add rating filter only if it's defined
+      if (searchFilters.rating !== undefined && searchFilters.rating !== null) {
+        searchParams.rating = searchFilters.rating;
+      }
+
+      const data = await searchStays(searchParams);
       setItems(data.items || []);
       syncUrl();
+      trackEvent("stays_search", {
+        hasDestination: Boolean(searchQuery.dest),
+        hasCoordinates: Boolean(searchQuery.lat && searchQuery.lng),
+        filtersApplied: {
+          type: searchFilters.type?.length || 0,
+          amenities: searchFilters.amenities?.length || 0,
+          rating: Boolean(searchFilters.rating),
+        },
+        results: data.items?.length || 0,
+        success: true,
+      });
     } catch (e) {
       setError(e?.message || "Failed to fetch stays");
       setItems([]);
+      trackEvent("stays_search", {
+        hasDestination: Boolean(searchQuery.dest),
+        hasCoordinates: Boolean(searchQuery.lat && searchQuery.lng),
+        error: e?.message || "unknown",
+        success: false,
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const runSearch = () => {
-    performSearch(query);
+    // Only search if we have a destination or coordinates
+    if (query.dest || (query.lat && query.lng)) {
+      performSearch(query);
+    } else {
+      // No query params, show empty state
+      setItems([]);
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -133,6 +181,9 @@ export default function StaysSearchPage() {
         performSearch(nextQuery).catch((err) => {
           setError(err?.message || "Search failed");
           setLoading(false);
+        });
+        trackEvent("stays_use_location", {
+          accuracy: coords.accuracy,
         });
       },
       (error) => {
@@ -260,10 +311,15 @@ export default function StaysSearchPage() {
                     {/* Filters */}
                     <FiltersSidebar
                       filters={filters}
-                      onChange={setFilters}
-                      onApply={() => {
+                      onChange={(newFilters) => {
+                        setFilters(newFilters);
+                      }}
+                      onApply={(newFilters) => {
+                        // Use the filters passed from the component, or fallback to current state
+                        const filtersToApply = newFilters || filters;
+                        setFilters(filtersToApply);
                         setPage(1);
-                        performSearch(query);
+                        performSearch(query, filtersToApply);
                       }}
                     />
                   </CardContent>
@@ -432,8 +488,9 @@ export default function StaysSearchPage() {
                     variant="outlined"
                     disabled={page === 1}
                     onClick={() => {
-                      setPage(page - 1);
-                      performSearch(query);
+                      const newPage = page - 1;
+                      setPage(newPage);
+                      performSearch(query, filters);
                     }}
                   >
                     Previous
@@ -445,9 +502,11 @@ export default function StaysSearchPage() {
                   </Paper>
                   <Button
                     variant="outlined"
+                    disabled={items.length < 20} // Disable if we got fewer items than page size
                     onClick={() => {
-                      setPage(page + 1);
-                      performSearch(query);
+                      const newPage = page + 1;
+                      setPage(newPage);
+                      performSearch(query, filters);
                     }}
                   >
                     Next

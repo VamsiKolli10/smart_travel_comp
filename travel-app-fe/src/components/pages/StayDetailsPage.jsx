@@ -30,17 +30,25 @@ import {
 } from "@mui/icons-material";
 import { getStay } from "../../services/stays";
 import MapView from "../stays/MapView";
+import PhotoCarousel from "../stays/PhotoCarousel";
+import { useAnalytics } from "../../contexts/AnalyticsContext.jsx";
 
 export default function StayDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const heroHeight = isMobile ? 260 : 420;
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [bookmarked, setBookmarked] = useState(false);
+  const { trackModuleView, trackEvent } = useAnalytics();
+
+  useEffect(() => {
+    trackModuleView("stays_details", { stayId: id });
+  }, [id, trackModuleView]);
 
   useEffect(() => {
     let on = true;
@@ -48,9 +56,15 @@ export default function StayDetailsPage() {
     (async () => {
       try {
         const out = await getStay(id);
-        if (on) setData(out);
+        if (on) {
+          setData(out);
+          trackEvent("stay_view", { stayId: id, name: out?.name });
+        }
       } catch (e) {
-        if (on) setErr(e?.message || "Failed to load stay");
+        if (on) {
+          setErr(e?.message || "Failed to load stay");
+          trackEvent("stay_view_error", { stayId: id, error: e?.message });
+        }
       } finally {
         if (on) setLoading(false);
       }
@@ -59,7 +73,7 @@ export default function StayDetailsPage() {
     return () => {
       on = false;
     };
-  }, [id]);
+  }, [id, trackEvent]);
 
   if (!id) {
     return <Navigate to="/stays" replace />;
@@ -153,8 +167,18 @@ export default function StayDetailsPage() {
           </Button>
           <Box sx={{ display: "flex", gap: 1 }}>
             <IconButton
-              onClick={() => setBookmarked(!bookmarked)}
+              onClick={() => {
+                setBookmarked((prev) => {
+                  const next = !prev;
+                  trackEvent("stay_bookmark_toggle", {
+                    stayId: id,
+                    value: next,
+                  });
+                  return next;
+                });
+              }}
               color={bookmarked ? "primary" : "default"}
+              aria-label={bookmarked ? "Remove bookmark" : "Save stay"}
             >
               {bookmarked ? <BookmarkFilledIcon /> : <BookmarkIcon />}
             </IconButton>
@@ -166,7 +190,9 @@ export default function StayDetailsPage() {
                     text: `Check out ${data.name}`,
                   });
                 }
+                trackEvent("stay_share", { stayId: id });
               }}
+              aria-label="Share stay"
             >
               <ShareIcon />
             </IconButton>
@@ -177,17 +203,9 @@ export default function StayDetailsPage() {
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <Card>
-              {/* Hero Section */}
-              <Box
-                sx={{
-                  height: 300,
-                  backgroundColor: theme.palette.action.hover,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  position: "relative",
-                }}
-              >
+              {/* Hero Section with Photo Carousel */}
+              <Box sx={{ position: "relative", borderRadius: 3, overflow: "hidden" }}>
+                <PhotoCarousel photos={data.photos || []} height={heroHeight} maxWidth={1200} />
                 <Box
                   sx={{
                     position: "absolute",
@@ -200,13 +218,11 @@ export default function StayDetailsPage() {
                     borderRadius: 1,
                     fontSize: "0.9rem",
                     fontWeight: 700,
+                    zIndex: 3,
                   }}
                 >
                   {data.type?.toUpperCase()}
                 </Box>
-                <Typography variant="body2" color="textSecondary">
-                  📷 Gallery photos coming soon
-                </Typography>
               </Box>
 
               {/* Content Section */}
@@ -260,7 +276,7 @@ export default function StayDetailsPage() {
                           </Typography>
                         </Box>
                         <Typography variant="caption" color="textSecondary">
-                          {data.reviews?.length || 0} reviews
+                          {data.reviewsCount || data.reviews?.length || 0} reviews
                         </Typography>
                       </Paper>
                     )}
@@ -305,9 +321,10 @@ export default function StayDetailsPage() {
                       {data.amenities.map((amenity) => (
                         <Chip
                           key={amenity}
-                          label={amenity}
+                          label={amenity.replace(/-/g, " ")}
                           variant="outlined"
                           size="small"
+                          sx={{ textTransform: "capitalize" }}
                         />
                       ))}
                     </Stack>
@@ -377,6 +394,24 @@ export default function StayDetailsPage() {
                             {review.relative_time_description}
                           </Typography>
                         </Paper>
+                      ))}
+                    </Stack>
+                  </Box>
+                )}
+
+                {!!data.openingHours?.length && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ fontWeight: 600, mb: 1.5 }}
+                    >
+                      Opening Hours
+                    </Typography>
+                    <Stack spacing={0.5}>
+                      {data.openingHours.map((line, idx) => (
+                        <Typography key={`${line}-${idx}`} variant="body2">
+                          {line}
+                        </Typography>
                       ))}
                     </Stack>
                   </Box>

@@ -15,13 +15,19 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
 } from "@mui/icons-material";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const TYPES = ["hotel", "hostel", "guesthouse", "motel", "apartment"];
-const AMENITIES = ["wifi", "parking", "kitchen", "ac", "pool"];
+// Amenities that match what the backend can provide (from Google Places API)
+const AMENITIES = ["wifi", "parking", "pool", "spa", "fitness", "breakfast", "restaurant", "bar"];
 
 export default function FiltersSidebar({ filters, onChange, onApply }) {
   const [local, setLocal] = useState(filters || {});
+
+  // Sync local state when filters prop changes
+  useEffect(() => {
+    setLocal(filters || {});
+  }, [filters]);
   const [expandedSections, setExpandedSections] = useState({
     rating: true,
     types: true,
@@ -196,8 +202,13 @@ export default function FiltersSidebar({ filters, onChange, onApply }) {
           fullWidth
           variant="contained"
           onClick={() => {
-            onChange(local);
-            onApply();
+            const newFilters = {
+              type: local.type || [],
+              amenities: local.amenities || [],
+              rating: local.rating,
+            };
+            onChange(newFilters);
+            onApply(newFilters);
           }}
           size="small"
         >
@@ -207,9 +218,14 @@ export default function FiltersSidebar({ filters, onChange, onApply }) {
           fullWidth
           variant="outlined"
           onClick={() => {
-            setLocal({});
-            onChange({});
-            onApply();
+            const clearedFilters = {
+              type: [],
+              amenities: [],
+              rating: undefined,
+            };
+            setLocal(clearedFilters);
+            onChange(clearedFilters);
+            onApply(clearedFilters);
           }}
           size="small"
         >

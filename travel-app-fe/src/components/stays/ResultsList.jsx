@@ -11,6 +11,7 @@ import {
   Skeleton,
   useTheme,
   useMediaQuery,
+  Paper,
 } from "@mui/material";
 import {
   // MapPin as MapPinIcon,
@@ -22,6 +23,7 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import PhotoCarousel from "./PhotoCarousel";
 
 export default function ResultsList({ items = [], loading }) {
   const nav = useNavigate();
@@ -77,13 +79,21 @@ export default function ResultsList({ items = [], loading }) {
 
   return (
     <Stack spacing={2}>
-      {items.map((item, idx) => {
+      {items.map((item) => {
         const { lat, lng } = item.location || {};
         const gmaps =
           typeof lat === "number" && typeof lng === "number"
             ? `https://www.google.com/maps?q=${lat},${lng}`
             : null;
 
+        const reviewsTotal = item.reviewsCount ?? item.reviews?.length ?? 0;
+        const priceLabel = item.price?.priceLevel;
+        const photos = item.photos?.length
+          ? item.photos
+          : item.thumbnail
+          ? [{ url: item.thumbnail }]
+          : [];
+        const carouselHeight = isMobile ? 200 : 260;
         return (
           <Card
             key={item.id}
@@ -92,17 +102,9 @@ export default function ResultsList({ items = [], loading }) {
               transition: "box-shadow 0.3s",
             }}
           >
-            {/* Image Placeholder */}
-            <Box
-              sx={{
-                height: 180,
-                backgroundColor: theme.palette.action.hover,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                position: "relative",
-              }}
-            >
+            {/* Photo Carousel */}
+            <Box sx={{ position: "relative", borderRadius: 2, overflow: "hidden" }}>
+              <PhotoCarousel photos={photos} height={carouselHeight} maxWidth={600} />
               <Box
                 sx={{
                   position: "absolute",
@@ -115,6 +117,7 @@ export default function ResultsList({ items = [], loading }) {
                   borderRadius: 1,
                   fontSize: "0.8rem",
                   fontWeight: 600,
+                  zIndex: 3,
                 }}
               >
                 {item.type?.toUpperCase()}
@@ -124,6 +127,7 @@ export default function ResultsList({ items = [], loading }) {
                   position: "absolute",
                   top: 12,
                   right: 12,
+                  zIndex: 3,
                 }}
               >
                 <Button
@@ -149,9 +153,6 @@ export default function ResultsList({ items = [], loading }) {
                   )}
                 </Button>
               </Box>
-              <Typography variant="body2" color="textSecondary">
-                📷 No photo available
-              </Typography>
             </Box>
 
             {/* Content */}
@@ -199,18 +200,18 @@ export default function ResultsList({ items = [], loading }) {
                       </Typography>
                     </Box>
                     <Typography variant="caption" color="textSecondary">
-                      {item.reviews?.length || 0} reviews
+                      {reviewsTotal} reviews
                     </Typography>
                   </Paper>
                 )}
               </Box>
 
               {/* Price Level */}
-              {item.price?.priceLevel != null && (
+              {priceLabel && (
                 <Box sx={{ mb: 1.5 }}>
                   <Chip
                     icon={<LocalOfferIcon />}
-                    label={`Price: ${item.price.priceLevel}`}
+                    label={`Price: ${priceLabel}`}
                     size="small"
                     variant="outlined"
                   />
@@ -222,20 +223,21 @@ export default function ResultsList({ items = [], loading }) {
                 <Box sx={{ mb: 1.5 }}>
                   <Stack
                     direction="row"
-                    spacing={1}
-                    sx={{ flexWrap: "wrap", gap: 0.75, useFlexGap: true }}
+                    spacing={0.75}
+                    sx={{ flexWrap: "wrap", gap: 0.6, useFlexGap: true }}
                   >
-                    {item.amenities.slice(0, 3).map((amenity) => (
+                    {item.amenities.slice(0, 4).map((amenity) => (
                       <Chip
                         key={amenity}
-                        label={amenity}
+                        label={amenity.replace(/-/g, " ")}
                         size="small"
                         variant="outlined"
+                        sx={{ textTransform: "capitalize" }}
                       />
                     ))}
-                    {item.amenities.length > 3 && (
+                    {item.amenities.length > 4 && (
                       <Chip
-                        label={`+${item.amenities.length - 3}`}
+                        label={`+${item.amenities.length - 4}`}
                         size="small"
                         variant="outlined"
                       />

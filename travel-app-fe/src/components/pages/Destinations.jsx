@@ -1,249 +1,328 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  Grid,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import PageContainer from "../layout/PageContainer";
 import Button from "../common/Button";
-import "./Destinations.css";
+
+const categories = [
+  "all",
+  "museums",
+  "parks",
+  "restaurants",
+  "shopping",
+  "landmarks",
+];
+
+const destinations = [
+  {
+    id: 1,
+    name: "Museum of Fine Arts",
+    category: "museums",
+    type: "Museum",
+    rating: 4.8,
+    distance: "2.3 km",
+    icon: "🎨",
+    description:
+      "World-class art collection spanning 5,000 years of human creativity.",
+    hours: "10:00 AM - 5:00 PM",
+    price: "$25",
+    features: ["Audio Guide", "Cafe", "Gift Shop", "Wheelchair Accessible"],
+  },
+  {
+    id: 2,
+    name: "Boston Common",
+    category: "parks",
+    type: "Public Park",
+    rating: 4.6,
+    distance: "1.8 km",
+    icon: "🌳",
+    description:
+      "America's oldest public park, perfect for walking and relaxation.",
+    hours: "6:00 AM - 11:30 PM",
+    price: "Free",
+    features: [
+      "Walking Trails",
+      "Playground",
+      "Historic Site",
+      "Dog Friendly",
+    ],
+  },
+  {
+    id: 3,
+    name: "Faneuil Hall Marketplace",
+    category: "shopping",
+    type: "Shopping Center",
+    rating: 4.4,
+    distance: "3.1 km",
+    icon: "🛍️",
+    description:
+      "Historic marketplace with shops, restaurants, and street performers.",
+    hours: "10:00 AM - 9:00 PM",
+    price: "Free",
+    features: ["Food Court", "Street Performers", "Historic", "Gift Shops"],
+  },
+  {
+    id: 4,
+    name: "Fenway Park",
+    category: "landmarks",
+    type: "Sports Venue",
+    rating: 4.7,
+    distance: "4.2 km",
+    icon: "⚾",
+    description: "Historic baseball stadium, home of the Boston Red Sox.",
+    hours: "Varies by game",
+    price: "$15+",
+    features: ["Tours Available", "Gift Shop", "Historic", "Sports"],
+  },
+  {
+    id: 5,
+    name: "Isabella Stewart Gardner Museum",
+    category: "museums",
+    type: "Art Museum",
+    rating: 4.5,
+    distance: "3.8 km",
+    icon: "🏛️",
+    description:
+      "Unique museum in a Venetian-style palace with beautiful gardens.",
+    hours: "11:00 AM - 5:00 PM",
+    price: "$20",
+    features: ["Gardens", "Historic Building", "Art Collection", "Cafe"],
+  },
+  {
+    id: 6,
+    name: "North End",
+    category: "restaurants",
+    type: "Historic District",
+    rating: 4.6,
+    distance: "2.7 km",
+    icon: "🍝",
+    description:
+      "Boston's Little Italy with authentic Italian restaurants and bakeries.",
+    hours: "Varies by restaurant",
+    price: "$$",
+    features: ["Italian Food", "Historic", "Walking Tours", "Bakeries"],
+  },
+];
+
+const categoryLabels = {
+  all: "All Places",
+  museums: "Museums",
+  parks: "Parks",
+  restaurants: "Restaurants",
+  shopping: "Shopping",
+  landmarks: "Landmarks",
+};
 
 export default function Destinations() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const categories = [
-    "all",
-    "museums",
-    "parks",
-    "restaurants",
-    "shopping",
-    "landmarks",
-  ];
-
-  const destinations = [
-    {
-      id: 1,
-      name: "Museum of Fine Arts",
-      category: "museums",
-      type: "Museum",
-      rating: 4.8,
-      distance: "2.3 km",
-      image: "🎨",
-      description:
-        "World-class art collection spanning 5,000 years of human creativity.",
-      hours: "10:00 AM - 5:00 PM",
-      price: "$25",
-      features: ["Audio Guide", "Cafe", "Gift Shop", "Wheelchair Accessible"],
-    },
-    {
-      id: 2,
-      name: "Boston Common",
-      category: "parks",
-      type: "Public Park",
-      rating: 4.6,
-      distance: "1.8 km",
-      image: "🌳",
-      description:
-        "America's oldest public park, perfect for walking and relaxation.",
-      hours: "6:00 AM - 11:30 PM",
-      price: "Free",
-      features: [
-        "Walking Trails",
-        "Playground",
-        "Historic Site",
-        "Dog Friendly",
-      ],
-    },
-    {
-      id: 3,
-      name: "Faneuil Hall Marketplace",
-      category: "shopping",
-      type: "Shopping Center",
-      rating: 4.4,
-      distance: "3.1 km",
-      image: "🛍️",
-      description:
-        "Historic marketplace with shops, restaurants, and street performers.",
-      hours: "10:00 AM - 9:00 PM",
-      price: "Free",
-      features: ["Food Court", "Street Performers", "Historic", "Gift Shops"],
-    },
-    {
-      id: 4,
-      name: "Fenway Park",
-      category: "landmarks",
-      type: "Sports Venue",
-      rating: 4.7,
-      distance: "4.2 km",
-      image: "⚾",
-      description: "Historic baseball stadium, home of the Boston Red Sox.",
-      hours: "Varies by game",
-      price: "$15+",
-      features: ["Tours Available", "Gift Shop", "Historic", "Sports"],
-    },
-    {
-      id: 5,
-      name: "Isabella Stewart Gardner Museum",
-      category: "museums",
-      type: "Art Museum",
-      rating: 4.5,
-      distance: "3.8 km",
-      image: "🏛️",
-      description:
-        "Unique museum in a Venetian-style palace with beautiful gardens.",
-      hours: "11:00 AM - 5:00 PM",
-      price: "$20",
-      features: ["Gardens", "Historic Building", "Art Collection", "Cafe"],
-    },
-    {
-      id: 6,
-      name: "North End",
-      category: "restaurants",
-      type: "Historic District",
-      rating: 4.6,
-      distance: "2.7 km",
-      image: "🍝",
-      description:
-        "Boston's Little Italy with authentic Italian restaurants and bakeries.",
-      hours: "Varies by restaurant",
-      price: "$$",
-      features: ["Italian Food", "Historic", "Walking Tours", "Bakeries"],
-    },
-  ];
-
-  const filteredDestinations = destinations.filter((destination) => {
-    const matchesCategory =
-      activeCategory === "all" || destination.category === activeCategory;
-    const matchesSearch =
-      destination.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      destination.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
-
-  const getCategoryIcon = (category) => {
-    const icons = {
-      museums: "🏛️",
-      parks: "🌳",
-      restaurants: "🍽️",
-      shopping: "🛍️",
-      landmarks: "🏛️",
-      all: "📍",
-    };
-    return icons[category] || "📍";
-  };
-
-  const getCategoryName = (category) => {
-    const names = {
-      museums: "Museums",
-      parks: "Parks",
-      restaurants: "Restaurants",
-      shopping: "Shopping",
-      landmarks: "Landmarks",
-      all: "All Places",
-    };
-    return names[category] || "All Places";
-  };
+  const filtered = useMemo(() => {
+    return destinations.filter((place) => {
+      const matchesCategory =
+        activeCategory === "all" || place.category === activeCategory;
+      const q = searchQuery.trim().toLowerCase();
+      const matchesQuery =
+        !q ||
+        place.name.toLowerCase().includes(q) ||
+        place.description.toLowerCase().includes(q) ||
+        place.features.some((feature) =>
+          feature.toLowerCase().includes(q)
+        );
+      return matchesCategory && matchesQuery;
+    });
+  }, [activeCategory, searchQuery]);
 
   return (
-    <section className="destinations">
-      {/* <div className="destinations-header">
-        <h1>Destinations</h1>
-        <p>Explore popular places, trails, and museums in Boston.</p>
-      </div>
-
-      <div className="destinations-controls">
-        <div className="search-section">
-          <div className="search-form">
-            <input
-              className="search-input"
-              placeholder="Search destinations..."
+    <PageContainer
+      title="Destinations"
+      subtitle="Find the best places to explore, eat, and relax near you."
+      maxWidth="lg"
+    >
+      <Stack spacing={3}>
+        <Card>
+          <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <TextField
+              label="Search destinations"
+              placeholder="Try “museum”, “historic”, or a specific place"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              fullWidth
             />
-            <Button variant="outline">Search</Button>
-          </div>
-        </div>
-
-        <div className="category-filters">
-          {categories.map((category) => (
-            <button
-              key={category}
-              className={`category-filter ${
-                activeCategory === category ? "active" : ""
-              }`}
-              onClick={() => setActiveCategory(category)}
+            <Stack
+              direction="row"
+              spacing={1}
+              flexWrap="wrap"
+              useFlexGap
+              sx={{ pt: 1 }}
             >
-              <span className="filter-icon">{getCategoryIcon(category)}</span>
-              <span className="filter-name">{getCategoryName(category)}</span>
-            </button>
+              {categories.map((category) => (
+                <Chip
+                  key={category}
+                  label={categoryLabels[category]}
+                  color={activeCategory === category ? "primary" : "default"}
+                  variant={
+                    activeCategory === category ? "filled" : "outlined"
+                  }
+                  onClick={() => setActiveCategory(category)}
+                  sx={{ borderRadius: 2 }}
+                />
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+
+        <Grid container spacing={2}>
+          {filtered.map((destination) => (
+            <Grid item xs={12} sm={6} md={4} key={destination.id}>
+              <Card
+                sx={{
+                  height: "100%",
+                  borderRadius: 3,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <CardContent sx={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+                  <Stack direction="row" spacing={2} alignItems="flex-start">
+                    <Box
+                      sx={{
+                        fontSize: 32,
+                        width: 48,
+                        height: 48,
+                        borderRadius: 3,
+                        backgroundColor: "rgba(33,128,141,0.08)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {destination.icon}
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        {destination.name}
+                      </Typography>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="body2" color="text.secondary">
+                          {destination.type}
+                        </Typography>
+                        <Chip
+                          label={`${destination.rating.toFixed(1)} ★`}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          {destination.distance}
+                        </Typography>
+                      </Stack>
+                    </Box>
+                  </Stack>
+
+                  <Typography variant="body2" color="text.secondary">
+                    {destination.description}
+                  </Typography>
+
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {destination.features.slice(0, 3).map((feature) => (
+                      <Chip key={feature} label={feature} size="small" />
+                    ))}
+                    {destination.features.length > 3 && (
+                      <Chip
+                        label={`+${destination.features.length - 3}`}
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
+                  </Stack>
+
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                    justifyContent="space-between"
+                    sx={{ mt: "auto" }}
+                  >
+                    <Stack spacing={0.5}>
+                      <Typography variant="caption" color="text.secondary">
+                        Hours
+                      </Typography>
+                      <Typography variant="body2">
+                        {destination.hours}
+                      </Typography>
+                    </Stack>
+                    <Stack spacing={0.5} textAlign="right">
+                      <Typography variant="caption" color="text.secondary">
+                        Price
+                      </Typography>
+                      <Typography variant="body2">{destination.price}</Typography>
+                    </Stack>
+                  </Stack>
+                </CardContent>
+                <Box
+                  sx={{
+                    px: 3,
+                    py: 2,
+                    borderTop: "1px solid rgba(94,82,64,0.12)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Stack direction="row" spacing={1}>
+                    <Chip
+                      label={categoryLabels[destination.category]}
+                      size="small"
+                      variant="outlined"
+                    />
+                  </Stack>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => {
+                      // placeholder for navigation/integration
+                      window.open(
+                        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          destination.name
+                        )}`,
+                        "_blank",
+                        "noopener,noreferrer"
+                      );
+                    }}
+                  >
+                    View on Maps
+                  </Button>
+                </Box>
+              </Card>
+            </Grid>
           ))}
-        </div>
-      </div>
+        </Grid>
 
-      <div className="destinations-grid">
-        {filteredDestinations.map((destination) => (
-          <div key={destination.id} className="destination-card">
-            <div className="destination-image">
-              <span className="destination-emoji">{destination.image}</span>
-            </div>
-
-            <div className="destination-content">
-              <div className="destination-header">
-                <h3 className="destination-name">{destination.name}</h3>
-                <div className="destination-rating">
-                  <span className="rating-stars">★</span>
-                  <span className="rating-value">{destination.rating}</span>
-                </div>
-              </div>
-
-              <div className="destination-meta">
-                <span className="destination-type">{destination.type}</span>
-                <span className="destination-distance">
-                  {destination.distance}
-                </span>
-              </div>
-
-              <p className="destination-description">
-                {destination.description}
-              </p>
-
-              <div className="destination-details">
-                <div className="detail-item">
-                  <span className="detail-label">Hours:</span>
-                  <span className="detail-value">{destination.hours}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Price:</span>
-                  <span className="detail-value">{destination.price}</span>
-                </div>
-              </div>
-
-              <div className="destination-features">
-                {destination.features.slice(0, 3).map((feature, index) => (
-                  <span key={index} className="feature-tag">
-                    {feature}
-                  </span>
-                ))}
-                {destination.features.length > 3 && (
-                  <span className="feature-tag more">
-                    +{destination.features.length - 3} more
-                  </span>
-                )}
-              </div>
-
-              <div className="destination-actions">
-                <Button size="sm" variant="outline">
-                  Directions
-                </Button>
-                <Button size="sm">Save</Button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {filteredDestinations.length === 0 && (
-        <div className="no-results">
-          <div className="no-results-icon">🔍</div>
-          <h3>No destinations found</h3>
-          <p>Try adjusting your search or filter criteria.</p>
-        </div>
-      )} */}
-    </section>
+        {!filtered.length && (
+          <Card>
+            <CardContent
+              sx={{ textAlign: "center", py: 6, display: "flex", flexDirection: "column", gap: 2 }}
+            >
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                No destinations found
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Try a different keyword or switch to another category to explore more
+                places.
+              </Typography>
+            </CardContent>
+          </Card>
+        )}
+      </Stack>
+    </PageContainer>
   );
 }

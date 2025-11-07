@@ -1,0 +1,102 @@
+.landing-root {
+  min-height: 100vh;
+  background: linear-gradient(
+    180deg,
+    var(--landing-bg, #fcfcf9) 0%,
+    rgba(33, 128, 141, 0.04) 100%
+  );
+}
+
+@media (min-width: 900px) {
+  .landing-root {
+    background:
+      radial-gradient(circle at 10% 15%, rgba(33, 128, 141, 0.18) 0%, transparent 55%),
+      radial-gradient(circle at 85% -10%, rgba(94, 82, 64, 0.15) 0%, transparent 55%),
+      var(--landing-bg, #fcfcf9);
+  }
+}
+
+html[data-theme="dark"] .landing-root {
+  --landing-bg: #0d1f24;
+  background:
+    radial-gradient(circle at 10% 15%, rgba(50, 184, 198, 0.18) 0%, transparent 55%),
+    radial-gradient(circle at 85% -10%, rgba(94, 82, 64, 0.2) 0%, transparent 60%),
+    #0d1f24;
+}
+
+html[data-theme="dark"] .landing-root .MuiCard-root {
+  background-color: rgba(16, 28, 36, 0.92) !important;
+  border: 1px solid rgba(237, 242, 243, 0.12) !important;
+  box-shadow: 0 28px 70px -45px rgba(2, 8, 18, 0.8) !important;
+}
+
+.landing-section-surface {
+  background-color: transparent;
+}
+
+html[data-theme="dark"] .landing-root .landing-section-surface {
+  background-color: rgba(13, 31, 36, 0.78);
+  border-radius: 24px;
+}
+
+html[data-theme="dark"] .landing-root .landing-section-surface .MuiContainer-root,
+html[data-theme="dark"] .landing-root .landing-section-surface .MuiBox-root {
+  background-color: transparent;
+}
+
+.landing-appbar {
+  background-color: rgba(252, 252, 249, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(94, 82, 64, 0.08);
+}
+
+html[data-theme="dark"] .landing-appbar {
+  background-color: rgba(16, 32, 39, 0.75);
+  border-bottom: 1px solid rgba(237, 242, 243, 0.12);
+}
+
+.landing-toolbar {
+  min-height: 72px;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 16px;
+  gap: 16px;
+}
+
+@media (min-width: 600px) {
+  .landing-toolbar {
+    padding: 0 32px;
+  }
+}
+
+@media (min-width: 900px) {
+  .landing-toolbar {
+    padding: 0 48px;
+  }
+}
+
+.landing-brand-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #21808d 0%, #32b8c6 100%);
+  color: #fcfcf9;
+}
+
+.landing-brand-title {
+  font-weight: 600;
+}
+
+.landing-toggle-button {
+  border: 1px solid rgba(94, 82, 64, 0.12);
+  border-radius: 16px;
+  background-color: rgba(255, 255, 255, 0.75);
+}
+
+html[data-theme="dark"] .landing-toggle-button {
+  border: 1px solid rgba(237, 242, 243, 0.18);
+  background-color: rgba(16, 32, 39, 0.65);
+}

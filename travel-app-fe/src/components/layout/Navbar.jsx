@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -5,14 +6,31 @@ import {
   Box,
   useMediaQuery,
   useTheme,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
-import { NavLink, Link } from "react-router-dom";
+import { NavLink, Link, useLocation } from "react-router-dom";
 import { styled } from "@mui/material/styles";
 import LogoutButton from "../../components/common/LogoutButton";
 import { useSelector } from "react-redux";
+import {
+  Brightness4 as DarkIcon,
+  Brightness7 as LightIcon,
+} from "@mui/icons-material";
+import { useAppearance } from "../../contexts/AppearanceContext.jsx";
+
+const NAV_LINKS = [
+  { label: "Home", to: "/home" },
+  { label: "Translation", to: "/translation" },
+  { label: "Phrasebook", to: "/phrasebook" },
+  { label: "Stays", to: "/stays" },
+  { label: "Emergency", to: "/emergency" },
+  { label: "Culture", to: "/cultural-guide" },
+  { label: "Destinations", to: "/destinations" },
+];
 
 const StyledLink = styled(Link)(({ theme }) => ({
-  color: theme.palette.primary.main,
+  color: theme.palette.text.primary,
   textDecoration: "none",
   fontSize: "18px",
   fontWeight: 600,
@@ -37,36 +55,106 @@ const StyledNavLink = styled(NavLink)(({ theme }) => ({
   },
 }));
 
-export default function Navbar({}) {
+export default function Navbar() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const user = useSelector((state) => state.auth);
+  const location = useLocation();
+  const user = useSelector((state) => state.auth.user);
+  const { mode, toggleMode } = useAppearance();
+  const navRefs = useRef([]);
+  const [focusedNavIndex, setFocusedNavIndex] = useState(0);
+
+  useEffect(() => {
+    const idx = NAV_LINKS.findIndex((item) => item.to === location.pathname);
+    if (idx >= 0) {
+      setFocusedNavIndex(idx);
+    }
+  }, [location.pathname]);
+
+  const handleNavKeyDown = (event) => {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    event.preventDefault();
+    const delta = event.key === "ArrowRight" ? 1 : -1;
+    const nextIndex =
+      (focusedNavIndex + delta + NAV_LINKS.length) % NAV_LINKS.length;
+    setFocusedNavIndex(nextIndex);
+    const nextNode = navRefs.current[nextIndex];
+    nextNode?.focus();
+  };
+
   return (
-    <AppBar position="sticky" elevation={1}>
-      <Toolbar>
-        <StyledLink to={user ? "/dashboard" : "/"}>
+    <AppBar component="header" position="sticky" elevation={1}>
+      <Toolbar
+        component="div"
+        role="navigation"
+        aria-label="Main site controls"
+        sx={{ gap: 2 }}
+      >
+        <StyledLink
+          to={user ? "/home" : "/"}
+          aria-label="Smart Travel Companion home"
+        >
           Smart Travel Companion
         </StyledLink>
-        {!isMobile && (
+        {!isMobile && user && (
           <Box
+            component="nav"
+            aria-label="Primary sections"
             sx={{
               flexGrow: 1,
               display: "flex",
               justifyContent: "center",
               gap: 3,
             }}
+            onKeyDown={handleNavKeyDown}
           >
-            <StyledNavLink to="/dashboard">Dashboard</StyledNavLink>
-            <StyledNavLink to="/translation">Translation</StyledNavLink>
-            <StyledNavLink to="/phrasebook">Phrasebook</StyledNavLink>
-            <StyledNavLink to="/stays">Stays</StyledNavLink>
-            <StyledNavLink to="/emergency">Emergency</StyledNavLink>
-            <StyledNavLink to="/cultural-guide">Culture</StyledNavLink>
-            <StyledNavLink to="/destinations">Destinations</StyledNavLink>
+            {NAV_LINKS.map((link, index) => (
+              <StyledNavLink
+                key={link.to}
+                to={link.to}
+                tabIndex={focusedNavIndex === index ? 0 : -1}
+                ref={(node) => {
+                  navRefs.current[index] = node;
+                }}
+                onFocus={() => setFocusedNavIndex(index)}
+                aria-label={`${link.label} section`}
+              >
+                {link.label}
+              </StyledNavLink>
+            ))}
           </Box>
         )}
-        <Box sx={{ marginLeft: "auto" }}>
-          <LogoutButton />
+        <Box
+          sx={{
+            marginLeft: "auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+          }}
+        >
+          <Tooltip
+            title={
+              mode === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
+          >
+            <IconButton
+              onClick={toggleMode}
+              aria-label={mode === "dark" ? "Activate light mode" : "Activate dark mode"}
+              color="inherit"
+              sx={{
+                borderRadius: 2,
+                border: "1px solid rgba(94,82,64,0.16)",
+                backgroundColor: "background.paper",
+              }}
+            >
+              {mode === "dark" ? (
+                <LightIcon fontSize="small" />
+              ) : (
+                <DarkIcon fontSize="small" />
+              )}
+            </IconButton>
+          </Tooltip>
+          {user && <LogoutButton />}
         </Box>
       </Toolbar>
     </AppBar>

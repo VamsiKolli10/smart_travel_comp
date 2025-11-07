@@ -1,6 +1,10 @@
 /* Global styles for Material-UI integration */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600&display=swap");
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Font face for FKGroteskNeue */
 @font-face {
   font-family: "FKGroteskNeue";
@@ -28,6 +32,12 @@ body {
   line-height: 1.5;
   color: #13343b;
   background-color: #fcfcf9;
+  transition: background-color 250ms ease, color 250ms ease;
+}
+
+.dark body {
+  color: #edf2f3;
+  background-color: #0d1f24;
 }
 
 /* Ensure proper Material-UI integration */
@@ -58,39 +68,25 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02) !important;
 }
 
+.dark .MuiAppBar-root {
+  background-color: #102027 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 20px 45px -25px rgba(0, 0, 0, 0.75) !important;
+}
+
 .MuiBottomNavigation-root {
   background-color: #fffffd !important;
   border-top: 1px solid rgba(94, 82, 64, 0.12) !important;
 }
 
+.dark .MuiBottomNavigation-root {
+  background-color: #102027 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
 .MuiTypography-root {
   font-family: "FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont,
     "Segoe UI", Roboto, sans-serif !important;
-}
-
-/* Custom utility classes */
-.text-center {
-  text-align: center;
-}
-
-.flex {
-  display: flex;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.justify-center {
-  justify-content: center;
-}
-
-.gap-2 {
-  gap: 8px;
-}
-
-.gap-4 {
-  gap: 16px;
 }
 
 /* Responsive adjustments */
@@ -117,6 +113,10 @@ body {
   color: #13343b !important;
 }
 
+.dark .MuiAppBar-root {
+  color: #edf2f3 !important;
+}
+
 .MuiToolbar-root {
   min-height: 64px !important;
 }
@@ -126,12 +126,24 @@ body {
   color: #13343b !important;
 }
 
+.dark .MuiBottomNavigation-root {
+  color: #edf2f3 !important;
+}
+
 .MuiBottomNavigationAction-root {
   color: #626c71 !important;
 }
 
+.dark .MuiBottomNavigationAction-root {
+  color: rgba(237, 242, 243, 0.7) !important;
+}
+
 .MuiBottomNavigationAction-root.Mui-selected {
   color: #21808d !important;
+}
+
+.dark .MuiBottomNavigationAction-root.Mui-selected {
+  color: #64b5f6 !important;
 }
 
 /* Ensure proper spacing and layout */
@@ -144,6 +156,11 @@ body {
 .MuiPaper-root {
   background-color: #fffffd !important;
   color: #13343b !important;
+}
+
+.dark .MuiPaper-root {
+  background-color: #102027 !important;
+  color: #edf2f3 !important;
 }
 
 /* Ensure proper text rendering */
@@ -160,8 +177,12 @@ body {
   color: #626c71 !important;
 }
 
+.dark .MuiInputLabel-root {
+  color: rgba(237, 242, 243, 0.7) !important;
+}
+
 .MuiOutlinedInput-root {
-  color: #13343b !important;
+  color: inherit !important;
 }
 
 .MuiOutlinedInput-notchedOutline {
@@ -175,6 +196,18 @@ body {
 .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
   border-color: #21808d !important;
   border-width: 2px !important;
+}
+
+.dark .MuiOutlinedInput-root {
+  color: #edf2f3 !important;
+}
+
+.dark .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(237, 242, 243, 0.3) !important;
+}
+
+.dark .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #64b5f6 !important;
 }
 
 /* Force proper styling for all components */

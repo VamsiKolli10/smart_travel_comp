@@ -1,4 +1,9 @@
 const admin = require("firebase-admin");
+const {
+  sanitizeString,
+  validateLangCode,
+  ensureOwner,
+} = require("../utils/validation");
 const fdb = () => admin.firestore();
 
 const detail = (e) =>
@@ -7,8 +12,15 @@ const detail = (e) =>
 
 exports.listSaved = async (req, res) => {
   try {
+    const ownership = ensureOwner(req, req.user?.uid);
+    if (ownership.error) {
+      return res.status(ownership.error === "Unauthorized" ? 401 : 403).json({
+        error: ownership.error,
+      });
+    }
+
     const snap = await fdb()
-      .collection("users").doc(req.user.uid)
+      .collection("users").doc(ownership.value)
       .collection("saved_phrases")
       .orderBy("createdAt", "desc")
       .get();
@@ -21,23 +33,79 @@ exports.listSaved = async (req, res) => {
   }
 };
 
+function buildPhrasePayload(body = {}) {
+  const requiredFields = [
+    ["phrase", 160],
+    ["meaning", 280],
+    ["usageExample", 360],
+  ];
+
+  const sanitized = {};
+  for (const [field, max] of requiredFields) {
+    const result = sanitizeString(body[field], {
+      maxLength: max,
+      label: field,
+      allowEmpty: false,
+    });
+    if (result.error) return { error: result.error };
+    sanitized[field] = result.value;
+  }
+
+  const transliteration = sanitizeString(body.transliteration, {
+    maxLength: 160,
+    label: "transliteration",
+    allowEmpty: true,
+  }).value;
+
+  const topic = sanitizeString(body.topic, {
+    maxLength: 120,
+    label: "topic",
+    allowEmpty: true,
+  }).value;
+
+  const sourceLang =
+    body.sourceLang && body.sourceLang.trim()
+      ? validateLangCode(body.sourceLang, { label: "sourceLang" })
+      : { value: "" };
+  if (sourceLang.error) return { error: sourceLang.error };
+
+  const targetLang = validateLangCode(body.targetLang, {
+    label: "targetLang",
+  });
+  if (targetLang.error) return { error: targetLang.error };
+
+  return {
+    value: {
+      phrase: sanitized.phrase,
+      transliteration,
+      meaning: sanitized.meaning,
+      usageExample: sanitized.usageExample,
+      topic,
+      sourceLang: sourceLang.value,
+      targetLang: targetLang.value,
+    },
+  };
+}
+
 exports.addSaved = async (req, res) => {
   try {
-    const { phrase, transliteration = "", meaning, usageExample, topic = "", sourceLang = "", targetLang } = req.body || {};
-    if (!phrase || !meaning || !usageExample || !targetLang) {
-      return res.status(400).json({ error: "Required: phrase, meaning, usageExample, targetLang" });
+    const ownership = ensureOwner(req, req.user?.uid);
+    if (ownership.error) {
+      return res.status(ownership.error === "Unauthorized" ? 401 : 403).json({
+        error: ownership.error,
+      });
     }
+
+    const payload = buildPhrasePayload(req.body || {});
+    if (payload.error) {
+      return res.status(400).json({ error: payload.error });
+    }
+
     const docRef = await fdb()
-      .collection("users").doc(req.user.uid)
+      .collection("users").doc(ownership.value)
       .collection("saved_phrases")
       .add({
-        phrase: String(phrase).trim(),
-        transliteration: String(transliteration).trim(),
-        meaning: String(meaning).trim(),
-        usageExample: String(usageExample).trim(),
-        topic: String(topic).trim(),
-        sourceLang: String(sourceLang).trim(),
-        targetLang: String(targetLang).trim(),
+        ...payload.value,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     res.status(201).json({ id: docRef.id });
@@ -49,8 +117,15 @@ exports.addSaved = async (req, res) => {
 
 exports.removeSaved = async (req, res) => {
   try {
+    const ownership = ensureOwner(req, req.user?.uid);
+    if (ownership.error) {
+      return res.status(ownership.error === "Unauthorized" ? 401 : 403).json({
+        error: ownership.error,
+      });
+    }
+
     const ref = fdb()
-      .collection("users").doc(req.user.uid)
+      .collection("users").doc(ownership.value)
       .collection("saved_phrases").doc(req.params.id);
     const snap = await ref.get();
     if (!snap.exists) return res.status(404).json({ error: "Not found" });

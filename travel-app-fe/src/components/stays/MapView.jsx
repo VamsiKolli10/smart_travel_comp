@@ -1,134 +1,206 @@
-import { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import {
-  Box, Grid, ToggleButton, ToggleButtonGroup, Switch, Typography, Divider
-} from "@mui/material";
-import { searchStays } from "../../services/stays";
-import StaysSearchBar from "../stays/StaysSearchBar";
-import FiltersSidebar from "../stays/FiltersSidebar";
-import ResultsList from "../stays/ResultsList";
-import MapView from "../stays/MapView";
+import { useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { Box, CircularProgress, Typography, useTheme } from "@mui/material";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 
-export default function StaysSearchPage() {
-  const [params, setParams] = useSearchParams();
+const MAP_STYLE_URL =
+  "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+const DEFAULT_CENTER = [0, 20];
+const DEFAULT_ZOOM = 2;
+
+export default function MapView({
+  items = [],
+  loading = false,
+  interactive = true,
+}) {
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markersRef = useRef([]);
+  const theme = useTheme();
   const navigate = useNavigate();
 
-  // URL-state (shareable links)
-  const [query, setQuery] = useState({
-    dest: params.get("dest") || "Paris",
-    distance: Number(params.get("distance") || 3),
-    lat: params.get("lat") ? Number(params.get("lat")) : undefined,
-    lng: params.get("lng") ? Number(params.get("lng")) : undefined,
-  });
-  const [filters, setFilters] = useState({
-    type: (params.get("type") || "").split(",").filter(Boolean),
-    amenities: (params.get("amenities") || "").split(",").filter(Boolean),
-    rating: params.get("rating") ? Number(params.get("rating")) : undefined,
-  });
-  const [view, setView] = useState(params.get("view") || "list"); // list | split | map
-  const [translateDynamic, setTranslateDynamic] = useState(params.get("tx") === "on");
+  const hasLocations = useMemo(
+    () =>
+      items.some(
+        (item) =>
+          typeof item?.location?.lat === "number" &&
+          typeof item?.location?.lng === "number"
+      ),
+    [items]
+  );
 
-  const [loading, setLoading] = useState(false);
-  const [items, setItems] = useState([]);
-  const [error, setError] = useState("");
-
-  // push current state back to URL
-  const syncUrl = (extra = {}) => {
-    const merged = {
-      dest: query.dest || undefined,
-      distance: query.distance ?? undefined,
-      lat: query.lat ?? undefined,
-      lng: query.lng ?? undefined,
-      type: filters.type?.join(",") || undefined,
-      amenities: filters.amenities?.join(",") || undefined,
-      rating: filters.rating ?? undefined,
-      view,
-      tx: translateDynamic ? "on" : undefined,
-      ...extra,
-    };
-    const clean = Object.fromEntries(
-      Object.entries(merged).filter(([, v]) => v !== undefined && v !== "")
-    );
-    setParams(clean, { replace: true });
-  };
-
-  const runSearch = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const data = await searchStays({
-        ...query,
-        type: filters.type?.join(","),
-        amenities: filters.amenities?.join(","),
-        rating: filters.rating,
-        // lang + tx are optional here; can be used later for translations
-        lang: localStorage.getItem("lang") || "en",
-        tx: translateDynamic ? "on" : "off",
-      });
-      setItems(data.items || []);
-      syncUrl(); // keep URL updated with the latest state
-    } catch (e) {
-      setError(e?.message || "Failed to fetch stays");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Create the map instance once on mount.
   useEffect(() => {
-    runSearch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    try {
+      mapRef.current = new maplibregl.Map({
+        container: mapContainerRef.current,
+        style: MAP_STYLE_URL,
+        center: DEFAULT_CENTER,
+        zoom: DEFAULT_ZOOM,
+        attributionControl: true,
+      });
+    } catch (err) {
+      console.error("Failed to initialise map", err);
+      return;
+    }
+
+    mapRef.current.addControl(
+      new maplibregl.NavigationControl(),
+      "top-right"
+    );
+
+    // Ensure the canvas fills its parent when shown in tabs/panels.
+    setTimeout(() => {
+      mapRef.current && mapRef.current.resize();
+    }, 0);
+
+    return () => {
+      markersRef.current.forEach((marker) => marker.remove());
+      markersRef.current = [];
+      mapRef.current?.remove();
+      mapRef.current = null;
+    };
   }, []);
 
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
+
+    const valid = items.filter(
+      (item) =>
+        typeof item?.location?.lat === "number" &&
+        typeof item?.location?.lng === "number"
+    );
+
+    if (!valid.length) {
+      mapRef.current.easeTo({
+        center: DEFAULT_CENTER,
+        zoom: DEFAULT_ZOOM,
+        duration: 600,
+      });
+      return;
+    }
+
+    const bounds = new maplibregl.LngLatBounds();
+
+    valid.forEach((item, index) => {
+      const { lat, lng } = item.location;
+
+      const marker = new maplibregl.Marker({
+        color:
+          index === 0
+            ? theme.palette.primary.main
+            : theme.palette.secondary?.main || theme.palette.primary.light,
+      }).setLngLat([lng, lat]);
+
+      const popupLines = [item.name || "Accommodation"];
+      if (typeof item.location?.distanceKm === "number") {
+        popupLines.push(`${item.location.distanceKm.toFixed(1)} km away`);
+      }
+
+      marker.setPopup(
+        new maplibregl.Popup({ offset: 18, closeButton: false }).setText(
+          popupLines.join("\n")
+        )
+      );
+
+      if (interactive) {
+        const element = marker.getElement();
+        element.style.cursor = "pointer";
+        element.addEventListener("click", () => {
+          navigate(`/stays/${encodeURIComponent(item.id)}`);
+        });
+      }
+
+      marker.addTo(mapRef.current);
+      markersRef.current.push(marker);
+      bounds.extend([lng, lat]);
+    });
+
+    if (valid.length === 1) {
+      const { lat, lng } = valid[0].location;
+      mapRef.current.easeTo({
+        center: [lng, lat],
+        zoom: Math.max(mapRef.current.getZoom(), 13),
+        duration: 800,
+      });
+    } else {
+      mapRef.current.fitBounds(bounds, {
+        padding: 60,
+        maxZoom: 14,
+        duration: 800,
+      });
+    }
+  }, [items, interactive, navigate, theme]);
+
+  useEffect(() => {
+    mapRef.current?.resize();
+  }, [hasLocations, loading]);
+
   return (
-    <Grid container flexWrap="nowrap"spacing={2} sx={{ p: 2 }}>
-      {/* Left column: Search + Filters */}
-      <Grid item xs={12} md={3}>
-        <StaysSearchBar
-          query={query}
-          onChange={setQuery}
-          onSubmit={() => { syncUrl(); runSearch(); }}
-        />
-        <Divider sx={{ my: 2 }} />
-        <FiltersSidebar
-          filters={filters}
-          onChange={(next) => setFilters(next)}
-          onApply={() => { syncUrl(); runSearch(); }}
-        />
-      </Grid>
+    <Box
+      sx={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        borderRadius: 2,
+        overflow: "hidden",
+        bgcolor: "action.hover",
+      }}
+    >
+      <Box
+        ref={mapContainerRef}
+        sx={{
+          width: "100%",
+          height: "100%",
+          "& .maplibregl-canvas": { borderRadius: 8 },
+        }}
+      />
 
-      {/* Right column: Header controls + content */}
-      <Grid item xs={12} md={9}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" mb={1} gap={2}>
-          <ToggleButtonGroup size="small" value={view} exclusive onChange={(_, v) => { if (v) { setView(v); syncUrl({ view: v }); }}}>
-            <ToggleButton value="list">List</ToggleButton>
-            <ToggleButton value="split">Split</ToggleButton>
-            <ToggleButton value="map">Map</ToggleButton>
-          </ToggleButtonGroup>
-
-          <Box display="flex" alignItems="center" gap={1}>
-            <Typography variant="body2">Translate content</Typography>
-            <Switch
-              checked={translateDynamic}
-              onChange={(e) => { setTranslateDynamic(e.target.checked); syncUrl({ tx: e.target.checked ? "on" : undefined }); }}
-            />
-          </Box>
+      {loading && (
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backdropFilter: "blur(2px)",
+            backgroundColor: "rgba(255,255,255,0.6)",
+          }}
+        >
+          <CircularProgress />
         </Box>
+      )}
 
-        {error && <Typography color="error" sx={{ mb: 1 }}>{error}</Typography>}
-
-        {view === "map" && <MapView items={items} />}
-        {view === "list" && <ResultsList items={items} loading={loading} />}
-        {view === "split" && (
-          <Grid container spacing={2}>
-            <Grid item xs={12} lg={6}>
-              <ResultsList items={items} loading={loading} />
-            </Grid>
-            <Grid item xs={12} lg={6}>
-              <MapView items={items} />
-            </Grid>
-          </Grid>
-        )}
-      </Grid>
-    </Grid>
+      {!loading && !hasLocations && (
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 1,
+            color: "text.secondary",
+            textAlign: "center",
+            px: 3,
+          }}
+        >
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            No map results yet
+          </Typography>
+          <Typography variant="body2">
+            Try adjusting your search or filters to see stays on the map.
+          </Typography>
+        </Box>
+      )}
+    </Box>
   );
 }

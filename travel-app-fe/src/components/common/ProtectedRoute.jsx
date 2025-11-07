@@ -1,13 +1,16 @@
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import FullScreenLoader from "./FullScreenLoader";
 
-export default function ProtectedRoute({ children }) {
+export default function ProtectedRoute() {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) return null; // or spinner
+  if (loading) {
+    return <FullScreenLoader message="Loading your account…" />;
+  }
   return user ? (
-    children
+    <Outlet />
   ) : (
     <Navigate to="/login" state={{ from: location }} replace />
   );

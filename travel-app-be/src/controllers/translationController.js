@@ -1,3 +1,8 @@
+const {
+  sanitizeTextInput,
+  normalizeLangPair,
+} = require("../utils/validation");
+
 const SUPPORTED_PAIRS = new Set([
   "en-es",
   "es-en",
@@ -14,6 +19,7 @@ const SUPPORTED_PAIRS = new Set([
 ]);
 
 const translatorCache = new Map();
+const MAX_TEXT_LENGTH = Number(process.env.MAX_TRANSLATION_CHARS || 500);
 
 async function getTranslator(langPair) {
   if (!SUPPORTED_PAIRS.has(langPair)) {
@@ -32,14 +38,22 @@ async function getTranslator(langPair) {
 exports.translateText = async (req, res) => {
   try {
     const { text, langPair } = req.body || {};
-    if (!text || !langPair) {
-      return res
-        .status(400)
-        .json({ error: "Both 'text' and 'langPair' are required" });
+
+    const cleanText = sanitizeTextInput(text, {
+      maxLength: MAX_TEXT_LENGTH,
+      label: "text",
+    });
+    if (cleanText.error) {
+      return res.status(400).json({ error: cleanText.error });
     }
 
-    const translator = await getTranslator(langPair);
-    const result = await (await translator)(text);
+    const normalizedPair = normalizeLangPair(langPair, SUPPORTED_PAIRS);
+    if (normalizedPair.error) {
+      return res.status(400).json({ error: normalizedPair.error });
+    }
+
+    const translator = await getTranslator(normalizedPair.value);
+    const result = await (await translator)(cleanText.value);
     res.json({ translation: result[0]?.translation_text || "" });
   } catch (err) {
     console.error("Translation error details:", err);

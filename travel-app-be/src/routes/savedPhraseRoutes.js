@@ -1,4 +1,4 @@
-// What it uses: Express. Requires app-level authenticate middleware where mounted.
+// What it uses: Express. Requires app-level requireAuth middleware where mounted.
 // What it does: Exposes list/add/delete endpoints for saved phrases.
 
 const express = require("express");

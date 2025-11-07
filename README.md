@@ -1,2 +1,179 @@
-# smart_travel_comp
-A Smart AI travel companion for international travellers,students and everyone whos looking for an all in one solution while travelling
+# Smart Travel Companion
+
+An AI-assisted travel assistant that combines realtime translation, curated phrasebooks, cultural guidance, safety tooling, and accommodation discovery. This repository hosts both the React front-end (`travel-app-fe`) and the Node/Express backend (`travel-app-be`).
+
+---
+
+## Repository Layout
+
+```
+smart_travel_comp/
+├── travel-app-fe/   # Vite + React + MUI front-end
+├── travel-app-be/   # Express API (Firebase Auth, OpenRouter, Google Places)
+└── LICENSE
+```
+
+---
+
+## Feature Highlights
+
+- **Authentication** – Firebase email/password with Google sign-in, protected routes, theme-aware UI shell.
+- **Translation workspace** – Two-pane translator backed by `@xenova/transformers` models running on the API.
+- **AI Phrasebooks** – Topic-based phrase suggestions generated via OpenRouter LLMs with the ability to save favorites.
+- **Saved phrases** – User-scoped Firestore collections persisted via secure backend routes.
+- **Stays search** – Google Places powered lodging search with filtering, amenity tags, details pages, and photo proxying.
+- **Destination utilities** – Cultural guides, destination cards, emergency contacts, and dashboard shortcuts.
+
+---
+
+## Technology Stack
+
+| Layer      | Technologies                                                                                          |
+|------------|-------------------------------------------------------------------------------------------------------|
+| Front-end  | Vite, React 18, React Router 6, Redux Toolkit, MUI, Tailwind (utility classes), MapLibre GL (maps)    |
+| Back-end   | Node.js 20+, Express 5, Firebase Admin SDK, Axios, OpenRouter API, Google Places API, express-rate-limit |
+| Data/Auth  | Firebase Authentication, Firestore (per-user saved data)                                              |
+| Infra      | Firebase service account for admin access, optional Firebase Functions scaffold                      |
+
+---
+
+## Environment Configuration
+
+1. **Firebase**
+   - Create a Firebase project.
+   - Enable Email/Password and Google OAuth providers.
+   - Generate a Web App (copy the config for the front-end) and a service account (JSON) for the backend.
+2. **OpenRouter**
+   - Create an API key and optionally pick a default model (e.g., `gpt-4o-mini`).
+3. **Google Places API**
+   - Enable the Places API (new) and Maps Places API (legacy photo endpoint) and create an API key.
+
+Copy the provided `.env.example` files and fill them with your secrets:
+
+```bash
+cp travel-app-be/.env.example travel-app-be/.env
+cp travel-app-fe/.env.example travel-app-fe/.env
+```
+
+| Variable (backend)           | Purpose                                              |
+|-----------------------------|------------------------------------------------------|
+| `PORT`                      | Express port (default `8000`)                        |
+| `FIREBASE_ADMIN_CREDENTIALS`| Service account JSON or base64 string injected via secrets manager (preferred) |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Absolute path to the credential file if you mount it on disk (defaults to `travel-app-be/serviceAccountKey.json`) |
+| `GOOGLE_PLACES_API_KEY`     | Enables stays search/photo proxy                     |
+| `OPENROUTER_API_KEY`        | Token for phrasebook generation                      |
+| `OPENROUTER_MODEL`          | Optional default model                               |
+| `FIREBASE_*`                | Firebase JS SDK config (if using client SDK server-side) |
+
+| Variable (frontend)         | Purpose                                              |
+|-----------------------------|------------------------------------------------------|
+| `VITE_API_URL`              | Base API URL, include `/api` (e.g., `http://localhost:8000/api`) |
+| `VITE_FIREBASE_*`           | Firebase Web App configuration                       |
+
+`travel-app-be/serviceAccountKey.json` ships with placeholder values—replace them with your actual service account before running locally. In production, prefer secrets managers over committing real keys.
+
+> 🔐 **Secret storage**: The backend still prefers `FIREBASE_ADMIN_CREDENTIALS`, allowing you to inject the entire service-account JSON (or a base64-encoded blob) from your secrets manager. Falling back to `GOOGLE_APPLICATION_CREDENTIALS` (which now defaults to the local file) is supported.
+
+---
+
+## Local Development
+
+### Backend
+
+```bash
+cd travel-app-be
+npm install
+npm run dev          # nodemon server.js
+```
+
+The API will be reachable on `http://localhost:8000`. Key routes:
+
+| Endpoint                           | Description                                        |
+|------------------------------------|----------------------------------------------------|
+| `POST /api/translate`              | Text translation (`text`, `langPair`)              |
+| `POST /api/phrasebook/generate`    | Topic-based phrase suggestions                     |
+| `GET /api/saved-phrases`           | List user phrases (auth required)                  |
+| `POST /api/saved-phrases`          | Save phrase (auth required)                        |
+| `DELETE /api/saved-phrases/:id`    | Remove phrase (auth required)                      |
+| `GET /api/stays/search`            | Search lodging (dest/lat/lng filters)              |
+| `GET /api/stays/:id`               | Detailed stay info                                 |
+| `GET /api/stays/photo`             | Proxy Google Places photos                         |
+
+### Firestore Rules
+
+Security rules that mirror the backend authorization live in `travel-app-be/firestore.rules`. Deploy them alongside backend changes so direct Firestore access stays tenant-scoped:
+
+```bash
+cd travel-app-be
+firebase deploy --only firestore
+```
+
+The rules enforce `request.auth.uid` ownership for `/users/{uid}` documents and the nested `/saved_phrases` collection.
+
+### Front-end
+
+```bash
+cd travel-app-fe
+npm install
+npm run dev          # Vite dev server on http://localhost:5173
+```
+
+By default the React app points to `VITE_API_URL`. Ensure CORS on the backend allows this origin.
+
+---
+
+## Deployment Notes
+
+- **Backend**: Deploy the Express app to your preferred host (Render, Fly.io, Firebase Cloud Run, etc.). Make sure secrets are configured and `serviceAccountKey.json` is supplied via environment variables or a secret manager. Enforce HTTPS, add production CORS origins, and consider containerizing the service.
+- **Front-end**: `npm run build` produces a static bundle in `travel-app-fe/dist`. Deploy to Firebase Hosting, Vercel, Netlify, or S3/CloudFront.
+- **Scheduled warmups**: The translation pipeline uses on-demand `@xenova/transformers` models. Consider provisioning a background job (cron) to hit `/api/translate/warmup` to keep models cached.
+
+---
+
+## Observability & Quality Checklist
+
+- Add unit/integration tests (Jest/React Testing Library for the UI, Vitest for hooks, supertest for APIs).
+- Configure linting (`eslint`, `prettier`) and type checking (TypeScript or JSDoc) as pre-commit checks.
+- Introduce structured logging (pino/winston) plus request IDs in the backend.
+- Provision error monitoring (Sentry, Firebase Crashlytics) and performance tracing (OpenTelemetry) for end-to-end visibility.
+- Automate CI (GitHub Actions) for lint/test/build plus deploy previews.
+
+---
+
+## Production Readiness Checklist
+
+1. **Security & Auth**
+   - Enforce HTTPS everywhere and manage Firebase tokens via secure storage.
+   - Ensure *all* API routes that read/write user data require authentication (e.g., stays search currently public).
+   - Rotate API keys regularly and store them in a secrets manager (Vault, SSM, Secrets Manager).
+2. **Data & Storage**
+   - Define Firestore security rules for per-user data.
+   - Add schema validation (zod/Joi) on both client and server sides.
+   - Implement rate limiting/bot protection beyond the basic global limiter.
+3. **Resilience**
+   - Add retries/backoff for upstream APIs (OpenRouter, Google Places).
+   - Cache expensive responses (translation results, stays search) using Redis or Firestore.
+   - Provide graceful fallbacks/offline modes for critical data (saved phrases, emergency numbers).
+4. **UX & Accessibility**
+   - Implement loading skeletons and optimistic UI for mutations.
+   - Add localization/i18n for the interface itself.
+   - Audit accessibility (ARIA labels, keyboard navigation, contrast).
+5. **Operations**
+   - Document deployment pipelines, rollback procedures, backup strategy, and incident runbooks.
+   - Add analytics and feature flagging for gradual rollouts.
+
+Use this checklist as a living document as you harden the product.
+
+---
+
+## Contributing
+
+1. Fork and create a feature branch.
+2. Keep commits small and focused; reference issues when applicable.
+3. Run lint/tests before opening a PR.
+
+---
+
+## License
+
+This project is released under the MIT License. See `LICENSE` for details.

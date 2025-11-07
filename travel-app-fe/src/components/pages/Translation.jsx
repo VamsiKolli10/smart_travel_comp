@@ -1,21 +1,24 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Typography,
-  Grid,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  IconButton,
+  Alert,
+  Box,
   Card,
   CardContent,
-  useTheme,
-  useMediaQuery,
-  Box,
+  Chip,
   CircularProgress,
+  Divider,
+  FormControl,
+  Grid,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
+  Select,
   Slider,
+  Stack,
+  TextField,
   Tooltip,
+  Typography,
 } from "@mui/material";
 import {
   SwapHoriz as SwapIcon,
@@ -27,12 +30,43 @@ import {
   PlayArrow as PlayIcon,
 } from "@mui/icons-material";
 import Button from "../common/Button";
+import PageContainer from "../layout/PageContainer";
+import { ModuleCard, ModuleCardGrid } from "../common/ModuleCard";
+import { translateText } from "../../services/translation";
+import { useAnalytics } from "../../contexts/AnalyticsContext.jsx";
 
 const languages = [
   { value: "en", label: "English" },
   { value: "es", label: "Spanish" },
   { value: "fr", label: "French" },
   { value: "de", label: "German" },
+];
+
+const translationHighlights = [
+  {
+    title: "Context-aware output",
+    description:
+      "We preserve tone and idioms, so your translations feel natural and confident.",
+    icon: "🧭",
+  },
+  {
+    title: "Offline ready",
+    description:
+      "Capture phrases and play them back even when you are away from a network.",
+    icon: "📶",
+  },
+  {
+    title: "One-tap sharing",
+    description:
+      "Copy, speak, or save translations into your phrasebook without leaving the page.",
+    icon: "⚡",
+  },
+];
+
+const quickTips = [
+  "Hold the mic button to capture short phrases hands-free.",
+  "Use the speech sliders to match local cadence before playback.",
+  "Save your go-to phrases so they sync to the Phrasebook tab.",
 ];
 
 export default function Translation() {
@@ -56,12 +90,13 @@ export default function Translation() {
 
   const recognitionRef = useRef(null);
   const utteranceRef = useRef(null);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const { trackModuleView, trackEvent } = useAnalytics();
 
-  // Initialize Web Speech APIs
   useEffect(() => {
-    // Check Speech Recognition support
+    trackModuleView("translation");
+  }, [trackModuleView]);
+
+  useEffect(() => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -71,57 +106,45 @@ export default function Translation() {
       recognitionRef.current.lang = sourceLang;
       setBrowserSupport((prev) => ({ ...prev, recognition: true }));
 
-      recognitionRef.current.onstart = () => {
-        setIsRecording(true);
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsRecording(false);
-      };
-
+      recognitionRef.current.onstart = () => setIsRecording(true);
+      recognitionRef.current.onend = () => setIsRecording(false);
+      recognitionRef.current.onerror = (event) =>
+        console.error("Speech recognition error:", event.error);
       recognitionRef.current.onresult = (event) => {
         let interimTranscript = "";
         let finalTranscript = "";
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript + " ";
-          } else {
-            interimTranscript += transcript;
-          }
+          if (event.results[i].isFinal) finalTranscript += transcript + " ";
+          else interimTranscript += transcript;
         }
 
         setSource(finalTranscript || interimTranscript);
       };
-
-      recognitionRef.current.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
-      };
     }
 
-    // Check Text-to-Speech support
     if ("speechSynthesis" in window) {
       setBrowserSupport((prev) => ({ ...prev, synthesis: true }));
       utteranceRef.current = new SpeechSynthesisUtterance();
 
-      // Load available voices
       const loadVoices = () => {
         const voices = window.speechSynthesis.getVoices();
         setAvailableVoices(voices);
-        let tempFilter = voices?.filter((voice) =>
-          voice?.lang.includes(targetLang)
+        const matches = voices.filter((voice) =>
+          voice.lang.toLowerCase().includes(targetLang)
         );
-        setFilteredVoices([...tempFilter]);
-        if (tempFilter.length > 0 && !selectedVoice) {
-          setSelectedVoice(tempFilter[0]);
-        }
+        setFilteredVoices(matches);
+        if (matches.length && !selectedVoice) setSelectedVoice(matches[0]);
       };
 
       loadVoices();
       window.speechSynthesis.onvoiceschanged = loadVoices;
 
-      utteranceRef.current.onstart = () => setIsSpeaking(true);
+      utteranceRef.current.onstart = () => {
+        setIsSpeaking(true);
+        setIsPaused(false);
+      };
       utteranceRef.current.onend = () => {
         setIsSpeaking(false);
         setIsPaused(false);
@@ -129,16 +152,11 @@ export default function Translation() {
     }
 
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-      }
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      window.speechSynthesis?.cancel();
+      recognitionRef.current?.abort();
     };
-  }, []);
+  }, [selectedVoice, targetLang]);
 
-  // Update recognition language when source language changes
   useEffect(() => {
     if (recognitionRef.current) {
       recognitionRef.current.lang = sourceLang;
@@ -146,94 +164,87 @@ export default function Translation() {
   }, [sourceLang]);
 
   useEffect(() => {
-    let tempFilter = availableVoices?.filter((voice) =>
-      voice.lang.includes(targetLang)
+    const matches = availableVoices.filter((voice) =>
+      voice.lang.toLowerCase().includes(targetLang)
     );
-    console.log(tempFilter);
-    setFilteredVoices([...tempFilter]);
-    setSelectedVoice(tempFilter[0]);
-  }, [targetLang]);
+    setFilteredVoices(matches);
+    if (matches.length) setSelectedVoice(matches[0]);
+  }, [availableVoices, targetLang]);
 
   const handleStartRecording = () => {
     if (recognitionRef.current && !isRecording) {
-      setSource(""); // Clear previous transcript
+      setSource("");
       recognitionRef.current.start();
     }
   };
 
   const handleStopRecording = () => {
-    if (recognitionRef.current && isRecording) {
-      recognitionRef.current.stop();
-    }
+    recognitionRef.current?.stop();
   };
 
   const handleSwap = () => {
-    const tempLang = sourceLang;
     setSourceLang(targetLang);
-    setTargetLang(tempLang);
-
-    const tempText = source;
+    setTargetLang(sourceLang);
     setSource(target);
-    setTarget(tempText);
-
-    if (recognitionRef.current) {
-      recognitionRef.current.lang = targetLang;
-    }
+    setTarget(source);
   };
 
   const handleTranslate = async () => {
     if (!source.trim()) return;
     if (sourceLang === targetLang) {
       setTarget(source);
+      trackEvent("translation_submit", {
+        sourceLang,
+        targetLang,
+        identicalLanguages: true,
+        characters: source.length,
+        success: true,
+      });
       return;
     }
     setLoading(true);
     setTarget("");
 
     try {
-      const res = await fetch("http://localhost:8000/api/translate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: source,
-          langPair: `${sourceLang}-${targetLang}`,
-        }),
+      const data = await translateText(source, `${sourceLang}-${targetLang}`);
+      setTarget(data?.translation || "Translation failed.");
+      trackEvent("translation_submit", {
+        sourceLang,
+        targetLang,
+        characters: source.length,
+        success: Boolean(data?.translation),
       });
-      const data = await res.json();
-      if (data?.translation) {
-        setTarget(data.translation);
-      } else {
-        setTarget("Translation failed.");
-      }
-    } catch (err) {
-      console.error("Translation error:", err);
+    } catch (error) {
+      console.error("Translation error:", error);
       setTarget("Error contacting translation server.");
+      trackEvent("translation_submit", {
+        sourceLang,
+        targetLang,
+        characters: source.length,
+        success: false,
+        error: error?.message || "unknown",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handlePlayAudio = (text, lang) => {
-    if (!browserSupport.synthesis) return;
+    if (!browserSupport.synthesis || !text) return;
 
     const synth = window.speechSynthesis;
-    synth.cancel(); // Stop any ongoing speech
+    synth.cancel();
 
     utteranceRef.current.text = text;
     utteranceRef.current.lang = lang;
     utteranceRef.current.rate = speechRate;
     utteranceRef.current.pitch = speechPitch;
-    utteranceRef.current.volume = 1;
-
-    if (selectedVoice) {
-      utteranceRef.current.voice = selectedVoice;
-    }
-
-    setIsPaused(false);
+    if (selectedVoice) utteranceRef.current.voice = selectedVoice;
     synth.speak(utteranceRef.current);
   };
 
   const handlePauseAudio = () => {
+    if (!browserSupport.synthesis) return;
     const synth = window.speechSynthesis;
     if (isSpeaking && !isPaused) {
       synth.pause();
@@ -245,309 +256,439 @@ export default function Translation() {
   };
 
   const handleStopAudio = () => {
-    window.speechSynthesis.cancel();
+    window.speechSynthesis?.cancel();
     setIsSpeaking(false);
     setIsPaused(false);
   };
 
+  const supportChips = useMemo(
+    () => (
+      <Stack direction="row" spacing={1} flexWrap="wrap">
+        <Chip
+          label={browserSupport.recognition ? "Voice input ready" : "Voice input unavailable"}
+          color={browserSupport.recognition ? "primary" : "warning"}
+          variant={browserSupport.recognition ? "filled" : "outlined"}
+        />
+        <Chip
+          label={browserSupport.synthesis ? "Speech output ready" : "Speech output unavailable"}
+          color={browserSupport.synthesis ? "primary" : "warning"}
+          variant={browserSupport.synthesis ? "filled" : "outlined"}
+        />
+      </Stack>
+    ),
+    [browserSupport.recognition, browserSupport.synthesis]
+  );
+
   return (
-    <Grid
-      container
-      flexDirection={"column"}
-      sx={{ maxWidth: 900, margin: "0 auto", padding: { xs: 1, sm: 2 } }}
+    <PageContainer
+      eyebrow="Live translator"
+      title="Translation"
+      subtitle="Bridge languages in real time with voice input, speech playback, and smart controls."
+      maxWidth="xl"
+      gap={4}
+      actions={supportChips}
     >
-      <Grid item sx={{ textAlign: "center", marginBottom: 4 }}>
-        <Typography variant="h1">Translation</Typography>
+      <Stack spacing={4}>
         {(!browserSupport.recognition || !browserSupport.synthesis) && (
-          <Typography variant="body2" color="warning.main" sx={{ mt: 1 }}>
-            ⚠️ Some voice features may not be supported in your browser
-          </Typography>
+          <Alert severity="warning" sx={{ borderRadius: 3 }}>
+            Some voice features may not be supported in this browser. You can still type to translate.
+          </Alert>
         )}
-      </Grid>
 
-      {/* Language selectors */}
-      <Grid
-        item
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: { xs: 1, sm: 2 },
-          marginBottom: 3,
-          flexWrap: "wrap",
-        }}
-      >
-        <FormControl sx={{ minWidth: { xs: 100, sm: 120 } }}>
-          <InputLabel>From</InputLabel>
-          <Select
-            value={sourceLang}
-            label="From"
-            onChange={(e) => setSourceLang(e.target.value)}
-          >
-            {languages.map((lang) => (
-              <MenuItem key={lang.value} value={lang.value}>
-                {lang.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <Tooltip title="Swap languages and text">
-          <IconButton
-            onClick={handleSwap}
-            sx={{
-              backgroundColor: theme.palette.action.hover,
-              "&:hover": {
-                backgroundColor: theme.palette.action.selected,
-              },
-            }}
-          >
-            <SwapIcon />
-          </IconButton>
-        </Tooltip>
-
-        <FormControl sx={{ minWidth: { xs: 100, sm: 120 } }}>
-          <InputLabel>To</InputLabel>
-          <Select
-            value={targetLang}
-            label="To"
-            onChange={(e) => setTargetLang(e.target.value)}
-          >
-            {languages.map((lang) => (
-              <MenuItem key={lang.value} value={lang.value}>
-                {lang.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Grid>
-
-      {/* Speech Controls */}
-      {browserSupport.synthesis && (
-        <Grid
-          item
+        <Card
           sx={{
-            backgroundColor: theme.palette.background.paper,
-            border: `1px solid ${theme.palette.divider}`,
-            borderRadius: 1,
-            padding: 2,
-            marginBottom: 3,
+            borderRadius: 4,
+            border: "1px solid rgba(94,82,64,0.18)",
+            background: "rgba(255,255,255,0.92)",
+            backdropFilter: "blur(12px)",
           }}
         >
-          <Typography variant="subtitle2" sx={{ marginBottom: 2 }}>
-            Speech Settings
-          </Typography>
-
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Voice</InputLabel>
+          <CardContent sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={2}
+              alignItems={{ xs: "stretch", md: "center" }}
+              flexWrap="wrap"
+            >
+              <Chip label="Workspace" color="primary" variant="outlined" />
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Chip label={`From: ${sourceLang.toUpperCase()}`} />
+                <Chip label={`To: ${targetLang.toUpperCase()}`} />
+              </Stack>
+            </Stack>
+            <Divider />
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={2}
+              alignItems={{ xs: "stretch", md: "center" }}
+              flexWrap="wrap"
+            >
+              <FormControl sx={{ minWidth: { xs: "100%", sm: 160 } }}>
+                <InputLabel>From</InputLabel>
                 <Select
-                  value={selectedVoice?.name || ""}
-                  label="Voice"
-                  onChange={(e) => {
-                    const voice = availableVoices.find(
-                      (v) => v.name === e.target.value
-                    );
-                    setSelectedVoice(voice);
-                  }}
+                  value={sourceLang}
+                  label="From"
+                  onChange={(e) => setSourceLang(e.target.value)}
                 >
-                  {filteredVoices
-                    ?.filter(
-                      (voice) =>
-                        voice.lang.startsWith(targetLang.split("-")[0]) ||
-                        voice.lang.startsWith("en")
-                    )
-                    .map((voice) => (
-                      <MenuItem key={voice.name} value={voice.name}>
-                        {voice.name} ({voice.lang})
-                      </MenuItem>
-                    ))}
+                  {languages.map((lang) => (
+                    <MenuItem key={lang.value} value={lang.value}>
+                      {lang.label}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
+
+              <Tooltip title="Swap languages and text">
+                <IconButton
+                  onClick={handleSwap}
+                  sx={{
+                    border: "1px solid rgba(94,82,64,0.16)",
+                    borderRadius: 2,
+                    backgroundColor: "background.default",
+                  }}
+                >
+                  <SwapIcon />
+                </IconButton>
+              </Tooltip>
+
+              <FormControl sx={{ minWidth: { xs: "100%", sm: 160 } }}>
+                <InputLabel>To</InputLabel>
+                <Select
+                  value={targetLang}
+                  label="To"
+                  onChange={(e) => setTargetLang(e.target.value)}
+                >
+                  {languages.map((lang) => (
+                    <MenuItem key={lang.value} value={lang.value}>
+                      {lang.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Stack>
+
+            <Grid container spacing={2.5} alignItems="stretch">
+              <Grid item xs={12} md={6}>
+                <Card
+                  variant="outlined"
+                  sx={{ height: "100%", borderRadius: 3, backgroundColor: "background.paper" }}
+                >
+                  <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography variant="subtitle2">Input</Typography>
+                      {browserSupport.recognition && (
+                        <Tooltip title={isRecording ? "Stop recording" : "Start recording"}>
+                          <IconButton
+                            size="small"
+                            onClick={isRecording ? handleStopRecording : handleStartRecording}
+                            color={isRecording ? "error" : "primary"}
+                          >
+                            {isRecording ? <MicOffIcon /> : <MicIcon />}
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Stack>
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={7}
+                      placeholder={
+                        browserSupport.recognition
+                          ? "Type or use the microphone to capture speech…"
+                          : "Type text to translate…"
+                      }
+                      value={source}
+                      onChange={(e) => setSource(e.target.value)}
+                    />
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Card
+                  variant="outlined"
+                  sx={{ height: "100%", borderRadius: 3, backgroundColor: "background.paper" }}
+                >
+                  <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography variant="subtitle2">Output</Typography>
+                      {browserSupport.synthesis && target && (
+                        <Stack direction="row" spacing={1}>
+                          <Tooltip title={isSpeaking && !isPaused ? "Stop" : "Play"}>
+                            <IconButton
+                              size="small"
+                              onClick={() =>
+                                isSpeaking
+                                  ? handleStopAudio()
+                                  : handlePlayAudio(target, targetLang)
+                              }
+                              color="primary"
+                            >
+                              {isSpeaking && !isPaused ? <StopIcon /> : <PlayIcon />}
+                            </IconButton>
+                          </Tooltip>
+                          {isSpeaking && (
+                            <Tooltip title={isPaused ? "Resume" : "Pause"}>
+                              <IconButton size="small" onClick={handlePauseAudio} color="primary">
+                                {isPaused ? <PlayIcon /> : <PauseIcon />}
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Stack>
+                      )}
+                    </Stack>
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={7}
+                      value={target}
+                      placeholder="Translated text will appear here…"
+                      InputProps={{
+                        readOnly: true,
+                        endAdornment: loading ? (
+                          <InputAdornment position="end">
+                            <CircularProgress size={20} />
+                          </InputAdornment>
+                        ) : undefined,
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+              </Grid>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <Box>
-                <Typography variant="body2">
-                  Speech Rate: {speechRate.toFixed(1)}
-                </Typography>
-                <Slider
-                  value={speechRate}
-                  onChange={(e, newValue) => setSpeechRate(newValue)}
-                  min={0.5}
-                  max={2}
-                  step={0.1}
-                  marks
-                />
-              </Box>
-            </Grid>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.5}
+              justifyContent={{ xs: "stretch", sm: "flex-end" }}
+              flexWrap="wrap"
+            >
+              <Button
+                onClick={handleTranslate}
+                variant="contained"
+                disabled={loading || !source.trim()}
+              >
+                {loading ? "Translating…" : "Translate"}
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => target && navigator.clipboard.writeText(target)}
+                disabled={!target}
+              >
+                Copy
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => handlePlayAudio(target, targetLang)}
+                disabled={!target || !browserSupport.synthesis}
+                startIcon={<SpeakerIcon />}
+              >
+                Speak
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => alert("Save to Phrasebook not implemented yet")}
+                disabled={!target}
+              >
+                Save to Phrasebook
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
 
-            <Grid item xs={12} sm={6}>
-              <Box>
-                <Typography variant="body2">
-                  Pitch: {speechPitch.toFixed(1)}
-                </Typography>
-                <Slider
-                  value={speechPitch}
-                  onChange={(e, newValue) => setSpeechPitch(newValue)}
-                  min={0.5}
-                  max={2}
-                  step={0.1}
-                  marks
-                />
-              </Box>
-            </Grid>
+        <Grid container spacing={3}>
+          <Grid item xs={12} lg={browserSupport.synthesis ? 7 : 6}>
+            {browserSupport.synthesis && (
+              <Card
+                sx={{
+                  height: "100%",
+                  borderRadius: 3,
+                  border: (theme) =>
+                    `1px solid ${
+                      theme.palette.mode === "dark"
+                        ? "rgba(237,242,243,0.12)"
+                        : "rgba(94,82,64,0.12)"
+                    }`,
+                  backgroundColor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? "rgba(13,24,32,0.95)"
+                      : "rgba(255,255,255,0.92)",
+                }}
+              >
+                <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      Speech settings
+                    </Typography>
+                    <Chip label="Playback" color="primary" variant="outlined" />
+                  </Stack>
+                  <Grid container spacing={2.5}>
+                    <Grid item xs={12}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>Voice</InputLabel>
+                        <Select
+                          value={selectedVoice?.name || ""}
+                          label="Voice"
+                          onChange={(e) => {
+                            const voice = availableVoices.find(
+                              (v) => v.name === e.target.value
+                            );
+                            setSelectedVoice(voice);
+                          }}
+                        >
+                          {filteredVoices.map((voice) => (
+                            <MenuItem key={voice.name} value={voice.name}>
+                              {voice.name} ({voice.lang})
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Box>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          Speech rate: {speechRate.toFixed(1)}
+                        </Typography>
+                        <Slider
+                          value={speechRate}
+                          onChange={(_, value) => setSpeechRate(value)}
+                          min={0.5}
+                          max={2}
+                          step={0.1}
+                          marks
+                        />
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Box>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          Pitch: {speechPitch.toFixed(1)}
+                        </Typography>
+                        <Slider
+                          value={speechPitch}
+                          onChange={(_, value) => setSpeechPitch(value)}
+                          min={0.5}
+                          max={2}
+                          step={0.1}
+                          marks
+                        />
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Box>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          Volume
+                        </Typography>
+                        <Slider value={100} min={0} max={100} disabled marks />
+                      </Box>
+                    </Grid>
+                  </Grid>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                    <Button
+                      variant="outlined"
+                      onClick={() => handlePlayAudio(target || "Sample phrase", targetLang)}
+                      disabled={!target}
+                      startIcon={<SpeakerIcon />}
+                    >
+                      Test voice
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={handlePauseAudio}
+                      disabled={!isSpeaking}
+                    >
+                      {isPaused ? "Resume" : "Pause"}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={handleStopAudio}
+                      disabled={!isSpeaking}
+                    >
+                      Stop
+                    </Button>
+                  </Stack>
+                </CardContent>
+              </Card>
+            )}
+          </Grid>
+
+          <Grid item xs={12} lg={browserSupport.synthesis ? 5 : 12}>
+            <Card
+              sx={{
+                height: "100%",
+                borderRadius: 3,
+                border: (theme) =>
+                  `1px solid ${
+                    theme.palette.mode === "dark"
+                      ? "rgba(237,242,243,0.12)"
+                      : "rgba(94,82,64,0.12)"
+                  }`,
+                backgroundColor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(15,26,34,0.95)"
+                    : "rgba(255,255,255,0.92)",
+              }}
+            >
+              <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Quick tips
+                  </Typography>
+                  <Chip label="Best practice" size="small" />
+                </Stack>
+                <Stack spacing={1.5}>
+                  {quickTips.map((tip) => (
+                    <Stack
+                      key={tip}
+                      direction="row"
+                      spacing={1.5}
+                      alignItems="flex-start"
+                    >
+                      <Typography variant="body2" color="primary">
+                        ●
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {tip}
+                      </Typography>
+                    </Stack>
+                  ))}
+                </Stack>
+              </CardContent>
+            </Card>
           </Grid>
         </Grid>
-      )}
 
-      {/* Input + Output fields */}
-      <Grid
-        container
-        justifyContent={"center"}
-        spacing={{ xs: 2, sm: 3 }}
-        sx={{ marginBottom: 3 }}
-      >
-        <Grid item xs={12} md={6} flexGrow={1}>
-          <Card>
-            <CardContent>
-              <Box
-                sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}
-              >
-                <Typography variant="subtitle2">Input Text</Typography>
-                {browserSupport.recognition && (
-                  <Tooltip
-                    title={isRecording ? "Stop recording" : "Start recording"}
-                  >
-                    <IconButton
-                      size="small"
-                      onClick={
-                        isRecording ? handleStopRecording : handleStartRecording
-                      }
-                      color={isRecording ? "error" : "primary"}
-                    >
-                      {isRecording ? <MicOffIcon /> : <MicIcon />}
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </Box>
-              <TextField
-                fullWidth
-                multiline
-                rows={6}
-                placeholder={
-                  browserSupport.recognition
-                    ? "Type text or click mic to speak..."
-                    : "Type text..."
-                }
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                variant="outlined"
-              />
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={6} flexGrow={1}>
-          <Card>
-            <CardContent>
-              <Box
-                sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}
-              >
-                <Typography variant="subtitle2">Translated Text</Typography>
-                {browserSupport.synthesis && target && (
-                  <Box sx={{ display: "flex", gap: 1 }}>
-                    <Tooltip title={isSpeaking ? "Stop" : "Play"}>
-                      <IconButton
-                        size="small"
-                        onClick={() =>
-                          isSpeaking
-                            ? handleStopAudio()
-                            : handlePlayAudio(target, targetLang)
-                        }
-                        color="primary"
-                      >
-                        {isSpeaking && !isPaused ? <StopIcon /> : <PlayIcon />}
-                      </IconButton>
-                    </Tooltip>
-                    {isSpeaking && (
-                      <Tooltip title={isPaused ? "Resume" : "Pause"}>
-                        <IconButton
-                          size="small"
-                          onClick={handlePauseAudio}
-                          color="primary"
-                        >
-                          {isPaused ? <PlayIcon /> : <PauseIcon />}
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                  </Box>
-                )}
-              </Box>
-              <TextField
-                fullWidth
-                multiline
-                rows={6}
-                placeholder="Translated text will appear here..."
-                value={target}
-                InputProps={{ readOnly: true }}
-                variant="outlined"
-              />
-              {loading && (
-                <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-                  <CircularProgress size={24} />
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Action buttons */}
-      <Grid
-        item
-        sx={{
-          display: "flex",
-          gap: { xs: 1, sm: 2 },
-          justifyContent: "flex-end",
-          flexWrap: "wrap",
-        }}
-      >
-        <Button
-          onClick={handleTranslate}
-          variant="contained"
-          disabled={loading || !source.trim()}
-        >
-          {loading ? "Translating…" : "Translate"}
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={() => navigator.clipboard.writeText(target)}
-          disabled={!target}
-        >
-          Copy
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={() => {
-            if (browserSupport.synthesis && target) {
-              handlePlayAudio(target, targetLang);
-            }
-          }}
-          disabled={!target || !browserSupport.synthesis}
-          startIcon={<SpeakerIcon />}
-        >
-          Speak
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={() => alert("Save to Phrasebook not implemented yet")}
-          disabled={!target}
-        >
-          Save to Phrasebook
-        </Button>
-      </Grid>
-    </Grid>
+        <ModuleCardGrid>
+          {translationHighlights.map((highlight) => (
+            <ModuleCard
+              key={highlight.title}
+              sx={{
+                border: (theme) =>
+                  `1px solid ${
+                    theme.palette.mode === "dark"
+                      ? "rgba(237,242,243,0.14)"
+                      : "rgba(94,82,64,0.12)"
+                  }`,
+                backgroundColor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(14,26,33,0.95)"
+                    : "rgba(255,255,255,0.9)",
+              }}
+            >
+              <CardContent sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                <Typography variant="h4" component="span">
+                  {highlight.icon}
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  {highlight.title}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {highlight.description}
+                </Typography>
+              </CardContent>
+            </ModuleCard>
+          ))}
+        </ModuleCardGrid>
+      </Stack>
+    </PageContainer>
   );
 }
