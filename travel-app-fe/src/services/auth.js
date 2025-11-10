@@ -7,6 +7,9 @@ import {
   signInWithPopup,
   signOut,
   sendEmailVerification,
+  isSignInWithEmailLink,
+  checkActionCode,
+  applyActionCode,
 } from "firebase/auth";
 
 export class EmailNotVerifiedError extends Error {
@@ -20,11 +23,16 @@ export class EmailNotVerifiedError extends Error {
 
 export async function loginWithEmail(email, password) {
   const credential = await signInWithEmailAndPassword(auth, email, password);
+
+  // Ensure the user is fully loaded before returning
+  await credential.user.reload();
+
   if (!credential.user.emailVerified) {
     await sendEmailVerification(credential.user);
     await signOut(auth);
     throw new EmailNotVerifiedError(credential.user.email);
   }
+
   return credential;
 }
 
@@ -50,4 +58,31 @@ export async function loginWithGoogle() {
 
 export async function logout() {
   await signOut(auth);
+}
+
+export async function handleEmailVerification(actionCode) {
+  try {
+    await checkActionCode(auth, actionCode);
+    await applyActionCode(auth, actionCode);
+
+    // Refresh user data after email verification
+    if (auth.currentUser) {
+      await auth.currentUser.reload();
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Email verification error:", error);
+    return false;
+  }
+}
+
+export async function resendEmailVerification(user) {
+  try {
+    await sendEmailVerification(user);
+    return true;
+  } catch (error) {
+    console.error("Resend email verification error:", error);
+    return false;
+  }
 }

@@ -13,12 +13,21 @@ import {
   Stack,
   TextField,
   Typography,
+  alpha,
+  Skeleton,
+  Tooltip,
+  useTheme,
 } from "@mui/material";
 import {
   Bookmark as BookmarkFilledIcon,
   BookmarkBorder as BookmarkIcon,
   Refresh as RefreshIcon,
+  AutoFixHigh as GenerateIcon,
+  Add as AddIcon,
+  FilterList as FilterIcon,
+  DeleteSweep as DeleteIcon,
 } from "@mui/icons-material";
+import { motion } from "framer-motion";
 import PageContainer from "../layout/PageContainer";
 import Button from "../common/Button";
 import { generatePhrasebook } from "../../services/phrasebook";
@@ -28,7 +37,10 @@ import {
   removeSavedPhrase,
 } from "../../services/savedPhrases";
 import useConnectivity from "../../hooks/useConnectivity";
-import { cacheSavedPhrases, readSavedPhrases } from "../../services/offlineCache";
+import {
+  cacheSavedPhrases,
+  readSavedPhrases,
+} from "../../services/offlineCache";
 
 const COMMON_LANGS = [
   "English",
@@ -56,6 +68,10 @@ const COUNT_MARKS = [
   { value: 25, label: "25" },
 ];
 
+const AnimatedCard = motion(Card);
+const AnimatedStack = motion(Stack);
+const AnimatedGrid = motion(Grid);
+
 export default function Phrasebook() {
   const [topic, setTopic] = useState("");
   const [sourceLang, setSourceLang] = useState("");
@@ -71,6 +87,10 @@ export default function Phrasebook() {
   const { isOnline } = useConnectivity();
   const [usingOfflineSaved, setUsingOfflineSaved] = useState(false);
   const [savedCacheMissing, setSavedCacheMissing] = useState(false);
+  const [filter, setFilter] = useState("");
+  const [filteredSaved, setFilteredSaved] = useState([]);
+  const theme = useTheme();
+
   const persistSaved = (items) =>
     cacheSavedPhrases(items).catch((error) =>
       console.warn("Failed to persist saved phrases locally", error)
@@ -126,6 +146,21 @@ export default function Phrasebook() {
     };
   }, [isOnline]);
 
+  useEffect(() => {
+    if (!filter) {
+      setFilteredSaved(saved);
+    } else {
+      setFilteredSaved(
+        saved.filter(
+          (item) =>
+            item.phrase?.toLowerCase().includes(filter.toLowerCase()) ||
+            item.meaning?.toLowerCase().includes(filter.toLowerCase()) ||
+            item.topic?.toLowerCase().includes(filter.toLowerCase())
+        )
+      );
+    }
+  }, [filter, saved]);
+
   const canSubmit =
     topic.trim() &&
     sourceLang.trim() &&
@@ -136,7 +171,8 @@ export default function Phrasebook() {
     () =>
       new Set(
         saved.map(
-          (item) => `${item.phrase?.toLowerCase()}::${item.targetLang?.toLowerCase()}`
+          (item) =>
+            `${item.phrase?.toLowerCase()}::${item.targetLang?.toLowerCase()}`
         )
       ),
     [saved]
@@ -147,7 +183,9 @@ export default function Phrasebook() {
   const isSaved = (item) => {
     if (!item?.phrase || !currentTargetLang) return false;
     return savedKeys.has(
-      `${item.phrase.toLowerCase()}::${(item.targetLang || currentTargetLang).toLowerCase()}`
+      `${item.phrase.toLowerCase()}::${(
+        item.targetLang || currentTargetLang
+      ).toLowerCase()}`
     );
   };
 
@@ -260,7 +298,21 @@ export default function Phrasebook() {
       maxWidth="lg"
     >
       <Stack spacing={3}>
-        <Card>
+        <AnimatedCard
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          sx={{
+            borderRadius: 3,
+            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            background: `linear-gradient(180deg, ${alpha(
+              theme.palette.background.paper,
+              0.9
+            )} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`,
+            backdropFilter: "blur(10px)",
+            boxShadow: `0 5px 20px ${alpha(theme.palette.common.black, 0.08)}`,
+          }}
+        >
           <CardContent>
             <Box
               component="form"
@@ -275,6 +327,26 @@ export default function Phrasebook() {
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
                     fullWidth
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                        transition: "all 0.3s ease",
+                        "& fieldset": {
+                          borderColor: alpha(theme.palette.divider, 0.5),
+                        },
+                        "&:hover fieldset": {
+                          borderColor: alpha(theme.palette.primary.main, 0.5),
+                        },
+                        "&.Mui-focused fieldset": {
+                          borderColor: theme.palette.primary.main,
+                          borderWidth: 2,
+                          boxShadow: `0 0 0 3px ${alpha(
+                            theme.palette.primary.main,
+                            0.1
+                          )}`,
+                        },
+                      },
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12} md={3}>
@@ -285,7 +357,34 @@ export default function Phrasebook() {
                     onChange={(_, value) => setSourceLang(value || "")}
                     onInputChange={(_, value) => setSourceLang(value || "")}
                     renderInput={(params) => (
-                      <TextField {...params} label="From language" fullWidth />
+                      <TextField
+                        {...params}
+                        label="From language"
+                        fullWidth
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 2,
+                            transition: "all 0.3s ease",
+                            "& fieldset": {
+                              borderColor: alpha(theme.palette.divider, 0.5),
+                            },
+                            "&:hover fieldset": {
+                              borderColor: alpha(
+                                theme.palette.primary.main,
+                                0.5
+                              ),
+                            },
+                            "&.Mui-focused fieldset": {
+                              borderColor: theme.palette.primary.main,
+                              borderWidth: 2,
+                              boxShadow: `0 0 0 3px ${alpha(
+                                theme.palette.primary.main,
+                                0.1
+                              )}`,
+                            },
+                          },
+                        }}
+                      />
                     )}
                   />
                 </Grid>
@@ -297,7 +396,34 @@ export default function Phrasebook() {
                     onChange={(_, value) => setTargetLang(value || "")}
                     onInputChange={(_, value) => setTargetLang(value || "")}
                     renderInput={(params) => (
-                      <TextField {...params} label="To language" fullWidth />
+                      <TextField
+                        {...params}
+                        label="To language"
+                        fullWidth
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 2,
+                            transition: "all 0.3s ease",
+                            "& fieldset": {
+                              borderColor: alpha(theme.palette.divider, 0.5),
+                            },
+                            "&:hover fieldset": {
+                              borderColor: alpha(
+                                theme.palette.primary.main,
+                                0.5
+                              ),
+                            },
+                            "&.Mui-focused fieldset": {
+                              borderColor: theme.palette.primary.main,
+                              borderWidth: 2,
+                              boxShadow: `0 0 0 3px ${alpha(
+                                theme.palette.primary.main,
+                                0.1
+                              )}`,
+                            },
+                          },
+                        }}
+                      />
                     )}
                   />
                 </Grid>
@@ -316,6 +442,27 @@ export default function Phrasebook() {
                       max={25}
                       marks={COUNT_MARKS}
                       valueLabelDisplay="auto"
+                      sx={{
+                        "& .MuiSlider-thumb": {
+                          transition: "all 0.3s ease",
+                          "&:hover": {
+                            boxShadow: `0 0 0 8px ${alpha(
+                              theme.palette.primary.main,
+                              0.1
+                            )}`,
+                            transform: "scale(1.1)",
+                          },
+                        },
+                        "& .MuiSlider-mark": {
+                          backgroundColor: theme.palette.primary.main,
+                          height: 8,
+                          width: 8,
+                          borderRadius: "50%",
+                        },
+                        "& .MuiSlider-markLabel": {
+                          fontSize: "0.75rem",
+                        },
+                      }}
                     />
                   </Stack>
                 </Grid>
@@ -330,6 +477,26 @@ export default function Phrasebook() {
                   type="submit"
                   variant="contained"
                   disabled={!canSubmit || loading}
+                  startIcon={<GenerateIcon />}
+                  sx={{
+                    transition: "all 0.3s ease",
+                    position: "relative",
+                    overflow: "hidden",
+                    "&::after": {
+                      content: '""',
+                      position: "absolute",
+                      top: 0,
+                      left: "-100%",
+                      width: "100%",
+                      height: "100%",
+                      background:
+                        "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
+                      transition: "left 0.5s",
+                    },
+                    "&:hover::after": {
+                      left: "100%",
+                    },
+                  }}
                 >
                   {loading ? "Generating…" : "Generate"}
                 </Button>
@@ -355,13 +522,20 @@ export default function Phrasebook() {
               </Stack>
             </Box>
           </CardContent>
-        </Card>
+        </AnimatedCard>
 
         {error && (
           <Alert
             severity="error"
             onClose={() => setError("")}
-            sx={{ borderRadius: 2 }}
+            sx={{
+              borderRadius: 2,
+              animation: "fadeIn 0.3s ease",
+              "@keyframes fadeIn": {
+                "0%": { opacity: 0, transform: "translateY(-10px)" },
+                "100%": { opacity: 1, transform: "translateY(0)" },
+              },
+            }}
           >
             {error}
           </Alert>
@@ -369,7 +543,14 @@ export default function Phrasebook() {
         {usingOfflineSaved && (
           <Alert
             severity={savedCacheMissing ? "warning" : "info"}
-            sx={{ borderRadius: 2 }}
+            sx={{
+              borderRadius: 2,
+              animation: "fadeIn 0.3s ease",
+              "@keyframes fadeIn": {
+                "0%": { opacity: 0, transform: "translateY(-10px)" },
+                "100%": { opacity: 1, transform: "translateY(0)" },
+              },
+            }}
           >
             {savedCacheMissing
               ? "You're offline and we don't have any saved phrases cached yet."
@@ -378,15 +559,25 @@ export default function Phrasebook() {
         )}
 
         {loading && (
-          <Card>
-            <CardContent sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-              <CircularProgress />
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent
+              sx={{ display: "flex", justifyContent: "center", py: 6 }}
+            >
+              <Stack spacing={2} alignItems="center">
+                <CircularProgress size={40} />
+                <Typography variant="body1">Generating phrases...</Typography>
+              </Stack>
             </CardContent>
           </Card>
         )}
 
         {result?.phrases?.length ? (
-          <Stack spacing={2}>
+          <AnimatedStack
+            spacing={2}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
             <Stack
               direction={{ xs: "column", sm: "row" }}
               spacing={1}
@@ -398,8 +589,8 @@ export default function Phrasebook() {
                   {result.topic}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {result.sourceLang} → {result.targetLang} • {result.phrases.length}{" "}
-                  phrases
+                  {result.sourceLang} → {result.targetLang} •{" "}
+                  {result.phrases.length} phrases
                 </Typography>
               </Box>
               <Chip
@@ -410,21 +601,41 @@ export default function Phrasebook() {
               />
             </Stack>
 
-            <Grid container spacing={2}>
+            <AnimatedGrid
+              container
+              spacing={2}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1, duration: 0.4, staggerChildren: 0.05 }}
+            >
               {result.phrases.map((item, index) => {
                 const savedAlready = isSaved(item);
                 return (
                   <Grid item xs={12} md={6} key={`${item.phrase}-${index}`}>
-                    <Card
+                    <AnimatedCard
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.05 * index, duration: 0.3 }}
                       sx={{
                         height: "100%",
                         borderRadius: 3,
                         borderColor: savedAlready
                           ? "rgba(33,128,141,0.4)"
                           : "rgba(94,82,64,0.12)",
+                        transition: "all 0.3s ease",
+                        "&:hover": {
+                          transform: "translateY(-4px)",
+                          boxShadow: theme.shadows[4],
+                        },
                       }}
                     >
-                      <CardContent sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                      <CardContent
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1.5,
+                        }}
+                      >
                         <Stack
                           direction="row"
                           justifyContent="space-between"
@@ -442,14 +653,35 @@ export default function Phrasebook() {
                               {item.phrase}
                             </Typography>
                           </Stack>
-                          <IconButton
-                            aria-label={savedAlready ? "Remove from saved" : "Save phrase"}
-                            onClick={() => toggleSave(item)}
-                            color={savedAlready ? "primary" : "default"}
-                            size="small"
+                          <Tooltip
+                            title={
+                              savedAlready ? "Remove from saved" : "Save phrase"
+                            }
+                            arrow
                           >
-                            {savedAlready ? <BookmarkFilledIcon /> : <BookmarkIcon />}
-                          </IconButton>
+                            <IconButton
+                              aria-label={
+                                savedAlready
+                                  ? "Remove from saved"
+                                  : "Save phrase"
+                              }
+                              onClick={() => toggleSave(item)}
+                              color={savedAlready ? "primary" : "default"}
+                              size="small"
+                              sx={{
+                                transition: "all 0.3s ease",
+                                "&:hover": {
+                                  transform: "scale(1.1)",
+                                },
+                              }}
+                            >
+                              {savedAlready ? (
+                                <BookmarkFilledIcon />
+                              ) : (
+                                <BookmarkIcon />
+                              )}
+                            </IconButton>
+                          </Tooltip>
                         </Stack>
 
                         {item.transliteration && (
@@ -458,7 +690,9 @@ export default function Phrasebook() {
                           </Typography>
                         )}
                         {item.meaning && (
-                          <Typography variant="body1">{item.meaning}</Typography>
+                          <Typography variant="body1">
+                            {item.meaning}
+                          </Typography>
                         )}
                         {item.usageExample && (
                           <Typography variant="body2" color="text.secondary">
@@ -466,15 +700,15 @@ export default function Phrasebook() {
                           </Typography>
                         )}
                       </CardContent>
-                    </Card>
+                    </AnimatedCard>
                   </Grid>
                 );
               })}
-            </Grid>
-          </Stack>
+            </AnimatedGrid>
+          </AnimatedStack>
         ) : (
           !loading && (
-            <Card>
+            <Card sx={{ borderRadius: 3 }}>
               <CardContent
                 sx={{
                   textAlign: "center",
@@ -488,16 +722,32 @@ export default function Phrasebook() {
                   Generate a phrasebook to get started
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Choose a topic and language pair, then let us create contextual phrases
-                  you can review and keep handy.
+                  Choose a topic and language pair, then let us create
+                  contextual phrases you can review and keep handy.
                 </Typography>
               </CardContent>
             </Card>
           )
         )}
 
-        <Card>
-          <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <AnimatedCard
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.3 }}
+          sx={{
+            borderRadius: 3,
+            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            background: `linear-gradient(180deg, ${alpha(
+              theme.palette.background.paper,
+              0.9
+            )} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`,
+            backdropFilter: "blur(10px)",
+            boxShadow: `0 5px 20px ${alpha(theme.palette.common.black, 0.08)}`,
+          }}
+        >
+          <CardContent
+            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+          >
             <Stack
               direction={{ xs: "column", sm: "row" }}
               spacing={1}
@@ -512,29 +762,88 @@ export default function Phrasebook() {
                   Easily revisit the phrases you rely on the most.
                 </Typography>
               </Box>
-              <Chip
-                label={
-                  loadingSaved ? "Loading…" : `${saved.length} saved`
-                }
-                color="secondary"
-                variant="outlined"
-              />
+              <Stack direction="row" spacing={1} alignItems="center">
+                <TextField
+                  size="small"
+                  placeholder="Filter phrases..."
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <FilterIcon
+                        fontSize="small"
+                        sx={{ mr: 1, color: "text.secondary" }}
+                      />
+                    ),
+                  }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                      backgroundColor: alpha(
+                        theme.palette.background.default,
+                        0.5
+                      ),
+                    },
+                  }}
+                />
+                <Chip
+                  label={
+                    loadingSaved ? (
+                      <Skeleton width={50} height={20} />
+                    ) : (
+                      `${saved.length} saved`
+                    )
+                  }
+                  color="secondary"
+                  variant="outlined"
+                />
+              </Stack>
             </Stack>
 
             {loadingSaved ? (
               <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-                <CircularProgress size={28} />
+                <Stack spacing={2} alignItems="center">
+                  <CircularProgress size={28} />
+                  <Typography variant="body2" color="text.secondary">
+                    Loading saved phrases...
+                  </Typography>
+                </Stack>
               </Box>
-            ) : saved.length ? (
-              <Grid container spacing={2}>
-                {saved.map((item) => (
+            ) : filteredSaved.length ? (
+              <AnimatedGrid
+                container
+                spacing={2}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{
+                  delay: 0.1,
+                  duration: 0.4,
+                  staggerChildren: 0.05,
+                }}
+              >
+                {filteredSaved.map((item, index) => (
                   <Grid item xs={12} md={6} key={item.id}>
-                    <Card
+                    <AnimatedCard
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.05 * index, duration: 0.3 }}
                       variant="outlined"
-                      sx={{ borderRadius: 3, height: "100%" }}
+                      sx={{
+                        borderRadius: 3,
+                        height: "100%",
+                        transition: "all 0.3s ease",
+                        "&:hover": {
+                          transform: "translateY(-4px)",
+                          boxShadow: theme.shadows[4],
+                        },
+                      }}
                     >
                       <CardContent
-                        sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1.5,
+                        }}
                       >
                         <Stack
                           direction="row"
@@ -544,13 +853,22 @@ export default function Phrasebook() {
                           <Typography variant="h6" sx={{ fontWeight: 600 }}>
                             {item.phrase}
                           </Typography>
-                          <IconButton
-                            aria-label="Remove saved phrase"
-                            onClick={() => removeSaved(item.id)}
-                            size="small"
-                          >
-                            <BookmarkFilledIcon color="primary" fontSize="small" />
-                          </IconButton>
+                          <Tooltip title="Remove saved phrase" arrow>
+                            <IconButton
+                              aria-label="Remove saved phrase"
+                              onClick={() => removeSaved(item.id)}
+                              size="small"
+                              sx={{
+                                transition: "all 0.3s ease",
+                                "&:hover": {
+                                  color: theme.palette.error.main,
+                                  transform: "scale(1.1)",
+                                },
+                              }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                         </Stack>
                         {item.transliteration && (
                           <Typography variant="body2" color="text.secondary">
@@ -558,7 +876,9 @@ export default function Phrasebook() {
                           </Typography>
                         )}
                         {item.meaning && (
-                          <Typography variant="body1">{item.meaning}</Typography>
+                          <Typography variant="body1">
+                            {item.meaning}
+                          </Typography>
                         )}
                         {item.usageExample && (
                           <Typography variant="body2" color="text.secondary">
@@ -566,7 +886,9 @@ export default function Phrasebook() {
                           </Typography>
                         )}
                         <Stack direction="row" spacing={1}>
-                          {item.topic && <Chip label={item.topic} size="small" />}
+                          {item.topic && (
+                            <Chip label={item.topic} size="small" />
+                          )}
                           <Chip
                             label={`${item.sourceLang} → ${item.targetLang}`}
                             size="small"
@@ -575,10 +897,10 @@ export default function Phrasebook() {
                           />
                         </Stack>
                       </CardContent>
-                    </Card>
+                    </AnimatedCard>
                   </Grid>
                 ))}
-              </Grid>
+              </AnimatedGrid>
             ) : (
               <Box
                 sx={{
@@ -590,15 +912,19 @@ export default function Phrasebook() {
                 }}
               >
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  No saved phrases yet
+                  {filter
+                    ? "No matching saved phrases"
+                    : "No saved phrases yet"}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Generate a phrasebook and tap the bookmark icon to keep phrases handy.
+                  {filter
+                    ? `No phrases match your filter "${filter}".`
+                    : "Generate a phrasebook and tap the bookmark icon to keep phrases handy."}
                 </Typography>
               </Box>
             )}
           </CardContent>
-        </Card>
+        </AnimatedCard>
       </Stack>
     </PageContainer>
   );

@@ -265,12 +265,20 @@ export default function Translation() {
     () => (
       <Stack direction="row" spacing={1} flexWrap="wrap">
         <Chip
-          label={browserSupport.recognition ? "Voice input ready" : "Voice input unavailable"}
+          label={
+            browserSupport.recognition
+              ? "Voice input ready"
+              : "Voice input unavailable"
+          }
           color={browserSupport.recognition ? "primary" : "warning"}
           variant={browserSupport.recognition ? "filled" : "outlined"}
         />
         <Chip
-          label={browserSupport.synthesis ? "Speech output ready" : "Speech output unavailable"}
+          label={
+            browserSupport.synthesis
+              ? "Speech output ready"
+              : "Speech output unavailable"
+          }
           color={browserSupport.synthesis ? "primary" : "warning"}
           variant={browserSupport.synthesis ? "filled" : "outlined"}
         />
@@ -291,7 +299,8 @@ export default function Translation() {
       <Stack spacing={4}>
         {(!browserSupport.recognition || !browserSupport.synthesis) && (
           <Alert severity="warning" sx={{ borderRadius: 3 }}>
-            Some voice features may not be supported in this browser. You can still type to translate.
+            Some voice features may not be supported in this browser. You can
+            still type to translate.
           </Alert>
         )}
 
@@ -303,7 +312,9 @@ export default function Translation() {
             backdropFilter: "blur(12px)",
           }}
         >
-          <CardContent sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <CardContent
+            sx={{ display: "flex", flexDirection: "column", gap: 3 }}
+          >
             <Stack
               direction={{ xs: "column", md: "row" }}
               spacing={2}
@@ -371,17 +382,56 @@ export default function Translation() {
               <Grid item xs={12} md={6}>
                 <Card
                   variant="outlined"
-                  sx={{ height: "100%", borderRadius: 3, backgroundColor: "background.paper" }}
+                  sx={{
+                    height: "100%",
+                    borderRadius: 3,
+                    backgroundColor: "background.paper",
+                    transition:
+                      "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+                    "&:hover": {
+                      transform: "translateY(-2px)",
+                      boxShadow: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "0 8px 16px rgba(0,0,0,0.3)"
+                          : "0 8px 16px rgba(0,0,0,0.1)",
+                    },
+                  }}
                 >
-                  <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Typography variant="subtitle2">Input</Typography>
+                  <CardContent
+                    sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+                  >
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
+                        Input
+                      </Typography>
                       {browserSupport.recognition && (
-                        <Tooltip title={isRecording ? "Stop recording" : "Start recording"}>
+                        <Tooltip
+                          title={
+                            isRecording ? "Stop recording" : "Start recording"
+                          }
+                        >
                           <IconButton
                             size="small"
-                            onClick={isRecording ? handleStopRecording : handleStartRecording}
+                            onClick={
+                              isRecording
+                                ? handleStopRecording
+                                : handleStartRecording
+                            }
                             color={isRecording ? "error" : "primary"}
+                            sx={{
+                              animation: isRecording
+                                ? "pulse 1.5s infinite"
+                                : "none",
+                              "@keyframes pulse": {
+                                "0%": { transform: "scale(1)" },
+                                "50%": { transform: "scale(1.1)" },
+                                "100%": { transform: "scale(1)" },
+                              },
+                            }}
                           >
                             {isRecording ? <MicOffIcon /> : <MicIcon />}
                           </IconButton>
@@ -392,6 +442,7 @@ export default function Translation() {
                       fullWidth
                       multiline
                       minRows={7}
+                      maxRows={12}
                       placeholder={
                         browserSupport.recognition
                           ? "Type or use the microphone to capture speech…"
@@ -399,21 +450,84 @@ export default function Translation() {
                       }
                       value={source}
                       onChange={(e) => setSource(e.target.value)}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          "& fieldset": {
+                            borderColor: (theme) =>
+                              theme.palette.mode === "dark"
+                                ? "rgba(255,255,255,0.2)"
+                                : "rgba(0,0,0,0.2)",
+                          },
+                          "&:hover fieldset": {
+                            borderColor: (theme) =>
+                              theme.palette.mode === "dark"
+                                ? "rgba(255,255,255,0.3)"
+                                : "rgba(0,0,0,0.3)",
+                          },
+                          "&.Mui-focused fieldset": {
+                            borderColor: "primary.main",
+                            borderWidth: 2,
+                          },
+                        },
+                      }}
                     />
+                    {isRecording && (
+                      <Alert
+                        severity="info"
+                        icon={<MicIcon fontSize="small" />}
+                        sx={{
+                          borderRadius: 2,
+                          py: 0.5,
+                          animation: "fadeIn 0.3s ease-in-out",
+                          "@keyframes fadeIn": {
+                            "0%": {
+                              opacity: 0,
+                              transform: "translateY(-10px)",
+                            },
+                            "100%": { opacity: 1, transform: "translateY(0)" },
+                          },
+                        }}
+                      >
+                        Listening... Speak now
+                      </Alert>
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
               <Grid item xs={12} md={6}>
                 <Card
                   variant="outlined"
-                  sx={{ height: "100%", borderRadius: 3, backgroundColor: "background.paper" }}
+                  sx={{
+                    height: "100%",
+                    borderRadius: 3,
+                    backgroundColor: "background.paper",
+                    transition:
+                      "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+                    "&:hover": {
+                      transform: "translateY(-2px)",
+                      boxShadow: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "0 8px 16px rgba(0,0,0,0.3)"
+                          : "0 8px 16px rgba(0,0,0,0.1)",
+                    },
+                  }}
                 >
-                  <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Typography variant="subtitle2">Output</Typography>
+                  <CardContent
+                    sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+                  >
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
+                        Output
+                      </Typography>
                       {browserSupport.synthesis && target && (
                         <Stack direction="row" spacing={1}>
-                          <Tooltip title={isSpeaking && !isPaused ? "Stop" : "Play"}>
+                          <Tooltip
+                            title={isSpeaking && !isPaused ? "Stop" : "Play"}
+                          >
                             <IconButton
                               size="small"
                               onClick={() =>
@@ -423,12 +537,30 @@ export default function Translation() {
                               }
                               color="primary"
                             >
-                              {isSpeaking && !isPaused ? <StopIcon /> : <PlayIcon />}
+                              {isSpeaking && !isPaused ? (
+                                <StopIcon />
+                              ) : (
+                                <PlayIcon />
+                              )}
                             </IconButton>
                           </Tooltip>
                           {isSpeaking && (
                             <Tooltip title={isPaused ? "Resume" : "Pause"}>
-                              <IconButton size="small" onClick={handlePauseAudio} color="primary">
+                              <IconButton
+                                size="small"
+                                onClick={handlePauseAudio}
+                                color="primary"
+                                sx={{
+                                  animation: isPaused
+                                    ? "none"
+                                    : "pulse 1.5s infinite",
+                                  "@keyframes pulse": {
+                                    "0%": { transform: "scale(1)" },
+                                    "50%": { transform: "scale(1.1)" },
+                                    "100%": { transform: "scale(1)" },
+                                  },
+                                }}
+                              >
                                 {isPaused ? <PlayIcon /> : <PauseIcon />}
                               </IconButton>
                             </Tooltip>
@@ -440,6 +572,7 @@ export default function Translation() {
                       fullWidth
                       multiline
                       minRows={7}
+                      maxRows={12}
                       value={target}
                       placeholder="Translated text will appear here…"
                       InputProps={{
@@ -449,8 +582,76 @@ export default function Translation() {
                             <CircularProgress size={20} />
                           </InputAdornment>
                         ) : undefined,
+                        sx: {
+                          "&.Mui-readOnly": {
+                            backgroundColor: (theme) =>
+                              theme.palette.mode === "dark"
+                                ? "rgba(255,255,255,0.05)"
+                                : "rgba(0,0,0,0.03)",
+                          },
+                        },
+                      }}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          "& fieldset": {
+                            borderColor: (theme) =>
+                              theme.palette.mode === "dark"
+                                ? "rgba(255,255,255,0.2)"
+                                : "rgba(0,0,0,0.2)",
+                          },
+                          "&:hover fieldset": {
+                            borderColor: (theme) =>
+                              theme.palette.mode === "dark"
+                                ? "rgba(255,255,255,0.3)"
+                                : "rgba(0,0,0,0.3)",
+                          },
+                          "&.Mui-focused fieldset": {
+                            borderColor: "primary.main",
+                            borderWidth: 2,
+                          },
+                        },
                       }}
                     />
+                    {loading && (
+                      <Alert
+                        severity="info"
+                        icon={<CircularProgress size={16} />}
+                        sx={{
+                          borderRadius: 2,
+                          py: 0.5,
+                          animation: "fadeIn 0.3s ease-in-out",
+                          "@keyframes fadeIn": {
+                            "0%": {
+                              opacity: 0,
+                              transform: "translateY(-10px)",
+                            },
+                            "100%": { opacity: 1, transform: "translateY(0)" },
+                          },
+                        }}
+                      >
+                        Translating text...
+                      </Alert>
+                    )}
+                    {target && !loading && (
+                      <Alert
+                        severity="success"
+                        icon={<SpeakerIcon fontSize="small" />}
+                        sx={{
+                          borderRadius: 2,
+                          py: 0.5,
+                          animation: "fadeIn 0.3s ease-in-out",
+                          "@keyframes fadeIn": {
+                            "0%": {
+                              opacity: 0,
+                              transform: "translateY(-10px)",
+                            },
+                            "100%": { opacity: 1, transform: "translateY(0)" },
+                          },
+                        }}
+                      >
+                        Translation complete
+                      </Alert>
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
@@ -461,18 +662,47 @@ export default function Translation() {
               spacing={1.5}
               justifyContent={{ xs: "stretch", sm: "flex-end" }}
               flexWrap="wrap"
+              sx={{ mt: 1 }}
             >
               <Button
                 onClick={handleTranslate}
                 variant="contained"
                 disabled={loading || !source.trim()}
+                size="large"
+                sx={{
+                  minWidth: 120,
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    transform: "translateY(-2px)",
+                    boxShadow: 4,
+                  },
+                  "&:disabled": {
+                    opacity: 0.6,
+                  },
+                }}
               >
-                {loading ? "Translating…" : "Translate"}
+                {loading ? (
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <CircularProgress size={20} color="inherit" />
+                    <span>Translating…</span>
+                  </Stack>
+                ) : (
+                  "Translate"
+                )}
               </Button>
               <Button
                 variant="outlined"
                 onClick={() => target && navigator.clipboard.writeText(target)}
                 disabled={!target}
+                size="large"
+                sx={{
+                  minWidth: 100,
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    transform: "translateY(-2px)",
+                    boxShadow: 2,
+                  },
+                }}
               >
                 Copy
               </Button>
@@ -481,6 +711,15 @@ export default function Translation() {
                 onClick={() => handlePlayAudio(target, targetLang)}
                 disabled={!target || !browserSupport.synthesis}
                 startIcon={<SpeakerIcon />}
+                size="large"
+                sx={{
+                  minWidth: 100,
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    transform: "translateY(-2px)",
+                    boxShadow: 2,
+                  },
+                }}
               >
                 Speak
               </Button>
@@ -488,6 +727,15 @@ export default function Translation() {
                 variant="outlined"
                 onClick={() => alert("Save to Phrasebook not implemented yet")}
                 disabled={!target}
+                size="large"
+                sx={{
+                  minWidth: 150,
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    transform: "translateY(-2px)",
+                    boxShadow: 2,
+                  },
+                }}
               >
                 Save to Phrasebook
               </Button>
@@ -512,18 +760,68 @@ export default function Translation() {
                     theme.palette.mode === "dark"
                       ? "rgba(13,24,32,0.95)"
                       : "rgba(255,255,255,0.92)",
+                  transition:
+                    "transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out",
+                  "&:hover": {
+                    transform: "translateY(-4px)",
+                    boxShadow: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "0 12px 20px rgba(0,0,0,0.4)"
+                        : "0 12px 20px rgba(0,0,0,0.1)",
+                  },
                 }}
               >
-                <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <CardContent
+                  sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}
+                >
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                  >
                     <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       Speech settings
                     </Typography>
-                    <Chip label="Playback" color="primary" variant="outlined" />
+                    <Chip
+                      label="Playback"
+                      color="primary"
+                      variant="outlined"
+                      sx={{
+                        animation: isSpeaking ? "pulse 1.5s infinite" : "none",
+                        "@keyframes pulse": {
+                          "0%": { transform: "scale(1)" },
+                          "50%": { transform: "scale(1.05)" },
+                          "100%": { transform: "scale(1)" },
+                        },
+                      }}
+                    />
                   </Stack>
                   <Grid container spacing={2.5}>
                     <Grid item xs={12}>
-                      <FormControl fullWidth size="small">
+                      <FormControl
+                        fullWidth
+                        size="small"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            "& fieldset": {
+                              borderColor: (theme) =>
+                                theme.palette.mode === "dark"
+                                  ? "rgba(255,255,255,0.2)"
+                                  : "rgba(0,0,0,0.2)",
+                            },
+                            "&:hover fieldset": {
+                              borderColor: (theme) =>
+                                theme.palette.mode === "dark"
+                                  ? "rgba(255,255,255,0.3)"
+                                  : "rgba(0,0,0,0.3)",
+                            },
+                            "&.Mui-focused fieldset": {
+                              borderColor: "primary.main",
+                              borderWidth: 2,
+                            },
+                          },
+                        }}
+                      >
                         <InputLabel>Voice</InputLabel>
                         <Select
                           value={selectedVoice?.name || ""}
@@ -533,6 +831,21 @@ export default function Translation() {
                               (v) => v.name === e.target.value
                             );
                             setSelectedVoice(voice);
+                          }}
+                          MenuProps={{
+                            PaperProps: {
+                              sx: {
+                                "& .MuiMenuItem-root": {
+                                  "&.Mui-selected": {
+                                    backgroundColor: "primary.light",
+                                    color: "primary.contrastText",
+                                  },
+                                  "&:hover": {
+                                    backgroundColor: "action.hover",
+                                  },
+                                },
+                              },
+                            },
                           }}
                         >
                           {filteredVoices.map((voice) => (
@@ -545,7 +858,10 @@ export default function Translation() {
                     </Grid>
                     <Grid item xs={12}>
                       <Box>
-                        <Typography variant="body2" sx={{ mb: 1 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ mb: 1, fontWeight: 500 }}
+                        >
                           Speech rate: {speechRate.toFixed(1)}
                         </Typography>
                         <Slider
@@ -554,13 +870,38 @@ export default function Translation() {
                           min={0.5}
                           max={2}
                           step={0.1}
-                          marks
+                          marks={[
+                            { value: 0.5, label: "0.5x" },
+                            { value: 1, label: "1x" },
+                            { value: 1.5, label: "1.5x" },
+                            { value: 2, label: "2x" },
+                          ]}
+                          sx={{
+                            "& .MuiSlider-mark": {
+                              backgroundColor: "primary.main",
+                              height: 8,
+                              width: 8,
+                              borderRadius: "50%",
+                            },
+                            "& .MuiSlider-markLabel": {
+                              fontSize: "0.75rem",
+                            },
+                            "& .MuiSlider-thumb": {
+                              transition: "transform 0.2s ease",
+                              "&:hover": {
+                                transform: "scale(1.2)",
+                              },
+                            },
+                          }}
                         />
                       </Box>
                     </Grid>
                     <Grid item xs={12}>
                       <Box>
-                        <Typography variant="body2" sx={{ mb: 1 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ mb: 1, fontWeight: 500 }}
+                        >
                           Pitch: {speechPitch.toFixed(1)}
                         </Typography>
                         <Slider
@@ -569,25 +910,93 @@ export default function Translation() {
                           min={0.5}
                           max={2}
                           step={0.1}
-                          marks
+                          marks={[
+                            { value: 0.5, label: "Low" },
+                            { value: 1, label: "Normal" },
+                            { value: 1.5, label: "High" },
+                            { value: 2, label: "Very high" },
+                          ]}
+                          sx={{
+                            "& .MuiSlider-mark": {
+                              backgroundColor: "primary.main",
+                              height: 8,
+                              width: 8,
+                              borderRadius: "50%",
+                            },
+                            "& .MuiSlider-markLabel": {
+                              fontSize: "0.75rem",
+                            },
+                            "& .MuiSlider-thumb": {
+                              transition: "transform 0.2s ease",
+                              "&:hover": {
+                                transform: "scale(1.2)",
+                              },
+                            },
+                          }}
                         />
                       </Box>
                     </Grid>
                     <Grid item xs={12}>
                       <Box>
-                        <Typography variant="body2" sx={{ mb: 1 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            mb: 1,
+                            fontWeight: 500,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                          }}
+                        >
                           Volume
+                          <Chip
+                            label="Fixed"
+                            size="small"
+                            color="secondary"
+                            variant="outlined"
+                          />
                         </Typography>
-                        <Slider value={100} min={0} max={100} disabled marks />
+                        <Slider
+                          value={100}
+                          min={0}
+                          max={100}
+                          disabled
+                          marks
+                          sx={{
+                            "& .MuiSlider-mark": {
+                              backgroundColor: "secondary.main",
+                              height: 8,
+                              width: 8,
+                              borderRadius: "50%",
+                            },
+                            "& .MuiSlider-markLabel": {
+                              fontSize: "0.75rem",
+                            },
+                          }}
+                        />
                       </Box>
                     </Grid>
                   </Grid>
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.5}
+                    sx={{ mt: 1 }}
+                  >
                     <Button
-                      variant="outlined"
-                      onClick={() => handlePlayAudio(target || "Sample phrase", targetLang)}
+                      variant="contained"
+                      onClick={() =>
+                        handlePlayAudio(target || "Sample phrase", targetLang)
+                      }
                       disabled={!target}
                       startIcon={<SpeakerIcon />}
+                      fullWidth
+                      sx={{
+                        transition: "all 0.3s ease",
+                        "&:hover": {
+                          transform: "translateY(-2px)",
+                          boxShadow: 4,
+                        },
+                      }}
                     >
                       Test voice
                     </Button>
@@ -595,6 +1004,13 @@ export default function Translation() {
                       variant="outlined"
                       onClick={handlePauseAudio}
                       disabled={!isSpeaking}
+                      sx={{
+                        transition: "all 0.3s ease",
+                        "&:hover": {
+                          transform: "translateY(-2px)",
+                          boxShadow: 2,
+                        },
+                      }}
                     >
                       {isPaused ? "Resume" : "Pause"}
                     </Button>
@@ -602,6 +1018,13 @@ export default function Translation() {
                       variant="outlined"
                       onClick={handleStopAudio}
                       disabled={!isSpeaking}
+                      sx={{
+                        transition: "all 0.3s ease",
+                        "&:hover": {
+                          transform: "translateY(-2px)",
+                          boxShadow: 2,
+                        },
+                      }}
                     >
                       Stop
                     </Button>
@@ -628,8 +1051,14 @@ export default function Translation() {
                     : "rgba(255,255,255,0.92)",
               }}
             >
-              <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <CardContent
+                sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+              >
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>
                     Quick tips
                   </Typography>
@@ -674,7 +1103,9 @@ export default function Translation() {
                     : "rgba(255,255,255,0.9)",
               }}
             >
-              <CardContent sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+              <CardContent
+                sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
+              >
                 <Typography variant="h4" component="span">
                   {highlight.icon}
                 </Typography>

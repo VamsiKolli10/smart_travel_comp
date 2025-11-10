@@ -10,14 +10,17 @@ import {
   Tooltip,
   alpha,
   Divider,
+  Stack,
+  Button,
 } from "@mui/material";
-import { NavLink, Link, useLocation } from "react-router-dom";
+import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import { styled } from "@mui/material/styles";
 import LogoutButton from "../../components/common/LogoutButton";
 import { useSelector } from "react-redux";
 import {
   Brightness4 as DarkIcon,
   Brightness7 as LightIcon,
+  AirplanemodeActive as PlaneIcon,
 } from "@mui/icons-material";
 import { useAppearance } from "../../contexts/AppearanceContext.jsx";
 
@@ -91,10 +94,11 @@ const StyledNavLink = styled(NavLink)(({ theme }) => ({
   },
 }));
 
-export default function Navbar() {
+export default function SharedNavbar({ isLanding = false }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const location = useLocation();
+  const navigate = useNavigate();
   const user = useSelector((state) => state.auth.user);
   const { mode, toggleMode } = useAppearance();
   const navRefs = useRef([]);
@@ -121,8 +125,8 @@ export default function Navbar() {
   return (
     <AppBar
       component="header"
-      position="sticky"
-      elevation={1}
+      position={isLanding ? "absolute" : "sticky"}
+      elevation={isLanding ? 0 : 1}
       sx={{
         backdropFilter: "blur(8px)",
         backgroundColor: alpha(theme.palette.background.paper, 0.8),
@@ -140,20 +144,36 @@ export default function Navbar() {
           to={user ? "/home" : "/"}
           aria-label="Smart Travel Companion home"
         >
-          <Typography
-            variant="h6"
-            component="span"
-            sx={{
-              fontWeight: 800,
-              background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            Smart Travel Companion
-          </Typography>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: 1.5,
+                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <PlaneIcon fontSize="small" color="primary" />
+            </Box>
+            <Typography
+              variant="h6"
+              component="span"
+              sx={{
+                fontWeight: 800,
+                background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              Smart Travel Companion
+            </Typography>
+          </Stack>
         </StyledLink>
-        {!isMobile && user && (
+
+        {!isMobile && user && !isLanding && (
           <>
             <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
             <Box
@@ -184,6 +204,7 @@ export default function Navbar() {
             </Box>
           </>
         )}
+
         <Box
           sx={{
             marginLeft: "auto",
@@ -221,7 +242,19 @@ export default function Navbar() {
               )}
             </IconButton>
           </Tooltip>
-          {user && <LogoutButton />}
+
+          {isLanding ? (
+            <>
+              <Button variant="outlined" onClick={() => navigate("/login")}>
+                Log in
+              </Button>
+              <Button variant="contained" onClick={() => navigate("/register")}>
+                Join free
+              </Button>
+            </>
+          ) : (
+            user && <LogoutButton />
+          )}
         </Box>
       </Toolbar>
     </AppBar>

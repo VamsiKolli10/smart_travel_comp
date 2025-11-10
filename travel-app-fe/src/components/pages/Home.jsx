@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -8,7 +8,14 @@ import {
   Chip,
   Stack,
   Typography,
+  Fade,
+  Grow,
+  Button as MuiButton,
+  useTheme,
+  alpha,
 } from "@mui/material";
+import { styled } from "@mui/material/styles";
+import { motion, AnimatePresence } from "framer-motion";
 import PageContainer from "../layout/PageContainer";
 import Button from "../common/Button";
 import { ModuleCard, ModuleCardGrid } from "../common/ModuleCard";
@@ -19,6 +26,17 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const user = useSelector((state) => state.auth);
   const dispatch = useDispatch();
+  const theme = useTheme();
+  const [animationComplete, setAnimationComplete] = useState(false);
+
+  useEffect(() => {
+    fetchProfile().then((resp) => dispatch(setUser(resp)));
+  }, [dispatch]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setAnimationComplete(true), 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const recentActivity = [
     { action: "Translated", text: "Where is the bathroom?", time: "2 min ago" },
@@ -85,10 +103,6 @@ export default function Dashboard() {
     },
   ];
 
-  useEffect(() => {
-    fetchProfile().then((resp) => dispatch(setUser(resp)));
-  }, [dispatch]);
-
   if (!user) return null;
 
   return (
@@ -108,106 +122,205 @@ export default function Dashboard() {
       }
     >
       <Stack spacing={3}>
-        <Card
-          sx={{
-            borderRadius: 3,
-            background:
-              "linear-gradient(135deg, rgba(33,128,141,0.08), rgba(94,82,64,0.08))",
-          }}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
         >
-          <CardContent>
-            <Stack
-              direction={{ xs: "column", md: "row" }}
-              spacing={2}
-              justifyContent="space-between"
-              alignItems={{ xs: "flex-start", md: "center" }}
-            >
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-                  Quick Actions
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Jump straight into the tools you use the most.
-                </Typography>
-              </Box>
+          <Card
+            sx={{
+              borderRadius: 3,
+              background:
+                "linear-gradient(135deg, rgba(33,128,141,0.08), rgba(94,82,64,0.08))",
+              overflow: "visible",
+              position: "relative",
+              "&::after": {
+                content: '""',
+                position: "absolute",
+                top: 0,
+                right: 0,
+                width: 300,
+                height: 200,
+                background: `radial-gradient(circle, ${alpha(
+                  theme.palette.primary.main,
+                  0.15
+                )} 0%, transparent 70%)`,
+                pointerEvents: "none",
+                opacity: 0.5,
+                borderRadius: "50% 0 0 0",
+                transform: "translate(20%, -20%)",
+              },
+            }}
+          >
+            <CardContent>
               <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={{ xs: 1.5, sm: 1.5 }}
-                sx={{
-                  width: { xs: "100%", md: "auto" },
-                  "& > *": { flexGrow: 1 },
-                }}
+                direction={{ xs: "column", md: "row" }}
+                spacing={2}
+                justifyContent="space-between"
+                alignItems={{ xs: "flex-start", md: "center" }}
               >
-                {quickActions.map((action) => (
-                  <Button
-                    key={action.label}
-                    variant="contained"
-                    color="primary"
-                    onClick={action.action}
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 1,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    <span>{action.icon}</span>
-                    {action.label}
-                  </Button>
-                ))}
-              </Stack>
-            </Stack>
-          </CardContent>
-        </Card>
-
-        <ModuleCardGrid>
-          {dashboardCards.map((card) => (
-            <ModuleCard
-              key={card.title}
-              interactive
-              onClick={() => navigate(card.path)}
-              sx={{
-                backgroundColor: (theme) => theme.palette.background.paper,
-                border: "1px solid rgba(94,82,64,0.12)",
-              }}
-            >
-              <CardContent
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 2,
-                  height: "100%",
-                }}
-              >
-                <Chip
-                  label={card.icon}
-                  sx={{
-                    alignSelf: "flex-start",
-                    fontSize: 20,
-                    px: 1.5,
-                    py: 0.5,
-                    backgroundColor: `${card.color}18`,
-                  }}
-                />
-                <Box sx={{ flexGrow: 1 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                    {card.title}
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                    Quick Actions
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {card.description}
+                    Jump straight into the tools you use the most.
                   </Typography>
                 </Box>
-                <Typography
-                  variant="body2"
-                  sx={{ fontWeight: 600, color: "primary.main" }}
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={{ xs: 1.5, sm: 1.5 }}
+                  sx={{
+                    width: { xs: "100%", md: "auto" },
+                    "& > *": { flexGrow: 1 },
+                  }}
                 >
-                  Open →
-                </Typography>
-              </CardContent>
-            </ModuleCard>
-          ))}
-        </ModuleCardGrid>
+                  {quickActions.map((action) => (
+                    <Button
+                      key={action.label}
+                      variant="contained"
+                      color="primary"
+                      onClick={action.action}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 1,
+                        whiteSpace: "nowrap",
+                        position: "relative",
+                        overflow: "hidden",
+                        "&::after": {
+                          content: '""',
+                          position: "absolute",
+                          top: 0,
+                          left: "-100%",
+                          width: "100%",
+                          height: "100%",
+                          background:
+                            "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
+                          transition: "left 0.5s",
+                        },
+                        "&:hover::after": {
+                          left: "100%",
+                        },
+                      }}
+                    >
+                      <span>{action.icon}</span>
+                      {action.label}
+                    </Button>
+                  ))}
+                </Stack>
+              </Stack>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <AnimatePresence>
+          {animationComplete && (
+            <ModuleCardGrid
+              key="dashboard-cards"
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gap: theme.spacing(3),
+                alignItems: "stretch",
+              }}
+            >
+              {dashboardCards.map((card, index) => (
+                <motion.div
+                  key={card.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  transition={{ delay: index * 0.1, duration: 0.3 }}
+                >
+                  <ModuleCard
+                    interactive
+                    onClick={() => navigate(card.path)}
+                    sx={{
+                      backgroundColor: theme.palette.background.paper,
+                      border: "1px solid rgba(94,82,64,0.12)",
+                      transition: "all 0.3s ease",
+                      overflow: "hidden",
+                      position: "relative",
+                      minHeight: 220,
+                      borderRadius: 24,
+                      [theme.breakpoints.down("sm")]: {
+                        minHeight: 200,
+                      },
+                      cursor: "pointer",
+                      "&:hover": {
+                        transform: "translateY(-8px)",
+                        boxShadow: `0 8px 24px ${alpha(card.color, 0.2)}`,
+                        borderColor: alpha(card.color, 0.3),
+                      },
+                      "&::after": {
+                        content: '""',
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: `linear-gradient(135deg, ${alpha(
+                          card.color,
+                          0.05
+                        )} 0%, transparent 100%)`,
+                        zIndex: 0,
+                      },
+                    }}
+                  >
+                    <CardContent
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 2,
+                        height: "100%",
+                        position: "relative",
+                        zIndex: 1,
+                      }}
+                    >
+                      <Chip
+                        label={card.icon}
+                        sx={{
+                          alignSelf: "flex-start",
+                          fontSize: 20,
+                          px: 1.5,
+                          py: 0.5,
+                          backgroundColor: `${card.color}18`,
+                          color: card.color,
+                          fontWeight: 600,
+                        }}
+                      />
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography
+                          variant="h6"
+                          sx={{ fontWeight: 600, mb: 1 }}
+                        >
+                          {card.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {card.description}
+                        </Typography>
+                      </Box>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          color: "primary.main",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                        }}
+                      >
+                        Open →
+                      </Typography>
+                    </CardContent>
+                  </ModuleCard>
+                </motion.div>
+              ))}
+            </ModuleCardGrid>
+          )}
+        </AnimatePresence>
 
         <ModuleCardGrid
           sx={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}
@@ -215,45 +328,79 @@ export default function Dashboard() {
           <ModuleCard
             sx={{
               border: "1px solid rgba(94,82,64,0.12)",
-              backgroundColor: (theme) => theme.palette.background.paper,
+              backgroundColor: theme.palette.background.paper,
+              position: "relative",
+              overflow: "hidden",
+              "&::after": {
+                content: '""',
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 4,
+                background: "linear-gradient(90deg, #21808d, #4a9ba8, #21808d)",
+                backgroundSize: "200% 200%",
+                animation: "gradient 3s ease infinite",
+                "@keyframes gradient": {
+                  "0%": { backgroundPosition: "0% 50%" },
+                  "50%": { backgroundPosition: "100% 50%" },
+                  "100%": { backgroundPosition: "0% 50%" },
+                },
+              },
             }}
           >
-            <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <CardContent
+              sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+            >
               <Typography variant="h6" sx={{ fontWeight: 600 }}>
                 Recent Activity
               </Typography>
               <Stack spacing={1.5}>
-                {recentActivity.map((item) => (
-                  <Stack
+                {recentActivity.map((item, index) => (
+                  <motion.div
                     key={`${item.action}-${item.time}`}
-                    direction="row"
-                    spacing={2}
-                    alignItems="center"
-                    sx={{
-                      p: 1.5,
-                      borderRadius: 2,
-                      backgroundColor: "rgba(33,128,141,0.08)",
-                    }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 + index * 0.15, duration: 0.3 }}
                   >
-                    <Box sx={{ fontSize: 24 }}>
-                      {item.action === "Translated"
-                        ? "🌐"
-                        : item.action === "Saved phrase"
-                        ? "💾"
-                        : "👁️"}
-                    </Box>
-                    <Box sx={{ flexGrow: 1 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                        {item.action}
+                    <Stack
+                      direction="row"
+                      spacing={2}
+                      alignItems="center"
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 2,
+                        backgroundColor: "rgba(33,128,141,0.08)",
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          backgroundColor: "rgba(33,128,141,0.12)",
+                          transform: "translateX(4px)",
+                        },
+                      }}
+                    >
+                      <Box sx={{ fontSize: 24 }}>
+                        {item.action === "Translated"
+                          ? "🌐"
+                          : item.action === "Saved phrase"
+                          ? "💾"
+                          : "👁️"}
+                      </Box>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography
+                          variant="subtitle2"
+                          sx={{ fontWeight: 600 }}
+                        >
+                          {item.action}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          “{item.text}”
+                        </Typography>
+                      </Box>
+                      <Typography variant="caption" color="text.secondary">
+                        {item.time}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        “{item.text}”
-                      </Typography>
-                    </Box>
-                    <Typography variant="caption" color="text.secondary">
-                      {item.time}
-                    </Typography>
-                  </Stack>
+                    </Stack>
+                  </motion.div>
                 ))}
               </Stack>
             </CardContent>
@@ -262,10 +409,12 @@ export default function Dashboard() {
           <ModuleCard
             sx={{
               border: "1px solid rgba(94,82,64,0.12)",
-              backgroundColor: (theme) => theme.palette.background.paper,
+              backgroundColor: theme.palette.background.paper,
             }}
           >
-            <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <CardContent
+              sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+            >
               <Typography variant="h6" sx={{ fontWeight: 600 }}>
                 Travel Tips
               </Typography>
@@ -283,22 +432,34 @@ export default function Dashboard() {
                     icon: "📱",
                     text: "Keep emergency contacts easily accessible.",
                   },
-                ].map((tip) => (
-                  <Stack
+                ].map((tip, index) => (
+                  <motion.div
                     key={tip.text}
-                    direction="row"
-                    spacing={2}
-                    alignItems="center"
-                    sx={{
-                      p: 1.25,
-                      borderRadius: 2,
-                      border: "1px solid rgba(94,82,64,0.12)",
-                      backgroundColor: "rgba(94,82,64,0.04)",
-                    }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.7 + index * 0.15, duration: 0.3 }}
                   >
-                    <Box sx={{ fontSize: 24 }}>{tip.icon}</Box>
-                    <Typography variant="body2">{tip.text}</Typography>
-                  </Stack>
+                    <Stack
+                      direction="row"
+                      spacing={2}
+                      alignItems="center"
+                      sx={{
+                        p: 1.25,
+                        borderRadius: 2,
+                        border: "1px solid rgba(94,82,64,0.12)",
+                        backgroundColor: "rgba(94,82,64,0.04)",
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          borderColor: "rgba(94,82,64,0.3)",
+                          boxShadow: theme.shadows[2],
+                          transform: "translateX(4px)",
+                        },
+                      }}
+                    >
+                      <Box sx={{ fontSize: 24 }}>{tip.icon}</Box>
+                      <Typography variant="body2">{tip.text}</Typography>
+                    </Stack>
+                  </motion.div>
                 ))}
               </Stack>
             </CardContent>

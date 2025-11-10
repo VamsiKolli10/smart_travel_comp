@@ -40,7 +40,7 @@ export default function PhotoCarousel({ photos = [], maxWidth = 800, height }) {
 
   const getPhotoUrl = (photo) => {
     if (!photo) return null;
-    
+
     // If photo has a URL, make it absolute if it's relative
     if (photo.url) {
       // Already absolute URL
@@ -48,24 +48,28 @@ export default function PhotoCarousel({ photos = [], maxWidth = 800, height }) {
         return photo.url;
       }
       // Relative URL - make it absolute
-      // Backend returns URLs like: /api/stays/photo?ref=...
+      // Backend returns URLs like: /api/stays/photo?name=...&maxWidth=640
       // Frontend baseURL is like: http://localhost:8000/api
-      // We need: http://localhost:8000/api/stays/photo?ref=...
-      const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+      // We need: http://localhost:8000/api/stays/photo?name=...&maxWidth=640
+      const baseURL =
+        import.meta.env.VITE_API_URL || "http://localhost:8000/api";
       // Remove /api from baseURL, then the relative URL already has /api
       const cleanBase = baseURL.replace(/\/api$/, "");
       return `${cleanBase}${photo.url}`;
     }
-    
-    // Fallback: construct from reference
-    if (photo.reference) {
-      const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+
+    // Fallback: construct from name/reference
+    if (photo.reference || photo.name) {
+      const baseURL =
+        import.meta.env.VITE_API_URL || "http://localhost:8000/api";
       const cleanBase = baseURL.replace(/\/api$/, "");
-      const params = new URLSearchParams({ ref: photo.reference });
+      const params = new URLSearchParams({
+        name: photo.reference || photo.name,
+      });
       if (maxWidth) params.set("maxWidth", String(maxWidth));
       return `${cleanBase}/api/stays/photo?${params.toString()}`;
     }
-    
+
     return null;
   };
 
@@ -83,7 +87,7 @@ export default function PhotoCarousel({ photos = [], maxWidth = 800, height }) {
 
   const currentPhoto = photos[currentIndex];
   const photoUrl = getPhotoUrl(currentPhoto);
-  
+
   return (
     <Box
       sx={{

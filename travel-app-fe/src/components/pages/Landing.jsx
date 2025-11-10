@@ -1,7 +1,6 @@
 import { Fragment, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
-  AppBar,
   Box,
   Card,
   CardContent,
@@ -9,26 +8,22 @@ import {
   Container,
   Divider,
   Grid,
-  IconButton,
   Stack,
-  Toolbar,
   Typography,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
 import {
   AirplanemodeActive as PlaneIcon,
-  Brightness4 as DarkIcon,
-  Brightness7 as LightIcon,
   Explore as ExploreIcon,
   Language as LanguageIcon,
   LocalActivity as ActivityIcon,
   Security as SecurityIcon,
 } from "@mui/icons-material";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Button from "../common/Button";
-import { useAppearance } from "../../contexts/AppearanceContext.jsx";
 import { ModuleCard, ModuleCardGrid } from "../common/ModuleCard";
+import SharedNavbar from "../layout/SharedNavbar";
 import "./Landing.css";
 
 const heroAnimation = {
@@ -141,7 +136,7 @@ export default function Landing() {
 
   return (
     <Box className="landing-root">
-      <LandingNav />
+      {/* <SharedNavbar isLanding={true} /> */}
       <main>
         <HeroSection
           metrics={heroMetrics}
@@ -158,45 +153,6 @@ export default function Landing() {
         <FinalCTA />
       </main>
     </Box>
-  );
-}
-
-function LandingNav() {
-  const navigate = useNavigate();
-  const { mode, toggleMode } = useAppearance();
-
-  return (
-    <AppBar position="absolute" elevation={0} className="landing-appbar">
-      <Toolbar disableGutters className="landing-toolbar">
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <Box className="landing-brand-icon">
-            <PlaneIcon fontSize="small" />
-          </Box>
-          <Typography variant="h6" className="landing-brand-title">
-            Smart Travel Companion
-          </Typography>
-        </Stack>
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <IconButton
-            aria-label="toggle appearance"
-            onClick={toggleMode}
-            className="landing-toggle-button"
-          >
-            {mode === "dark" ? (
-              <LightIcon fontSize="small" />
-            ) : (
-              <DarkIcon fontSize="small" />
-            )}
-          </IconButton>
-          <Button variant="outlined" onClick={() => navigate("/login")}>
-            Log in
-          </Button>
-          <Button variant="contained" onClick={() => navigate("/register")}>
-            Join free
-          </Button>
-        </Stack>
-      </Toolbar>
-    </AppBar>
   );
 }
 
@@ -259,36 +215,6 @@ function HeroSection({ metrics, onPrimary, onSecondary, isMdUp }) {
                 Preview the dashboard
               </Button>
             </Stack>
-            {/* <Grid
-              component={motion.div}
-              variants={heroAnimation}
-              container
-              spacing={2}
-              sx={{
-                mt: 1,
-                p: { xs: 2.5, sm: 3 },
-                borderRadius: 3,
-                border: "1px solid rgba(94,82,64,0.12)",
-                backgroundColor: "rgba(255,255,255,0.7)",
-                backdropFilter: "blur(8px)",
-              }}
-            >
-              {metrics.map((metric) => (
-                <Grid item xs={12} sm={4} key={metric.label}>
-                  <Stack spacing={0.5}>
-                    <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                      {metric.value}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {metric.label}
-                    </Typography>
-                    <Typography variant="caption" color="primary">
-                      {metric.helper}
-                    </Typography>
-                  </Stack>
-                </Grid>
-              ))}
-            </Grid> */}
           </Stack>
           <Card
             component={motion.div}
@@ -714,16 +640,14 @@ function FinalCTA() {
               <Button
                 size="large"
                 variant="contained"
-                component={Link}
-                to="/register"
+                onClick={() => (window.location.href = "/register")}
               >
                 Create a free account
               </Button>
               <Button
                 size="large"
                 variant="outlined"
-                component={Link}
-                to="/login"
+                onClick={() => (window.location.href = "/login")}
               >
                 Log in
               </Button>

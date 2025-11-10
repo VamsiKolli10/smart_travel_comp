@@ -11,9 +11,87 @@ const {
   GOOGLE_API_KEY,
   PLACES_BASE_URL,
 } = require("../stays/providers/googlePlaces");
+const {
+  expressErrorHandler,
+  createErrorResponse,
+  ERROR_CODES,
+  logError,
+} = require("../utils/errorHandler");
 
-router.use(requireAuth({ allowRoles: ["user", "admin"] }));
+// Photo endpoint is public - no authentication required
+router.get("/photo", async (req, res) => {
+  const { name, maxWidth, maxHeight } = req.query;
 
+  try {
+    ensureKey();
+
+    if (!name) {
+      return res
+        .status(400)
+        .json(
+          createErrorResponse(
+            400,
+            ERROR_CODES.BAD_REQUEST,
+            "Place name is required"
+          )
+        );
+    }
+
+    // Google Places API photo endpoint
+    const params = new URLSearchParams({
+      maxWidth: String(maxWidth || 640),
+    });
+    if (maxHeight) {
+      params.append("maxHeight", String(maxHeight));
+    }
+
+    // Google Places API New - media endpoint for photos
+    const photoUrl = `https://places.googleapis.com/v1/${name}/photos/*?${params.toString()}`;
+
+    const response = await axios.get(photoUrl, {
+      headers: {
+        "X-Goog-Api-Key": GOOGLE_API_KEY,
+      },
+      responseType: "stream",
+      validateStatus: (status) => status === 200 || status === 302,
+    });
+
+    // Handle redirect responses
+    if (response.status === 302 && response.headers.location) {
+      const redirectResponse = await axios.get(response.headers.location, {
+        responseType: "stream",
+        validateStatus: (status) => status === 200,
+      });
+
+      if (redirectResponse.headers["content-type"]) {
+        res.setHeader("Content-Type", redirectResponse.headers["content-type"]);
+      }
+      res.setHeader(
+        "Cache-Control",
+        "public, max-age=86400, stale-while-revalidate=86400"
+      );
+      return redirectResponse.data.pipe(res);
+    }
+
+    if (response.headers["content-type"]) {
+      res.setHeader("Content-Type", response.headers["content-type"]);
+    }
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=86400, stale-while-revalidate=86400"
+    );
+
+    return response.data.pipe(res);
+  } catch (e) {
+    logError(e, { endpoint: "/api/stays/photo", query: req.query });
+    // Fallback to placeholder on error
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    return res.status(200).send("Photo proxy placeholder");
+  }
+});
+
+// Public search endpoint - no authentication required
 router.get("/search", async (req, res) => {
   try {
     const {
@@ -26,6 +104,9 @@ router.get("/search", async (req, res) => {
       amenities,
       page = 1,
       lang = "en",
+      checkInDate,
+      checkOutDate,
+      adults,
     } = req.query;
 
     let center;
@@ -35,7 +116,15 @@ router.get("/search", async (req, res) => {
       const ge = await geocodeCity(dest, lang);
       center = { lat: ge.lat, lng: ge.lng };
     } else {
-      return res.status(400).json({ error: "Provide either lat/lng or dest" });
+      return res
+        .status(400)
+        .json(
+          createErrorResponse(
+            400,
+            ERROR_CODES.BAD_REQUEST,
+            "Provide either lat/lng or dest"
+          )
+        );
     }
 
     const radius = Math.round((Number(distance) || 5) * 1000); // km -> meters
@@ -47,7 +136,7 @@ router.get("/search", async (req, res) => {
     });
     let items = raw.map((e) => toResultItem(e, center, lang));
 
-    // basic filters (OSM rarely has ratings; kept for future enrichment)
+    // basic filters
     if (type) {
       const wanted = String(type)
         .split(",")
@@ -96,110 +185,39 @@ router.get("/search", async (req, res) => {
       total: items.length,
     });
   } catch (e) {
-    console.error("Search error:", {
-      message: e.message,
-      stack: e.stack,
-      response: e.response?.data,
-    });
+    logError(e, { endpoint: "/api/stays/search", query: req.query });
     const status = e.response?.status || e.status || 500;
     const message =
       e.response?.data?.error?.message || e.message || "Failed to search stays";
-    res.status(status).json({ error: message });
-  }
-});
-
-const encodePlaceName = (name) =>
-  String(name).split("/").map(encodeURIComponent).join("/");
-
-// GET /api/stays/photo?name=<places/.../photos/...>&maxWidth=800
-router.get("/photo", async (req, res) => {
-  const { name, ref, maxWidth, maxHeight } = req.query;
-
-  try {
-    ensureKey();
-
-    if (name) {
-      const params = {};
-      if (maxWidth) params.maxWidthPx = Number(maxWidth);
-      if (maxHeight) params.maxHeightPx = Number(maxHeight);
-      if (!params.maxWidthPx && !params.maxHeightPx) {
-        params.maxWidthPx = 800;
-      }
-
-      const response = await axios.get(
-        `${PLACES_BASE_URL}/${encodePlaceName(name)}/media`,
-        {
-          headers: {
-            "X-Goog-Api-Key": GOOGLE_API_KEY,
-            Accept: "image/*",
-          },
-          params,
-          responseType: "stream",
-          validateStatus: (status) => status === 200,
-        }
+    res
+      .status(status)
+      .json(
+        createErrorResponse(status, ERROR_CODES.EXTERNAL_SERVICE_ERROR, message)
       );
-
-      if (response.headers["content-type"]) {
-        res.setHeader("Content-Type", response.headers["content-type"]);
-      }
-      res.setHeader(
-        "Cache-Control",
-        "public, max-age=86400, stale-while-revalidate=86400"
-      );
-
-      return response.data.pipe(res);
-    }
-
-    if (ref) {
-      const params = {
-        key: GOOGLE_API_KEY,
-        photoreference: ref,
-      };
-      if (maxWidth) params.maxwidth = maxWidth;
-      if (maxHeight) params.maxheight = maxHeight;
-      if (!params.maxwidth && !params.maxheight) {
-        params.maxwidth = 800;
-      }
-
-      const response = await axios.get(
-        "https://maps.googleapis.com/maps/api/place/photo",
-        {
-          params,
-          responseType: "stream",
-          validateStatus: (status) => status === 200,
-        }
-      );
-
-      if (response.headers["content-type"]) {
-        res.setHeader("Content-Type", response.headers["content-type"]);
-      }
-      res.setHeader(
-        "Cache-Control",
-        "public, max-age=86400, stale-while-revalidate=86400"
-      );
-
-      return response.data.pipe(res);
-    }
-
-    return res
-      .status(400)
-      .json({ error: "Photo name or reference is required" });
-  } catch (e) {
-    console.error("Failed to fetch photo", e.message || e);
-    res.status(500).json({ error: "Failed to fetch photo" });
   }
 });
 
 // GET /api/stays/:id
-router.get("/:id", async (req, res) => {
-  try {
-    const stay = await fetchById(req.params.id, req.query.lang || "en");
-    if (!stay) return res.status(404).json({ error: "Not found" });
-    res.json(stay);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
+router.get(
+  "/:id",
+  requireAuth({ allowRoles: ["user", "admin"] }),
+  async (req, res) => {
+    try {
+      const stay = await fetchById(req.params.id, req.query.lang || "en");
+      if (!stay)
+        return res
+          .status(404)
+          .json(
+            createErrorResponse(404, ERROR_CODES.NOT_FOUND, "Stay not found")
+          );
+      res.json(stay);
+    } catch (e) {
+      logError(e, { endpoint: "/api/stays/:id", id: req.params.id });
+      res
+        .status(500)
+        .json(createErrorResponse(500, ERROR_CODES.DB_ERROR, e.message));
+    }
   }
-});
+);
 
 module.exports = router;

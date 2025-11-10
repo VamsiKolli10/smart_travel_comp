@@ -213,8 +213,9 @@ export default function StaysSearchPage() {
     <Box
       sx={{
         backgroundColor: theme.palette.background.default,
-        minHeight: "100vh",
+        minHeight: "calc(100vh - 64px)",
         py: 3,
+        overflow: "auto",
       }}
     >
       <Container maxWidth="xl">
@@ -225,10 +226,20 @@ export default function StaysSearchPage() {
               Find Accommodations
             </Typography>
           </Grid>
-          <Grid container flexWrap={"nowrap"}>
+          <Grid
+            container
+            flexDirection="row"
+            alignItems="flex-start"
+            sx={{ overflowX: "hidden" }}
+          >
             {/* LEFT SIDEBAR - Filters */}
             {!isMobile && (
-              <Grid item xs={12} md={3}>
+              <Grid
+                item
+                xs={12}
+                md={3}
+                sx={{ overflowY: "auto", maxHeight: "calc(100vh - 120px)" }}
+              >
                 <Card sx={{ position: "sticky", top: 20 }}>
                   <CardContent sx={{ p: 2.5 }}>
                     {/* Search Bar */}
@@ -335,6 +346,7 @@ export default function StaysSearchPage() {
               item
               xs={12}
               md={isMobile ? 12 : 9}
+              sx={{ overflowX: "hidden" }}
             >
               {/* Mobile Search Bar */}
               {isMobile && (
@@ -443,27 +455,45 @@ export default function StaysSearchPage() {
               )}
 
               {/* Content */}
-              <Box sx={{ minHeight: "500px" }}>
+              <Box sx={{ minHeight: "500px", overflow: "hidden" }}>
                 {view === "map" && (
                   <Card>
-                    <Box sx={{ height: 600 }}>
+                    <Box sx={{ height: { xs: 400, sm: 500, md: 600 } }}>
                       <MapView items={items} loading={loading} />
                     </Box>
                   </Card>
                 )}
 
                 {view === "list" && (
-                  <ResultsList items={items} loading={loading} />
+                  <Box
+                    sx={{
+                      width: "100%",
+                      maxWidth: "100%",
+                      overflowX: "hidden",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    <ResultsList items={items} loading={loading} />
+                  </Box>
                 )}
 
                 {view === "split" && (
-                  <Grid container spacing={2}>
+                  <Grid container spacing={2} sx={{ overflowX: "hidden" }}>
                     <Grid item xs={12} md={6}>
-                      <ResultsList items={items} loading={loading} />
+                      <Box
+                        sx={{
+                          width: "100%",
+                          maxWidth: "100%",
+                          overflowX: "hidden",
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <ResultsList items={items} loading={loading} />
+                      </Box>
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <Card>
-                        <Box sx={{ height: 600 }}>
+                        <Box sx={{ height: { xs: 400, sm: 500, md: 600 } }}>
                           <MapView items={items} loading={loading} />
                         </Box>
                       </Card>

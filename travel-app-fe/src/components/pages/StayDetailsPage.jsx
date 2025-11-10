@@ -148,8 +148,9 @@ export default function StayDetailsPage() {
     <Box
       sx={{
         backgroundColor: theme.palette.background.default,
-        minHeight: "100vh",
+        minHeight: "calc(100vh - 64px)",
         py: 3,
+        overflow: "auto",
       }}
     >
       <Container maxWidth="lg">
@@ -200,12 +201,22 @@ export default function StayDetailsPage() {
         </Box>
 
         {/* Main Content */}
-        <Grid container spacing={3}>
+        <Grid container spacing={3} sx={{ overflowX: "hidden" }}>
           <Grid item xs={12}>
             <Card>
               {/* Hero Section with Photo Carousel */}
-              <Box sx={{ position: "relative", borderRadius: 3, overflow: "hidden" }}>
-                <PhotoCarousel photos={data.photos || []} height={heroHeight} maxWidth={1200} />
+              <Box
+                sx={{
+                  position: "relative",
+                  borderRadius: 3,
+                  overflow: "hidden",
+                }}
+              >
+                <PhotoCarousel
+                  photos={data.photos || []}
+                  height={heroHeight}
+                  maxWidth={1200}
+                />
                 <Box
                   sx={{
                     position: "absolute",
@@ -226,7 +237,13 @@ export default function StayDetailsPage() {
               </Box>
 
               {/* Content Section */}
-              <CardContent sx={{ p: 3 }}>
+              <CardContent
+                sx={{
+                  p: 3,
+                  overflowY: "auto",
+                  maxHeight: "calc(100vh - 280px)",
+                }}
+              >
                 {/* Header */}
                 <Box sx={{ mb: 3 }}>
                   <Box
@@ -235,9 +252,11 @@ export default function StayDetailsPage() {
                       alignItems: "flex-start",
                       justifyContent: "space-between",
                       mb: 2,
+                      flexWrap: "wrap",
+                      gap: 2,
                     }}
                   >
-                    <Box sx={{ flex: 1 }}>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
                         {data.name}
                       </Typography>
@@ -276,7 +295,8 @@ export default function StayDetailsPage() {
                           </Typography>
                         </Box>
                         <Typography variant="caption" color="textSecondary">
-                          {data.reviewsCount || data.reviews?.length || 0} reviews
+                          {data.reviewsCount || data.reviews?.length || 0}{" "}
+                          reviews
                         </Typography>
                       </Paper>
                     )}
@@ -297,7 +317,7 @@ export default function StayDetailsPage() {
                     <Typography
                       variant="body2"
                       color="textSecondary"
-                      sx={{ lineHeight: 1.7 }}
+                      sx={{ lineHeight: 1.7, wordBreak: "break-word" }}
                     >
                       {data.description}
                     </Typography>
@@ -355,6 +375,8 @@ export default function StayDetailsPage() {
                               justifyContent: "space-between",
                               alignItems: "center",
                               mb: 1,
+                              flexWrap: "wrap",
+                              gap: 1,
                             }}
                           >
                             <Typography
@@ -386,7 +408,7 @@ export default function StayDetailsPage() {
                           <Typography
                             variant="body2"
                             color="textSecondary"
-                            sx={{ mb: 1 }}
+                            sx={{ mb: 1, wordBreak: "break-word" }}
                           >
                             {review.text}
                           </Typography>
