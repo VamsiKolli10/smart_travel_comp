@@ -1,7 +1,9 @@
+const { sanitizeTextInput, normalizeLangPair } = require("../utils/validation");
 const {
-  sanitizeTextInput,
-  normalizeLangPair,
-} = require("../utils/validation");
+  createErrorResponse,
+  ERROR_CODES,
+  logError,
+} = require("../utils/errorHandler");
 
 const SUPPORTED_PAIRS = new Set([
   "en-es",
@@ -44,20 +46,44 @@ exports.translateText = async (req, res) => {
       label: "text",
     });
     if (cleanText.error) {
-      return res.status(400).json({ error: cleanText.error });
+      return res
+        .status(400)
+        .json(
+          createErrorResponse(
+            400,
+            ERROR_CODES.VALIDATION_ERROR,
+            cleanText.error
+          )
+        );
     }
 
     const normalizedPair = normalizeLangPair(langPair, SUPPORTED_PAIRS);
     if (normalizedPair.error) {
-      return res.status(400).json({ error: normalizedPair.error });
+      return res
+        .status(400)
+        .json(
+          createErrorResponse(
+            400,
+            ERROR_CODES.VALIDATION_ERROR,
+            normalizedPair.error
+          )
+        );
     }
 
     const translator = await getTranslator(normalizedPair.value);
     const result = await (await translator)(cleanText.value);
     res.json({ translation: result[0]?.translation_text || "" });
   } catch (err) {
-    console.error("Translation error details:", err);
-    res.status(500).json({ error: "Translation failed." });
+    logError(err, { endpoint: "/api/translate" });
+    res
+      .status(500)
+      .json(
+        createErrorResponse(
+          500,
+          ERROR_CODES.EXTERNAL_SERVICE_ERROR,
+          "Translation failed"
+        )
+      );
   }
 };
 
@@ -77,7 +103,15 @@ exports.warmup = async (req, res) => {
     }
     res.json({ warmed });
   } catch (err) {
-    console.error("Warmup error:", err);
-    res.status(500).json({ error: "Warmup failed." });
+    logError(err, { endpoint: "/api/translate/warmup" });
+    res
+      .status(500)
+      .json(
+        createErrorResponse(
+          500,
+          ERROR_CODES.EXTERNAL_SERVICE_ERROR,
+          "Warmup failed"
+        )
+      );
   }
 };

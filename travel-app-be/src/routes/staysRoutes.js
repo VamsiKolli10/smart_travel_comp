@@ -18,45 +18,52 @@ const {
   logError,
 } = require("../utils/errorHandler");
 
+const encodePlacePath = (name) =>
+  String(name)
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+
 // Photo endpoint is public - no authentication required
 router.get("/photo", async (req, res) => {
-  const { name, maxWidth, maxHeight } = req.query;
+  const { name, ref, maxWidth, maxHeight } = req.query;
 
   try {
     ensureKey();
 
-    if (!name) {
+    const photoName = name || ref;
+    if (!photoName) {
       return res
         .status(400)
         .json(
           createErrorResponse(
             400,
             ERROR_CODES.BAD_REQUEST,
-            "Place name is required"
+            "Place photo name is required"
           )
         );
     }
 
-    // Google Places API photo endpoint
-    const params = new URLSearchParams({
-      maxWidth: String(maxWidth || 640),
-    });
-    if (maxHeight) {
-      params.append("maxHeight", String(maxHeight));
+    const params = {};
+    if (maxWidth) params.maxWidthPx = Number(maxWidth);
+    if (maxHeight) params.maxHeightPx = Number(maxHeight);
+    if (!params.maxWidthPx && !params.maxHeightPx) {
+      params.maxWidthPx = 640;
     }
 
-    // Google Places API New - media endpoint for photos
-    const photoUrl = `https://places.googleapis.com/v1/${name}/photos/*?${params.toString()}`;
-
-    const response = await axios.get(photoUrl, {
+    const endpoint = `${PLACES_BASE_URL}/${encodePlacePath(photoName)}/media`;
+    const response = await axios.get(endpoint, {
       headers: {
         "X-Goog-Api-Key": GOOGLE_API_KEY,
+        "X-Goog-FieldMask": "*",
+        Accept: "image/*",
       },
+      params,
       responseType: "stream",
+      maxRedirects: 0,
       validateStatus: (status) => status === 200 || status === 302,
     });
 
-    // Handle redirect responses
     if (response.status === 302 && response.headers.location) {
       const redirectResponse = await axios.get(response.headers.location, {
         responseType: "stream",
@@ -84,10 +91,15 @@ router.get("/photo", async (req, res) => {
     return response.data.pipe(res);
   } catch (e) {
     logError(e, { endpoint: "/api/stays/photo", query: req.query });
-    // Fallback to placeholder on error
-    res.setHeader("Content-Type", "image/jpeg");
-    res.setHeader("Cache-Control", "public, max-age=3600");
-    return res.status(200).send("Photo proxy placeholder");
+    return res
+      .status(502)
+      .json(
+        createErrorResponse(
+          502,
+          ERROR_CODES.EXTERNAL_SERVICE_ERROR,
+          "Failed to fetch photo from provider"
+        )
+      );
   }
 });
 
@@ -197,27 +209,23 @@ router.get("/search", async (req, res) => {
   }
 });
 
-// GET /api/stays/:id
-router.get(
-  "/:id",
-  requireAuth({ allowRoles: ["user", "admin"] }),
-  async (req, res) => {
-    try {
-      const stay = await fetchById(req.params.id, req.query.lang || "en");
-      if (!stay)
-        return res
-          .status(404)
-          .json(
-            createErrorResponse(404, ERROR_CODES.NOT_FOUND, "Stay not found")
-          );
-      res.json(stay);
-    } catch (e) {
-      logError(e, { endpoint: "/api/stays/:id", id: req.params.id });
-      res
-        .status(500)
-        .json(createErrorResponse(500, ERROR_CODES.DB_ERROR, e.message));
-    }
+// Public endpoint - no authentication required
+router.get("/:id", async (req, res) => {
+  try {
+    const stay = await fetchById(req.params.id, req.query.lang || "en");
+    if (!stay)
+      return res
+        .status(404)
+        .json(
+          createErrorResponse(404, ERROR_CODES.NOT_FOUND, "Stay not found")
+        );
+    res.json(stay);
+  } catch (e) {
+    logError(e, { endpoint: "/api/stays/:id", id: req.params.id });
+    res
+      .status(500)
+      .json(createErrorResponse(500, ERROR_CODES.DB_ERROR, e.message));
   }
-);
+});
 
 module.exports = router;

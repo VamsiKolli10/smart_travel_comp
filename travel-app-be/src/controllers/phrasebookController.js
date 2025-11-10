@@ -1,8 +1,12 @@
 const { chatComplete } = require("../lib/openrouterClient");
-
+const {
+  createErrorResponse,
+  ERROR_CODES,
+  logError,
+} = require("../utils/errorHandler");
 
 function sanitizeStr(s) {
-  return (typeof s === "string" ? s.trim() : "");
+  return typeof s === "string" ? s.trim() : "";
 }
 function clamp(n, lo, hi) {
   const v = Number.parseInt(n ?? 10, 10);
@@ -14,14 +18,31 @@ async function generatePhrases(req, res) {
     const topic = sanitizeStr(req.body?.topic);
     const sourceLang = sanitizeStr(req.body?.sourceLang);
     const targetLang = sanitizeStr(req.body?.targetLang);
-    const n = 3
+    const n = 3;
     // const n = clamp(req.body?.count, 3, 25);
 
     if (!topic || !sourceLang || !targetLang) {
-      return res.status(400).json({ error: "Missing required fields", missing: ["topic", "sourceLang", "targetLang"] });
+      return res
+        .status(400)
+        .json(
+          createErrorResponse(
+            400,
+            ERROR_CODES.VALIDATION_ERROR,
+            "Missing required fields",
+            { missing: ["topic", "sourceLang", "targetLang"] }
+          )
+        );
     }
     if (sourceLang.toLowerCase() === targetLang.toLowerCase()) {
-      return res.status(400).json({ error: "sourceLang and targetLang must be different" });
+      return res
+        .status(400)
+        .json(
+          createErrorResponse(
+            400,
+            ERROR_CODES.VALIDATION_ERROR,
+            "sourceLang and targetLang must be different"
+          )
+        );
     }
 
     const system = [
@@ -31,7 +52,7 @@ async function generatePhrases(req, res) {
       "Include 'transliteration' ONLY when target language typically needs romanization (e.g., scripts like Arabic, Devanagari, Kanji/Kana, Hangul, Cyrillic).",
       "When transliteration is not useful, return an empty string for that field.",
       "Also include a 'sourceTranslation' which is the phrase translated into the SOURCE language (not a definition).",
-      "Use safe, polite, travel-relevant language. Keep phrases short and practical."
+      "Use safe, polite, travel-relevant language. Keep phrases short and practical.",
     ].join(" ");
 
     // Schema the model should follow
@@ -52,17 +73,32 @@ async function generatePhrases(req, res) {
             items: {
               type: "object",
               properties: {
-                targetPhrase: { type: "string", description: "The phrase in the TARGET language." },
-                transliteration: { type: "string", description: "Romanization if helpful; otherwise empty string." },
-                sourceTranslation: { type: "string", description: "The phrase translated into the SOURCE language." },
-                usageExample: { type: "string", description: "Short example using the target phrase in context (in target language)." }
+                targetPhrase: {
+                  type: "string",
+                  description: "The phrase in the TARGET language.",
+                },
+                transliteration: {
+                  type: "string",
+                  description:
+                    "Romanization if helpful; otherwise empty string.",
+                },
+                sourceTranslation: {
+                  type: "string",
+                  description:
+                    "The phrase translated into the SOURCE language.",
+                },
+                usageExample: {
+                  type: "string",
+                  description:
+                    "Short example using the target phrase in context (in target language).",
+                },
               },
-              required: ["targetPhrase", "sourceTranslation", "usageExample"]
-            }
-          }
+              required: ["targetPhrase", "sourceTranslation", "usageExample"],
+            },
+          },
         },
-        required: ["topic", "sourceLang", "targetLang", "phrases"]
-      }
+        required: ["topic", "sourceLang", "targetLang", "phrases"],
+      },
     });
 
     // Ask the model for JSON output; client normalizes response_format for providers
@@ -70,7 +106,7 @@ async function generatePhrases(req, res) {
       system,
       user,
       temperature: 0.4,
-      response_format: "json_object"
+      response_format: "json_object",
     });
 
     let payload;
@@ -82,7 +118,16 @@ async function generatePhrases(req, res) {
     }
 
     if (!payload || !Array.isArray(payload.phrases)) {
-      return res.status(502).json({ error: "Upstream returned an unexpected format", raw });
+      return res
+        .status(502)
+        .json(
+          createErrorResponse(
+            502,
+            ERROR_CODES.EXTERNAL_SERVICE_ERROR,
+            "Upstream returned an unexpected format",
+            { raw }
+          )
+        );
     }
 
     // Normalize output to your stable response shape
@@ -90,19 +135,30 @@ async function generatePhrases(req, res) {
       topic: payload.topic || topic,
       sourceLang: payload.sourceLang || sourceLang,
       targetLang: payload.targetLang || targetLang,
-      phrases: payload.phrases.map(p => {
-        const phrase = sanitizeStr(p.targetPhrase);
-        const transliteration = sanitizeStr(p.transliteration);
-        const meaning = sanitizeStr(p.sourceTranslation);
-        const usageExample = sanitizeStr(p.usageExample);
-        return { phrase, transliteration, meaning, usageExample };
-      }).filter(p => p.phrase && p.meaning && p.usageExample)
+      phrases: payload.phrases
+        .map((p) => {
+          const phrase = sanitizeStr(p.targetPhrase);
+          const transliteration = sanitizeStr(p.transliteration);
+          const meaning = sanitizeStr(p.sourceTranslation);
+          const usageExample = sanitizeStr(p.usageExample);
+          return { phrase, transliteration, meaning, usageExample };
+        })
+        .filter((p) => p.phrase && p.meaning && p.usageExample),
     };
 
     return res.status(200).json(normalized);
   } catch (err) {
-    console.error("Phrasebook generate error:", err?.response?.data || err);
-    return res.status(500).json({ error: "Failed to generate phrases", detail: err?.message || "unknown" });
+    logError(err, { endpoint: "/api/phrasebook/generate" });
+    return res
+      .status(500)
+      .json(
+        createErrorResponse(
+          500,
+          ERROR_CODES.EXTERNAL_SERVICE_ERROR,
+          "Failed to generate phrases",
+          { detail: err?.message || "unknown" }
+        )
+      );
   }
 }
 
