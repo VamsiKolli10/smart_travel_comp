@@ -125,12 +125,13 @@ export default function StaysSearchPage() {
         success: true,
       });
     } catch (e) {
-      setError(e?.message || "Failed to fetch stays");
+      const apiMsg = e?.response?.data?.error?.message;
+      setError(apiMsg || e?.message || "Failed to fetch stays");
       setItems([]);
       trackEvent("stays_search", {
         hasDestination: Boolean(searchQuery.dest),
         hasCoordinates: Boolean(searchQuery.lat && searchQuery.lng),
-        error: e?.message || "unknown",
+        error: apiMsg || e?.message || "unknown",
         success: false,
       });
     } finally {

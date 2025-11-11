@@ -11,6 +11,7 @@ const translationRoutes = require("./routes/translationRoutes");
 const phrasebookRoutes = require("./routes/phrasebookRoutes");
 const savedPhraseRoutes = require("./routes/savedPhraseRoutes");
 const staysRoutes = require("./routes/staysRoutes");
+const poiRoutes = require("./routes/poiRoutes");
 const { db } = require("./config/firebaseAdmin");
 const { requireAuth } = require("./middleware/authenticate");
 const {
@@ -43,7 +44,8 @@ const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || "1mb";
 const roleLimits = {
   admin: 120, // Admins can make more requests
   user: 60, // Regular users
-  anonymous: 20, // Unauthenticated users have strict limits
+  // Increase anonymous headroom to avoid incidental 429s from image fetches
+  anonymous: 120, // Unauthenticated users
 };
 
 // Endpoint-specific rate limits
@@ -67,6 +69,10 @@ const endpointLimits = {
   "/api/stays/photo": {
     windowMs: 60000, // 1 minute
     max: 300, // 300 requests per minute for photo proxy
+  },
+  "/api/poi/search": {
+    windowMs: 60000, // 1 minute
+    max: 60,
   },
 };
 
@@ -109,6 +115,8 @@ function createApp() {
           frameSrc: ["'none'"],
         },
       },
+      // Allow subresources like images to be requested cross-origin (e.g., FE :5173 -> BE :8000)
+      crossOriginResourcePolicy: { policy: "cross-origin" },
       xssFilter: true,
       noSniff: true,
       frameGuard: "deny",
@@ -119,15 +127,23 @@ function createApp() {
 
   app.use(express.json({ limit: requestBodyLimit }));
 
-  // Apply role-based rate limiting to the entire API
-  app.use(
-    "/api",
-    createRoleBasedLimiter({
-      windowMs: rateLimitWindowMs,
-      limits: roleLimits,
-      defaultMessage: "Too many requests for your role",
-    })
-  );
+  // Apply role-based rate limiting to the API, but skip specific public endpoints
+  const roleLimiter = createRoleBasedLimiter({
+    windowMs: rateLimitWindowMs,
+    limits: roleLimits,
+    defaultMessage: "Too many requests for your role",
+  });
+  app.use("/api", (req, res, next) => {
+    const fullPath = req.originalUrl || req.url || "";
+    const pathOnly = req.path || "";
+    const skipPaths = [
+      "/api/stays/photo", // high-volume image proxy
+    ];
+    if (skipPaths.some((p) => fullPath.startsWith(p) || pathOnly.startsWith(p))) {
+      return next();
+    }
+    return roleLimiter(req, res, next);
+  });
 
   // Apply endpoint-specific rate limiting
   Object.entries(endpointLimits).forEach(([path, limits]) => {
@@ -220,6 +236,7 @@ function createApp() {
   app.use("/api/phrasebook", phrasebookRoutes);
   app.use("/api/saved-phrases", requireAuth(), savedPhraseRoutes);
   app.use("/api/stays", staysRoutes);
+  app.use("/api/poi", poiRoutes);
 
   app.use((req, res) =>
     res.status(404).json(

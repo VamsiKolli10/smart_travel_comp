@@ -394,3 +394,80 @@ The API logs security-related events, including:
       "thumbnail": "https://example.com/photo1.jpg"
     }
     ```
+
+### Points of Interest (POI)
+
+- GET `/api/poi/search`
+  - Description: Search attractions and places to visit near a destination or coordinates.
+  - Access: Public.
+  - Rate Limit: 60 requests per minute (in addition to role-based limits).
+  - Query Parameters:
+    - `dest`: Free text for city/country/area (required if `lat`/`lng` not provided)
+    - `lat`,`lng`: Coordinates (required if `dest` not provided)
+    - `distance`: Radius in kilometers (default: 5)
+    - `category`: Comma-separated categories: `museum,hike,viewpoint,food`
+    - `kidFriendly`: `true|false`
+    - `accessibility`: `true|false`
+    - `openNow`: `true|false`
+    - `timeNeeded`: `<2h|half-day|full-day`
+    - `cost`: `free|paid`
+    - `lang`: Result language (default: `en`)
+    - `page`: Page number (default: 1)
+  - Response example:
+    ```json
+    {
+      "items": [
+        {
+          "id": "places/ChIJ...",
+          "name": "City Museum",
+          "blurb": "A comprehensive collection of local history.",
+          "rating": 4.6,
+          "reviewsCount": 1287,
+          "categories": ["museum", "tourist_attraction"],
+          "openingHours": ["Mon: Closed", "Tue: 10:00–18:00"],
+          "openNow": false,
+          "suggestedDuration": "half-day",
+          "badges": ["Closed Mondays"],
+          "photos": [{ "url": "/api/stays/photo?name=places/.../media" }],
+          "thumbnail": "/api/stays/photo?name=places/.../media",
+          "location": {
+            "address": "123 Museum St",
+            "lat": 48.8566,
+            "lng": 2.3522,
+            "distanceKm": 1.4
+          },
+          "provider": {
+            "name": "Google Places",
+            "deeplink": "https://maps.google.com/?cid=..."
+          },
+          "sourceLang": "en"
+        }
+      ],
+      "page": 1,
+      "pageSize": 20,
+      "total": 37
+    }
+    ```
+
+- GET `/api/poi/:id`
+  - Description: Get destination details by Google Place ID (`places/<id>` or raw id).
+  - Access: Public.
+  - Query Parameters:
+    - `lang`: Result language (default: `en`)
+  - Response example:
+    ```json
+    {
+      "id": "places/ChIJ...",
+      "name": "City Museum",
+      "description": "A leading museum ...",
+      "rating": 4.6,
+      "reviewsCount": 1287,
+      "photos": [{ "url": "/api/stays/photo?name=places/.../media" }],
+      "location": { "address": "123 Museum St", "lat": 48.8566, "lng": 2.3522 },
+      "phone": "+33 ...",
+      "website": "https://example.org",
+      "openingHours": ["Mon: Closed", "Tue: 10:00–18:00"],
+      "provider": { "name": "Google Places", "deeplink": "https://maps.google..." },
+      "thumbnail": "/api/stays/photo?name=places/.../media"
+    }
+    ```
