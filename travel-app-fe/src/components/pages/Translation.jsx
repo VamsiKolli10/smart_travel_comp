@@ -15,6 +15,7 @@ import {
   MenuItem,
   Select,
   Slider,
+  Snackbar,
   Stack,
   TextField,
   Tooltip,
@@ -33,9 +34,11 @@ import Button from "../common/Button";
 import PageContainer from "../layout/PageContainer";
 import { ModuleCard, ModuleCardGrid } from "../common/ModuleCard";
 import { translateText } from "../../services/translation";
+import { addSavedPhrase } from "../../services/savedPhrases";
 import { useAnalytics } from "../../contexts/AnalyticsContext.jsx";
 import { logRecentActivity } from "../../utils/recentActivity";
 import useTravelContext from "../../hooks/useTravelContext";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 import {
   TRANSLATION_LANGUAGES,
   getLanguageLabel,
@@ -86,10 +89,17 @@ export default function Translation() {
     recognition: false,
     synthesis: false,
   });
+  const [savingPhrase, setSavingPhrase] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState({
+    open: false,
+    severity: "success",
+    message: "",
+  });
 
   const recognitionRef = useRef(null);
   const utteranceRef = useRef(null);
   const { trackModuleView, trackEvent } = useAnalytics();
+  const { user } = useAuth();
   const languageOptions = TRANSLATION_LANGUAGES;
 
   useEffect(() => {
@@ -304,6 +314,81 @@ export default function Translation() {
     window.speechSynthesis?.cancel();
     setIsSpeaking(false);
     setIsPaused(false);
+  };
+
+  const handleSaveToPhrasebook = async () => {
+    if (!target?.trim()) {
+      setSaveFeedback({
+        open: true,
+        severity: "warning",
+        message: "Translate something first to save it.",
+      });
+      return;
+    }
+
+    if (!user?.uid) {
+      setSaveFeedback({
+        open: true,
+        severity: "warning",
+        message: "Please sign in to save phrases to your phrasebook.",
+      });
+      return;
+    }
+
+    const trimmedTarget = target.trim();
+    const trimmedSource = source.trim();
+
+    setSavingPhrase(true);
+    try {
+      await addSavedPhrase({
+        phrase: trimmedTarget,
+        transliteration: "",
+        meaning: trimmedSource || trimmedTarget,
+        usageExample: trimmedSource || trimmedTarget,
+        topic: "Translation workspace",
+        sourceLang,
+        targetLang,
+      });
+
+      setSaveFeedback({
+        open: true,
+        severity: "success",
+        message: "Saved to your phrasebook.",
+      });
+
+      trackEvent("translation_save_phrase", {
+        sourceLang,
+        targetLang,
+      });
+
+      logRecentActivity({
+        type: "phrasebook",
+        title: "Saved translation",
+        description: `${sourceLang.toUpperCase()} → ${targetLang.toUpperCase()} · ${trimmedTarget.slice(
+          0,
+          60
+        )}${trimmedTarget.length > 60 ? "…" : ""}`,
+        meta: { sourceLang, targetLang },
+      });
+    } catch (error) {
+      const status = error?.response?.status;
+      const message =
+        status === 401
+          ? "Please sign in to save phrases."
+          : error?.response?.data?.error || error?.message || "Failed to save.";
+      setSaveFeedback({
+        open: true,
+        severity: "error",
+        message,
+      });
+    } finally {
+      setSavingPhrase(false);
+    }
+  };
+
+  const handleCloseSaveFeedback = (_, reason) => {
+    if (reason === "clickaway") return;
+    setSaveFeedback((prev) => ({ ...prev, open: false }));
   };
 
   const supportChips = useMemo(
@@ -782,8 +867,8 @@ export default function Translation() {
               </Button>
               <Button
                 variant="outlined"
-                onClick={() => alert("Save to Phrasebook not implemented yet")}
-                disabled={!target}
+                onClick={handleSaveToPhrasebook}
+                disabled={!target || savingPhrase}
                 size="large"
                 sx={{
                   minWidth: 150,
@@ -794,7 +879,14 @@ export default function Translation() {
                   },
                 }}
               >
-                Save to Phrasebook
+                {savingPhrase ? (
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <CircularProgress size={18} color="inherit" />
+                    <span>Saving…</span>
+                  </Stack>
+                ) : (
+                  "Save to Phrasebook"
+                )}
               </Button>
             </Stack>
           </CardContent>
@@ -1097,6 +1189,21 @@ export default function Translation() {
           ))}
         </ModuleCardGrid>
       </Stack>
+      <Snackbar
+        open={saveFeedback.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSaveFeedback}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={handleCloseSaveFeedback}
+          severity={saveFeedback.severity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {saveFeedback.message}
+        </Alert>
+      </Snackbar>
     </PageContainer>
   );
 }
