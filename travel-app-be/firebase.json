@@ -42,10 +42,6 @@
           "functionId": "api",
           "codebase": "backend"
         }
-      },
-      {
-        "source": "**",
-        "destination": "/index.html"
       }
     ]
   }

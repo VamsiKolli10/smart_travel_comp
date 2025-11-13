@@ -94,16 +94,7 @@ const methodLimits = {
 function createApp() {
   const app = express();
 
-  app.use(
-    cors({
-      origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
-          return callback(null, true);
-        }
-        return callback(new Error("Not allowed by CORS"));
-      },
-    })
-  );
+  app.use(cors({ origin: true }));
 
   // Use Helmet with custom configuration
   app.use(

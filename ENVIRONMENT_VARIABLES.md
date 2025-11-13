@@ -19,7 +19,7 @@ Environment variables are crucial for configuring the Smart Travel Companion app
 
 | Variable                | Description                         | Default       | Required |
 | ----------------------- | ----------------------------------- | ------------- | -------- |
-| `PORT`                  | Server port number                  | `8000`        | No       |
+| `APP_PORT`              | Server port number (local dev)      | `8000`        | No       |
 | `NODE_ENV`              | Environment mode                    | `development` | No       |
 | `FIRESTORE_PREFER_REST` | Use REST API over gRPC              | `true`        | No       |
 | `REQUEST_BODY_LIMIT`    | Maximum request body size           | `1mb`         | No       |
@@ -235,7 +235,7 @@ project/
 # Copy this template and fill in your values
 
 # Server
-PORT=8000
+APP_PORT=8000
 NODE_ENV=production
 FIRESTORE_PREFER_REST=true
 

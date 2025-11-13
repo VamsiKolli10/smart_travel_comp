@@ -54,7 +54,7 @@ Create a `.env` file in the `travel-app-be` directory:
 
 ```bash
 # Server Configuration
-PORT=8000
+APP_PORT=8000
 NODE_ENV=production
 FIRESTORE_PREFER_REST=true
 

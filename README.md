@@ -60,7 +60,7 @@ cp travel-app-fe/.env.example travel-app-fe/.env
 
 | Variable (backend)           | Purpose                                              |
 |-----------------------------|------------------------------------------------------|
-| `PORT`                      | Express port (default `8000`)                        |
+| `APP_PORT`                  | Express port for local dev (default `8000`)          |
 | `FIREBASE_ADMIN_CREDENTIALS`| Service account JSON or base64 string injected via secrets manager (preferred) |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Absolute path to the credential file if you mount it on disk (defaults to `travel-app-be/serviceAccountKey.json`) |
 | `GOOGLE_PLACES_API_KEY`     | Enables stays search/photo proxy                     |
