@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Autocomplete,
@@ -37,28 +37,17 @@ import {
   removeSavedPhrase,
 } from "../../services/savedPhrases";
 import useConnectivity from "../../hooks/useConnectivity";
+import useTravelContext from "../../hooks/useTravelContext";
 import {
   cacheSavedPhrases,
   readSavedPhrases,
 } from "../../services/offlineCache";
-
-const COMMON_LANGS = [
-  "English",
-  "Spanish",
-  "French",
-  "German",
-  "Italian",
-  "Portuguese",
-  "Hindi",
-  "Chinese",
-  "Japanese",
-  "Korean",
-  "Arabic",
-  "Russian",
-  "Turkish",
-  "Thai",
-  "Indonesian",
-];
+import {
+  COMMON_LANGUAGE_LABELS,
+  getLanguageLabel,
+  resolveLanguageCode,
+} from "../../constants/languages";
+import { logRecentActivity } from "../../utils/recentActivity";
 
 const COUNT_MARKS = [
   { value: 5, label: "5" },
@@ -72,10 +61,44 @@ const AnimatedCard = motion(Card);
 const AnimatedStack = motion(Stack);
 const AnimatedGrid = motion(Grid);
 
+const normalizeLanguageForApi = (value = "") => {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  const resolved = resolveLanguageCode(trimmed);
+  if (resolved) return resolved.toLowerCase();
+
+  const match = trimmed.match(/^([a-z]{2,3})(?:[-_]?([a-z]{2}))?$/i);
+  if (match) {
+    const lang = match[1]?.toLowerCase() || "";
+    const region = match[2];
+    if (region) {
+      return `${lang}-${region.toUpperCase()}`;
+    }
+    return lang;
+  }
+  if (/^auto$/i.test(trimmed)) {
+    return "";
+  }
+  return "";
+};
+
 export default function Phrasebook() {
+  const {
+    sourceLanguageName,
+    targetLanguageName,
+    sourceLanguageCode,
+    targetLanguageCode,
+    setLanguagePair,
+  } = useTravelContext();
+
+  const defaultSourceLanguage =
+    sourceLanguageName || getLanguageLabel(sourceLanguageCode || "") || "";
+  const defaultTargetLanguage =
+    targetLanguageName || getLanguageLabel(targetLanguageCode || "") || "";
+
   const [topic, setTopic] = useState("");
-  const [sourceLang, setSourceLang] = useState("");
-  const [targetLang, setTargetLang] = useState("");
+  const [sourceLang, setSourceLang] = useState(defaultSourceLanguage);
+  const [targetLang, setTargetLang] = useState(defaultTargetLanguage);
   const [count, setCount] = useState(10);
 
   const [loading, setLoading] = useState(false);
@@ -91,10 +114,58 @@ export default function Phrasebook() {
   const [filteredSaved, setFilteredSaved] = useState([]);
   const theme = useTheme();
 
+  useEffect(() => {
+    const nextSource =
+      sourceLanguageName || getLanguageLabel(sourceLanguageCode || "") || "";
+    if (nextSource && nextSource !== sourceLang) {
+      setSourceLang(nextSource);
+    }
+  }, [sourceLanguageName, sourceLanguageCode, sourceLang]);
+
+  useEffect(() => {
+    const nextTarget =
+      targetLanguageName || getLanguageLabel(targetLanguageCode || "") || "";
+    if (nextTarget && nextTarget !== targetLang) {
+      setTargetLang(nextTarget);
+    }
+  }, [targetLanguageName, targetLanguageCode, targetLang]);
+
   const persistSaved = (items) =>
     cacheSavedPhrases(items).catch((error) =>
       console.warn("Failed to persist saved phrases locally", error)
     );
+
+  const updateSourceLanguage = useCallback(
+    (value) => {
+      const next = (value || "").trim();
+      setSourceLang(next);
+      if (!setLanguagePair) return;
+      setLanguagePair(
+        {
+          sourceLanguageName: next,
+          sourceLanguageCode: resolveLanguageCode(next),
+        },
+        { source: "phrasebook-source" }
+      );
+    },
+    [setLanguagePair]
+  );
+
+  const updateTargetLanguage = useCallback(
+    (value) => {
+      const next = (value || "").trim();
+      setTargetLang(next);
+      if (!setLanguagePair) return;
+      setLanguagePair(
+        {
+          targetLanguageName: next,
+          targetLanguageCode: resolveLanguageCode(next),
+        },
+        { source: "phrasebook-target" }
+      );
+    },
+    [setLanguagePair]
+  );
 
   useEffect(() => {
     let active = true;
@@ -170,10 +241,12 @@ export default function Phrasebook() {
   const savedKeys = useMemo(
     () =>
       new Set(
-        saved.map(
-          (item) =>
-            `${item.phrase?.toLowerCase()}::${item.targetLang?.toLowerCase()}`
-        )
+        saved.map((item) => {
+          const normalizedLang =
+            normalizeLanguageForApi(item.targetLang) ||
+            (item.targetLang || "").trim().toLowerCase();
+          return `${item.phrase?.toLowerCase()}::${normalizedLang}`;
+        })
       ),
     [saved]
   );
@@ -182,11 +255,10 @@ export default function Phrasebook() {
 
   const isSaved = (item) => {
     if (!item?.phrase || !currentTargetLang) return false;
-    return savedKeys.has(
-      `${item.phrase.toLowerCase()}::${(
-        item.targetLang || currentTargetLang
-      ).toLowerCase()}`
-    );
+    const normalizedLang =
+      normalizeLanguageForApi(item.targetLang || currentTargetLang) ||
+      (item.targetLang || currentTargetLang || "").toLowerCase();
+    return savedKeys.has(`${item.phrase.toLowerCase()}::${normalizedLang}`);
   };
 
   const handleGenerate = async (e) => {
@@ -203,6 +275,17 @@ export default function Phrasebook() {
         count: Number(count) || 10,
       });
       setResult(data);
+      logRecentActivity({
+        type: "phrasebook",
+        title: "Generated phrasebook",
+        description: `${(data?.topic || topic || "Custom topic").slice(
+          0,
+          48
+        )} · ${(data?.sourceLang || sourceLang || "Source").toUpperCase()} → ${(
+          data?.targetLang || targetLang || "Target"
+        ).toUpperCase()}`,
+        meta: { count: data?.phrases?.length || Number(count) || 10 },
+      });
     } catch (err) {
       const msg =
         err?.response?.data?.error ||
@@ -218,10 +301,28 @@ export default function Phrasebook() {
   const toggleSave = async (item) => {
     if (!item?.phrase) return;
     const lang = item.targetLang || currentTargetLang;
+    const normalizedTargetLang = normalizeLanguageForApi(lang);
+    if (!normalizedTargetLang) {
+      setError(
+        "Unable to determine the target language. Please pick a language."
+      );
+      return;
+    }
+
+    const normalizedSourceLang = normalizeLanguageForApi(
+      result?.sourceLang || sourceLang
+    );
+    if (!normalizedSourceLang) {
+      setError(
+        "Unable to determine the source language. Please pick a language."
+      );
+      return;
+    }
+
     const existing = saved.find(
       (entry) =>
         entry.phrase?.toLowerCase() === item.phrase.toLowerCase() &&
-        entry.targetLang?.toLowerCase() === lang?.toLowerCase()
+        normalizeLanguageForApi(entry.targetLang) === normalizedTargetLang
     );
 
     if (existing) {
@@ -246,8 +347,8 @@ export default function Phrasebook() {
         meaning: item.meaning,
         usageExample: item.usageExample,
         topic: result?.topic || topic,
-        sourceLang: result?.sourceLang || sourceLang,
-        targetLang: lang,
+        sourceLang: normalizedSourceLang,
+        targetLang: normalizedTargetLang,
       });
       setSaved((prev) => {
         const next = [
@@ -258,8 +359,8 @@ export default function Phrasebook() {
             meaning: item.meaning,
             usageExample: item.usageExample,
             topic: result?.topic || topic,
-            sourceLang: result?.sourceLang || sourceLang,
-            targetLang: lang,
+            sourceLang: normalizedSourceLang,
+            targetLang: normalizedTargetLang,
           },
           ...prev,
         ];
@@ -319,154 +420,160 @@ export default function Phrasebook() {
               onSubmit={handleGenerate}
               sx={{ display: "flex", flexDirection: "column", gap: 3 }}
             >
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    label="Topic"
-                    placeholder="e.g. airport check-in, emergency, directions"
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    fullWidth
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: 2,
-                        transition: "all 0.3s ease",
-                        "& fieldset": {
-                          borderColor: alpha(theme.palette.divider, 0.5),
-                        },
-                        "&:hover fieldset": {
-                          borderColor: alpha(theme.palette.primary.main, 0.5),
-                        },
-                        "&.Mui-focused fieldset": {
-                          borderColor: theme.palette.primary.main,
-                          borderWidth: 2,
-                          boxShadow: `0 0 0 3px ${alpha(
-                            theme.palette.primary.main,
-                            0.1
-                          )}`,
-                        },
+              <Box
+                sx={{
+                  display: "grid",
+                  gap: { xs: 2, sm: 2.5 },
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                    md: "2fr repeat(2, minmax(0, 1fr)) 1fr",
+                    lg: "2.5fr repeat(2, minmax(0, 1fr)) 1fr",
+                  },
+                }}
+              >
+                <TextField
+                  label="Topic"
+                  placeholder="e.g. airport check-in, emergency, directions"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  fullWidth
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                      transition: "all 0.3s ease",
+                      "& fieldset": {
+                        borderColor: alpha(theme.palette.divider, 0.5),
                       },
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <Autocomplete
-                    freeSolo
-                    options={COMMON_LANGS}
-                    value={sourceLang}
-                    onChange={(_, value) => setSourceLang(value || "")}
-                    onInputChange={(_, value) => setSourceLang(value || "")}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="From language"
-                        fullWidth
-                        sx={{
-                          "& .MuiOutlinedInput-root": {
-                            borderRadius: 2,
-                            transition: "all 0.3s ease",
-                            "& fieldset": {
-                              borderColor: alpha(theme.palette.divider, 0.5),
-                            },
-                            "&:hover fieldset": {
-                              borderColor: alpha(
-                                theme.palette.primary.main,
-                                0.5
-                              ),
-                            },
-                            "&.Mui-focused fieldset": {
-                              borderColor: theme.palette.primary.main,
-                              borderWidth: 2,
-                              boxShadow: `0 0 0 3px ${alpha(
-                                theme.palette.primary.main,
-                                0.1
-                              )}`,
-                            },
-                          },
-                        }}
-                      />
-                    )}
-                  />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <Autocomplete
-                    freeSolo
-                    options={COMMON_LANGS}
-                    value={targetLang}
-                    onChange={(_, value) => setTargetLang(value || "")}
-                    onInputChange={(_, value) => setTargetLang(value || "")}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="To language"
-                        fullWidth
-                        sx={{
-                          "& .MuiOutlinedInput-root": {
-                            borderRadius: 2,
-                            transition: "all 0.3s ease",
-                            "& fieldset": {
-                              borderColor: alpha(theme.palette.divider, 0.5),
-                            },
-                            "&:hover fieldset": {
-                              borderColor: alpha(
-                                theme.palette.primary.main,
-                                0.5
-                              ),
-                            },
-                            "&.Mui-focused fieldset": {
-                              borderColor: theme.palette.primary.main,
-                              borderWidth: 2,
-                              boxShadow: `0 0 0 3px ${alpha(
-                                theme.palette.primary.main,
-                                0.1
-                              )}`,
-                            },
-                          },
-                        }}
-                      />
-                    )}
-                  />
-                </Grid>
-                <Grid item xs={12} md={2}>
-                  <Stack spacing={1}>
-                    <Typography variant="caption" color="text.secondary">
-                      Number of phrases
-                    </Typography>
-                    <Slider
-                      value={count}
-                      onChange={(_, value) =>
-                        setCount(Array.isArray(value) ? value[0] : value)
-                      }
-                      step={1}
-                      min={5}
-                      max={25}
-                      marks={COUNT_MARKS}
-                      valueLabelDisplay="auto"
+                      "&:hover fieldset": {
+                        borderColor: alpha(theme.palette.primary.main, 0.5),
+                      },
+                      "&.Mui-focused fieldset": {
+                        borderColor: theme.palette.primary.main,
+                        borderWidth: 2,
+                        boxShadow: `0 0 0 3px ${alpha(
+                          theme.palette.primary.main,
+                          0.1
+                        )}`,
+                      },
+                    },
+                  }}
+                />
+
+                <Autocomplete
+                  freeSolo
+                  options={COMMON_LANGUAGE_LABELS}
+                  value={sourceLang}
+                  onChange={(_, value) => updateSourceLanguage(value || "")}
+                  onInputChange={(_, value) => updateSourceLanguage(value || "")}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="From language"
+                      fullWidth
                       sx={{
-                        "& .MuiSlider-thumb": {
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 2,
                           transition: "all 0.3s ease",
-                          "&:hover": {
-                            boxShadow: `0 0 0 8px ${alpha(
+                          "& fieldset": {
+                            borderColor: alpha(theme.palette.divider, 0.5),
+                          },
+                          "&:hover fieldset": {
+                            borderColor: alpha(
+                              theme.palette.primary.main,
+                              0.5
+                            ),
+                          },
+                          "&.Mui-focused fieldset": {
+                            borderColor: theme.palette.primary.main,
+                            borderWidth: 2,
+                            boxShadow: `0 0 0 3px ${alpha(
                               theme.palette.primary.main,
                               0.1
                             )}`,
-                            transform: "scale(1.1)",
                           },
-                        },
-                        "& .MuiSlider-mark": {
-                          backgroundColor: theme.palette.primary.main,
-                          height: 8,
-                          width: 8,
-                          borderRadius: "50%",
-                        },
-                        "& .MuiSlider-markLabel": {
-                          fontSize: "0.75rem",
                         },
                       }}
                     />
-                  </Stack>
-                </Grid>
-              </Grid>
+                  )}
+                />
+
+                <Autocomplete
+                  freeSolo
+                  options={COMMON_LANGUAGE_LABELS}
+                  value={targetLang}
+                  onChange={(_, value) => updateTargetLanguage(value || "")}
+                  onInputChange={(_, value) => updateTargetLanguage(value || "")}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="To language"
+                      fullWidth
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 2,
+                          transition: "all 0.3s ease",
+                          "& fieldset": {
+                            borderColor: alpha(theme.palette.divider, 0.5),
+                          },
+                          "&:hover fieldset": {
+                            borderColor: alpha(
+                              theme.palette.primary.main,
+                              0.5
+                            ),
+                          },
+                          "&.Mui-focused fieldset": {
+                            borderColor: theme.palette.primary.main,
+                            borderWidth: 2,
+                            boxShadow: `0 0 0 3px ${alpha(
+                              theme.palette.primary.main,
+                              0.1
+                            )}`,
+                          },
+                        },
+                      }}
+                    />
+                  )}
+                />
+
+                <Stack spacing={1}>
+                  <Typography variant="caption" color="text.secondary">
+                    Number of phrases
+                  </Typography>
+                  <Slider
+                    value={count}
+                    onChange={(_, value) =>
+                      setCount(Array.isArray(value) ? value[0] : value)
+                    }
+                    step={1}
+                    min={5}
+                    max={25}
+                    marks={COUNT_MARKS}
+                    valueLabelDisplay="auto"
+                    sx={{
+                      "& .MuiSlider-thumb": {
+                        transition: "all 0.3s ease",
+                        "&:hover": {
+                          boxShadow: `0 0 0 8px ${alpha(
+                            theme.palette.primary.main,
+                            0.1
+                          )}`,
+                          transform: "scale(1.1)",
+                        },
+                      },
+                      "& .MuiSlider-mark": {
+                        backgroundColor: theme.palette.primary.main,
+                        height: 8,
+                        width: 8,
+                        borderRadius: "50%",
+                      },
+                      "& .MuiSlider-markLabel": {
+                        fontSize: "0.75rem",
+                      },
+                    }}
+                  />
+                </Stack>
+              </Box>
 
               <Stack
                 direction={{ xs: "column", sm: "row" }}

@@ -23,7 +23,8 @@ travel-app-be/
 │   ├── controllers/            # Route controllers
 │   │   ├── translationController.js
 │   │   ├── phrasebookController.js
-│   │   └── savedPhraseController.js
+│   │   ├── savedPhraseController.js
+│   │   └── poiController.js    # Points of Interest controller
 │   ├── middleware/             # Express middleware
 │   │   ├── authenticate.js     # Authentication middleware
 │   │   └── requireFields.js    # Field validation middleware
@@ -31,9 +32,12 @@ travel-app-be/
 │   │   ├── translationRoutes.js
 │   │   ├── phrasebookRoutes.js
 │   │   ├── savedPhraseRoutes.js
-│   │   └── staysRoutes.js
+│   │   ├── staysRoutes.js
+│   │   └── poiRoutes.js        # POI routes
 │   ├── stays/                  # Stays-related utilities
 │   │   └── providers/          # Third-party service providers
+│   ├── poi/                    # POI-related utilities
+│   │   └── providers/          # POI service providers
 │   ├── lib/                    # External library wrappers
 │   │   └── openrouterClient.js # OpenRouter API client
 │   └── utils/                  # Utility functions
@@ -154,7 +158,10 @@ travel-app-fe/
 ### Backend Patterns
 
 - **Error Handling**: Centralized in errorHandler.js with standardized error responses
-- **Rate Limiting**: Implemented in rateLimiter.js with role-based and endpoint-specific limits
+- **Rate Limiting**: Multi-layer implementation in rateLimiter.js with role-based, method-based, and endpoint-specific limits
+  - Anonymous: 20 requests/minute
+  - User: 60 requests/minute
+  - Admin: 120 requests/minute
 - **Security**: Enhanced in security.js with request validation and security headers
 - **Authentication**: Handled by authenticate.js middleware
 - **Validation**: Field validation in requireFields.js and validation.js
@@ -293,13 +300,20 @@ The application is deployed using Firebase Hosting for the frontend and Firebase
 
 ## Recommendations for AI Agents
 
-1. Before making changes, review the existing error handling, rate limiting, and security patterns to maintain consistency.
-2. Test changes thoroughly in the development environment before deploying.
-3. Document any new API endpoints, parameters, or responses in the API_Documentation.md file.
-4. Follow the existing code style and patterns found in the codebase.
-5. For UI changes, test across different screen sizes using the responsive design utilities.
-6. Be mindful of rate limits when testing backend endpoints.
-7. When making database changes, consider the offline capabilities of the client SDK.
+1. **Rate Limiting**: The application now has comprehensive rate limiting (20/min for anonymous, 60/min for users, 120/min for admins). Test endpoints to ensure limits are appropriate.
+2. **Documentation**: Review the extensive documentation in `PRODUCTION_DEPLOYMENT.md`, `API_Documentation.md`, `ENVIRONMENT_VARIABLES.md`, and `MONITORING_LOGGING.md` before making changes.
+3. **POI Functionality**: New Points of Interest feature has been added with `/api/poi/search` and `/api/poi/{id}` endpoints.
+4. **Security**: Enhanced security with multi-layer rate limiting, request validation, and comprehensive error handling.
+5. **Testing**: All user workflows have been verified including stays search, POI search, rate limiting, and authentication flows.
+6. **Deployment**: The application is production-ready with comprehensive deployment guides and monitoring setup.
+7. **Environment Configuration**: Use the `ENVIRONMENT_VARIABLES.md` guide for proper API key setup and security considerations.
+8. **Monitoring**: Implement logging and monitoring following guidelines in `MONITORING_LOGGING.md`.
+9. **Error Handling**: All errors follow standardized formats documented in the API documentation.
+10. **Security Headers**: All security configurations (CORS, CSP, etc.) are production-ready.
+11. **Database Operations**: Use Firestore with proper security rules and connection handling.
+12. **Frontend Changes**: Test responsive design and maintain Material-UI consistency patterns.
+13. **API Changes**: Document all new endpoints, parameters, and responses in the API documentation.
+14. **Rate Limit Testing**: Be mindful of the multi-layer rate limiting when testing (role-based, method-based, endpoint-specific).
 
 ## Development Workflow
 

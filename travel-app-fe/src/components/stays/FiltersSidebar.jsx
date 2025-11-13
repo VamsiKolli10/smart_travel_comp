@@ -1,237 +1,251 @@
-// src/components/stays/FiltersSidebar.jsx
+import { useEffect, useRef, useState } from "react";
 import {
   Box,
   Typography,
-  FormGroup,
-  FormControlLabel,
-  Checkbox,
-  TextField,
   Button,
   Divider,
-  Collapse,
-  IconButton,
+  Chip,
+  Slider,
+  Stack,
+  Paper,
 } from "@mui/material";
-import {
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
-} from "@mui/icons-material";
-import { useState, useEffect } from "react";
 
-const TYPES = ["hotel", "hostel", "guesthouse", "motel", "apartment"];
-// Amenities that match what the backend can provide (from Google Places API)
-const AMENITIES = ["wifi", "parking", "pool", "spa", "fitness", "breakfast", "restaurant", "bar"];
+const TYPES = [
+  { value: "hotel", label: "Hotel" },
+  { value: "hostel", label: "Hostel" },
+  { value: "guesthouse", label: "Guesthouse" },
+  { value: "motel", label: "Motel" },
+  { value: "apartment", label: "Apartment" },
+];
+
+const AMENITIES = [
+  { value: "wifi", label: "Wi-Fi" },
+  { value: "parking", label: "Parking" },
+  { value: "pool", label: "Pool" },
+  { value: "spa", label: "Spa" },
+  { value: "fitness", label: "Fitness" },
+  { value: "breakfast", label: "Breakfast" },
+  { value: "restaurant", label: "Restaurant" },
+  { value: "bar", label: "Bar" },
+  { value: "accessible", label: "Accessible" },
+  { value: "accessible-parking", label: "Accessible Parking" },
+  { value: "open-now", label: "Open Now" },
+  { value: "open-24h", label: "Open 24h" },
+  { value: "operational", label: "Operational" },
+];
+
+const QUICK_RATINGS = [3, 4, 4.5];
+const AUTO_APPLY_DELAY = 400;
 
 export default function FiltersSidebar({ filters, onChange, onApply }) {
   const [local, setLocal] = useState(filters || {});
+  const [pendingAutoApply, setPendingAutoApply] = useState(false);
+  const mountedRef = useRef(false);
+  const autoApplyTimerRef = useRef(null);
 
-  // Sync local state when filters prop changes
   useEffect(() => {
     setLocal(filters || {});
+    setPendingAutoApply(false);
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+    }
   }, [filters]);
-  const [expandedSections, setExpandedSections] = useState({
-    rating: true,
-    types: true,
-    amenities: true,
-  });
 
-  const toggle = (list = [], v) =>
-    list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
+  useEffect(() => {
+    if (!mountedRef.current || !pendingAutoApply) {
+      return undefined;
+    }
 
-  const toggleSection = (section) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
+    if (autoApplyTimerRef.current) {
+      clearTimeout(autoApplyTimerRef.current);
+    }
+    autoApplyTimerRef.current = setTimeout(() => {
+      applyFilters(local, { closePanel: false, reason: "auto" });
+      setPendingAutoApply(false);
+    }, AUTO_APPLY_DELAY);
+
+    return () => {
+      if (autoApplyTimerRef.current) {
+        clearTimeout(autoApplyTimerRef.current);
+        autoApplyTimerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [local, pendingAutoApply]);
+
+  const toggle = (list = [], value) =>
+    list.includes(value)
+      ? list.filter((item) => item !== value)
+      : [...list, value];
+
+  const queueAutoApply = () => {
+    if (!mountedRef.current) return;
+    setPendingAutoApply(true);
+  };
+
+  const applyFilters = (nextFilters, options = {}) => {
+    const payload = {
+      type: nextFilters.type || [],
+      amenities: nextFilters.amenities || [],
+      rating: nextFilters.rating,
+    };
+    if (onChange) onChange(payload);
+    if (onApply) onApply(payload, options);
+  };
+
+  const resetFilters = () => {
+    const cleared = { type: [], amenities: [], rating: undefined };
+    setLocal(cleared);
+    setPendingAutoApply(false);
+    applyFilters(cleared);
+  };
+
+  const updateLocal = (updater) => {
+    setLocal((prev) => {
+      const next =
+        typeof updater === "function" ? updater(prev || {}) : updater;
+      return next;
+    });
+    queueAutoApply();
   };
 
   return (
-    <Box>
-      {/* Rating Filter */}
-      <Box sx={{ mb: 2 }}>
-        <Button
-          fullWidth
-          onClick={() => toggleSection("rating")}
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 1.5,
-            p: 1,
-            textTransform: "none",
-            color: "inherit",
-            "&:hover": {
-              backgroundColor: "action.hover",
-            },
-          }}
-        >
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-            Minimum Rating
-          </Typography>
-          {expandedSections.rating ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        </Button>
-
-        <Collapse in={expandedSections.rating} timeout={300}>
-          <TextField
-            fullWidth
-            size="small"
-            type="number"
-            label="Rating (0-5)"
-            inputProps={{ min: 0, max: 5, step: 0.1 }}
-            value={local.rating ?? ""}
-            onChange={(e) =>
-              setLocal((s) => ({
-                ...s,
-                rating: e.target.value ? Number(e.target.value) : undefined,
-              }))
-            }
-            helperText="Optional"
-            variant="outlined"
-          />
-        </Collapse>
-      </Box>
-
-      <Divider sx={{ my: 2 }} />
-
-      {/* Accommodation Types */}
-      <Box sx={{ mb: 2 }}>
-        <Button
-          fullWidth
-          onClick={() => toggleSection("types")}
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 1.5,
-            p: 1,
-            textTransform: "none",
-            color: "inherit",
-            "&:hover": {
-              backgroundColor: "action.hover",
-            },
-          }}
-        >
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-            Accommodation Type
-          </Typography>
-          {expandedSections.types ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        </Button>
-
-        <Collapse in={expandedSections.types} timeout={300}>
-          <FormGroup>
-            {TYPES.map((t) => (
-              <FormControlLabel
-                key={t}
-                control={
-                  <Checkbox
-                    size="small"
-                    checked={local.type?.includes(t) || false}
-                    onChange={() =>
-                      setLocal((s) => ({
-                        ...s,
-                        type: toggle(s.type || [], t),
-                      }))
-                    }
-                  />
+    <Stack spacing={3}>
+      <Paper
+        variant="outlined"
+        sx={{ borderRadius: 3, p: 2, backgroundColor: "background.paper" }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>
+          Minimum rating
+        </Typography>
+        <Slider
+          value={local.rating ?? 0}
+          onChange={(_, value) =>
+            updateLocal((prev) => ({
+              ...(prev || {}),
+              rating: value === 0 ? undefined : value,
+            }))
+          }
+          min={0}
+          max={5}
+          step={0.1}
+          marks={[
+            { value: 0, label: "Any" },
+            { value: 3, label: "3+" },
+            { value: 4, label: "4+" },
+            { value: 5, label: "5" },
+          ]}
+          valueLabelDisplay="auto"
+          sx={{ mb: 1.5 }}
+        />
+        <Stack direction="row" spacing={1} flexWrap="wrap">
+          {QUICK_RATINGS.map((value) => {
+            const active = local.rating === value;
+            return (
+              <Chip
+                key={value}
+                label={`${value}+`}
+                color={active ? "primary" : "default"}
+                variant={active ? "filled" : "outlined"}
+                onClick={() =>
+                  updateLocal((prev) => ({
+                    ...(prev || {}),
+                    rating: active ? undefined : value,
+                  }))
                 }
-                label={
-                  <Typography variant="body2">
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
-                  </Typography>
-                }
+                size="small"
               />
-            ))}
-          </FormGroup>
-        </Collapse>
-      </Box>
+            );
+          })}
+        </Stack>
+      </Paper>
 
-      <Divider sx={{ my: 2 }} />
-
-      {/* Amenities */}
-      <Box sx={{ mb: 2 }}>
-        <Button
-          fullWidth
-          onClick={() => toggleSection("amenities")}
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 1.5,
-            p: 1,
-            textTransform: "none",
-            color: "inherit",
-            "&:hover": {
-              backgroundColor: "action.hover",
-            },
-          }}
-        >
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-            Amenities
-          </Typography>
-          {expandedSections.amenities ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        </Button>
-
-        <Collapse in={expandedSections.amenities} timeout={300}>
-          <FormGroup>
-            {AMENITIES.map((a) => (
-              <FormControlLabel
-                key={a}
-                control={
-                  <Checkbox
-                    size="small"
-                    checked={local.amenities?.includes(a) || false}
-                    onChange={() =>
-                      setLocal((s) => ({
-                        ...s,
-                        amenities: toggle(s.amenities || [], a),
-                      }))
-                    }
-                  />
+      <Paper
+        variant="outlined"
+        sx={{ borderRadius: 3, p: 2, backgroundColor: "background.paper" }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+          Accommodation type
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          Mix & match to narrow down results.
+        </Typography>
+        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2 }}>
+          {TYPES.map((type) => {
+            const active = local.type?.includes(type.value);
+            return (
+              <Chip
+                key={type.value}
+                label={type.label}
+                color={active ? "primary" : "default"}
+                variant={active ? "filled" : "outlined"}
+                onClick={() =>
+                  updateLocal((prev) => ({
+                    ...(prev || {}),
+                    type: toggle(prev.type || [], type.value),
+                  }))
                 }
-                label={
-                  <Typography variant="body2">{a.toUpperCase()}</Typography>
-                }
+                sx={{ mb: 1 }}
               />
-            ))}
-          </FormGroup>
-        </Collapse>
-      </Box>
+            );
+          })}
+        </Stack>
+      </Paper>
 
-      {/* Apply Button */}
-      <Box sx={{ mt: 3, display: "flex", gap: 1 }}>
+      <Paper
+        variant="outlined"
+        sx={{ borderRadius: 3, p: 2, backgroundColor: "background.paper" }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+          Amenities & perks
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          Filter by features surfaced from Google Places.
+        </Typography>
+        <Box sx={{ mt: 2 }}>
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            {AMENITIES.map((amenity) => {
+              const active = local.amenities?.includes(amenity.value);
+              return (
+                <Chip
+                  key={amenity.value}
+                  label={amenity.label}
+                  color={active ? "primary" : "default"}
+                  variant={active ? "filled" : "outlined"}
+                  onClick={() =>
+                    updateLocal((prev) => ({
+                      ...(prev || {}),
+                      amenities: toggle(
+                        prev.amenities || [],
+                        amenity.value
+                      ),
+                    }))
+                  }
+                  sx={{ mb: 1 }}
+                />
+              );
+            })}
+          </Stack>
+        </Box>
+      </Paper>
+
+      <Divider sx={{ my: 1 }} />
+
+      <Stack direction="column" spacing={1}>
         <Button
-          fullWidth
           variant="contained"
           onClick={() => {
-            const newFilters = {
-              type: local.type || [],
-              amenities: local.amenities || [],
-              rating: local.rating,
-            };
-            onChange(newFilters);
-            onApply(newFilters);
+            setPendingAutoApply(false);
+            applyFilters(local);
           }}
           size="small"
         >
-          Apply Filters
+          Apply filters
         </Button>
-        <Button
-          fullWidth
-          variant="outlined"
-          onClick={() => {
-            const clearedFilters = {
-              type: [],
-              amenities: [],
-              rating: undefined,
-            };
-            setLocal(clearedFilters);
-            onChange(clearedFilters);
-            onApply(clearedFilters);
-          }}
-          size="small"
-        >
-          Clear
+        <Button variant="text" size="small" onClick={resetFilters}>
+          Reset
         </Button>
-      </Box>
-    </Box>
+      </Stack>
+    </Stack>
   );
 }

@@ -22,7 +22,10 @@ smart_travel_comp/
 - **AI Phrasebooks** – Topic-based phrase suggestions generated via OpenRouter LLMs with the ability to save favorites.
 - **Saved phrases** – User-scoped Firestore collections persisted via secure backend routes.
 - **Stays search** – Google Places powered lodging search with filtering, amenity tags, details pages, and photo proxying.
-- **Destination utilities** – Cultural guides, destination cards, emergency contacts, and dashboard shortcuts.
+- **Destinations & POIs** – Discover points of interest with rich cards, details pages, etiquette guidance, and map/context sharing.
+- **Itinerary planner (beta)** – Natural-language and form-based trip planner on the Discover page that uses the backend itinerary API and fully aligns with the MUI design system.
+- **Cultural intelligence & etiquette** – Country/destination-specific guidance surfaced contextually in destination details.
+- **Emergency utilities** – Quick access to structured emergency contacts and guidance.
 
 ---
 
@@ -63,7 +66,7 @@ cp travel-app-fe/.env.example travel-app-fe/.env
 | `GOOGLE_PLACES_API_KEY`     | Enables stays search/photo proxy                     |
 | `OPENROUTER_API_KEY`        | Token for phrasebook generation                      |
 | `OPENROUTER_MODEL`          | Optional default model                               |
-| `FIREBASE_*`                | Firebase JS SDK config (if using client SDK server-side) |
+| `FBAPP_*`                   | Firebase JS SDK config (if using client SDK server-side) |
 
 | Variable (frontend)         | Purpose                                              |
 |-----------------------------|------------------------------------------------------|
@@ -86,18 +89,23 @@ npm install
 npm run dev          # nodemon server.js
 ```
 
-The API will be reachable on `http://localhost:8000`. Key routes:
+The API will be reachable on `http://localhost:8000`. Core routes (see `API_Documentation.md` for full reference):
 
-| Endpoint                           | Description                                        |
-|------------------------------------|----------------------------------------------------|
-| `POST /api/translate`              | Text translation (`text`, `langPair`)              |
-| `POST /api/phrasebook/generate`    | Topic-based phrase suggestions                     |
-| `GET /api/saved-phrases`           | List user phrases (auth required)                  |
-| `POST /api/saved-phrases`          | Save phrase (auth required)                        |
-| `DELETE /api/saved-phrases/:id`    | Remove phrase (auth required)                      |
-| `GET /api/stays/search`            | Search lodging (dest/lat/lng filters)              |
-| `GET /api/stays/:id`               | Detailed stay info                                 |
-| `GET /api/stays/photo`             | Proxy Google Places photos                         |
+| Endpoint                                   | Description                                                    |
+|--------------------------------------------|----------------------------------------------------------------|
+| `POST /api/translate`                      | Text translation (`text`, `langPair`)                          |
+| `POST /api/phrasebook/generate`            | Topic-based phrase suggestions                                 |
+| `GET /api/saved-phrases`                   | List user phrases (auth required)                              |
+| `POST /api/saved-phrases`                  | Save phrase (auth required)                                    |
+| `DELETE /api/saved-phrases/:id`            | Remove phrase (auth required)                                  |
+| `GET /api/stays/search`                    | Search lodging (dest/lat/lng filters)                          |
+| `GET /api/stays/:id`                       | Detailed stay info                                             |
+| `GET /api/stays/photo`                     | Proxy Google Places photos                                     |
+| `GET /api/poi/search`                      | Search points of interest                                      |
+| `GET /api/poi/:id`                         | Detailed POI information                                       |
+| `GET /api/cultural-etiquette`              | Cultural etiquette guidance                                    |
+| `GET /api/culture-intel`                   | Cultural intelligence / context                                |
+| `GET /api/itinerary/generate`              | Generate itineraries (used by Discover Itinerary planner beta) |
 
 ### Firestore Rules
 
@@ -120,6 +128,15 @@ npm run dev          # Vite dev server on http://localhost:5173
 
 By default the React app points to `VITE_API_URL`. Ensure CORS on the backend allows this origin.
 
+Key UX modules:
+- **Discover** – Unified search for POIs with filters, plus an **Itinerary planner (beta)**:
+  - Users can toggle the “Itinerary” chip.
+  - Configure trip via MUI-styled controls (days, budget, pace, season, interests).
+  - Planner calls the backend itinerary generator (`/api/itinerary/generate`).
+- **Destinations** – Curated destination cards and a **Destination Details** view:
+  - Details pages integrate map, photos, reviews, etiquette, and a “Plan itinerary” button that deep-links into Discover with context.
+- **Stays, Translation, Phrasebook, Emergency** – Accessible via the shared layout and aligned with the same MUI/Tailwind design tokens.
+
 ---
 
 ## Deployment Notes
@@ -136,7 +153,8 @@ By default the React app points to `VITE_API_URL`. Ensure CORS on the backend al
 - Configure linting (`eslint`, `prettier`) and type checking (TypeScript or JSDoc) as pre-commit checks.
 - Introduce structured logging (pino/winston) plus request IDs in the backend.
 - Provision error monitoring (Sentry, Firebase Crashlytics) and performance tracing (OpenTelemetry) for end-to-end visibility.
-- Automate CI (GitHub Actions) for lint/test/build plus deploy previews.
+- Automate CI (GitHub Actions or GitLab CI) for lint/test/build plus deploy previews.
+- Keep `API_Documentation.md`, `ENVIRONMENT_VARIABLES.md`, and `MONITORING_LOGGING.md` in sync with any new routes or env vars (including itinerary and POI features).
 
 ---
 

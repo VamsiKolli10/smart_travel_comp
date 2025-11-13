@@ -1,7 +1,38 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Box, Container, Grid, Paper, TextField, Button, InputAdornment, CircularProgress, Alert, Typography, Chip, Card, CardContent, CardMedia, Stack, useTheme, useMediaQuery } from "@mui/material";
-import { Search as SearchIcon, MyLocation as MyLocationIcon } from "@mui/icons-material";
+import {
+  Box,
+  Container,
+  Grid,
+  Paper,
+  TextField,
+  Button,
+  InputAdornment,
+  CircularProgress,
+  Alert,
+  Typography,
+  Chip,
+  Card,
+  CardContent,
+  CardMedia,
+  Stack,
+  useTheme,
+  useMediaQuery,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+} from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import {
+  Search as SearchIcon,
+  MyLocation as MyLocationIcon,
+  DirectionsWalk as DirectionsWalkIcon,
+  Star as StarIcon,
+  AccessTime as AccessTimeIcon,
+  Public as PublicIcon,
+  Launch as LaunchIcon,
+} from "@mui/icons-material";
 import { searchPOIs } from "../../services/poi";
 import { useAnalytics } from "../../contexts/AnalyticsContext.jsx";
 
@@ -19,6 +50,15 @@ export default function DiscoverPage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isDarkMode = theme.palette.mode === "dark";
+  const panelBg = alpha(theme.palette.background.paper, isDarkMode ? 0.96 : 1);
+  const cardBg = alpha(theme.palette.background.paper, isDarkMode ? 0.92 : 1);
+  const borderColor = alpha(theme.palette.divider, isDarkMode ? 0.35 : 0.75);
+  const mutedSurface = alpha(
+    theme.palette.background.default,
+    isDarkMode ? 0.6 : 0.92
+  );
+  const softShadow = theme.shadows[isDarkMode ? 6 : 1];
   const { track } = useAnalytics();
 
   const [query, setQuery] = useState({
@@ -53,7 +93,10 @@ export default function DiscoverPage() {
 
   const toAbsoluteUrl = (maybeRelative) => {
     if (!maybeRelative) return maybeRelative;
-    if (maybeRelative.startsWith("http://") || maybeRelative.startsWith("https://")) {
+    if (
+      maybeRelative.startsWith("http://") ||
+      maybeRelative.startsWith("https://")
+    ) {
       return maybeRelative;
     }
     const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
@@ -83,10 +126,7 @@ export default function DiscoverPage() {
   }, [queryParams, setParams]);
 
   // Helper so we can search with fresh local state right after a click
-  const performSearch = async (
-    localQuery = query,
-    localFilters = filters
-  ) => {
+  const performSearch = async (localQuery = query, localFilters = filters) => {
     setHasSearched(true);
     setLoading(true);
     setError("");
@@ -122,7 +162,9 @@ export default function DiscoverPage() {
       return;
     }
     // If a destination is provided, prefer it over stale coordinates
-    const localQuery = hasDest ? { ...query, lat: undefined, lng: undefined } : query;
+    const localQuery = hasDest
+      ? { ...query, lat: undefined, lng: undefined }
+      : query;
     performSearch(localQuery, filters);
   };
 
@@ -155,7 +197,10 @@ export default function DiscoverPage() {
     // Drop leading determiners
     s = s.replace(/^(the|city of)\s+/i, "");
     // Remove trailing season phrases (e.g., "boston in winter")
-    s = s.replace(/\s+(?:in|during)\s+(spring|summer|autumn|fall|winter)\b.*$/i, "");
+    s = s.replace(
+      /\s+(?:in|during)\s+(spring|summer|autumn|fall|winter)\b.*$/i,
+      ""
+    );
     // Remove trailing qualifiers like "for hiking", "with kids", "near downtown"
     s = s.replace(/\s+(?:for|with|near|around|about|regarding)\s+.*$/i, "");
     // Strip stray punctuation
@@ -167,7 +212,9 @@ export default function DiscoverPage() {
   const extractDestination = (text) => {
     const t = String(text || "");
     // Match endings like: in Boston [in winter], to Paris, for Tokyo in summer
-    const m = t.match(/(?:in|to|for)\s+([A-Za-z\s]+?)(?:\s+(?:in|during)\s+(spring|summer|autumn|fall|winter)\b)?\s*$/i);
+    const m = t.match(
+      /(?:in|to|for)\s+([A-Za-z\s]+?)(?:\s+(?:in|during)\s+(spring|summer|autumn|fall|winter)\b)?\s*$/i
+    );
     if (m && m[1]) return cleanDest(m[1]);
     return undefined;
   };
@@ -216,14 +263,18 @@ export default function DiscoverPage() {
     const mNum = t.match(/\b(\d+)\s*(?:day|days|d)\b|\b(\d+)-(?:day|days)\b/);
     if (mNum) days = parseInt(mNum[1] || mNum[2], 10);
     if (!days) {
-      const mWord = t.match(/\b(one|two|three|four|five|six|seven)\s+(?:day|days)\b/);
+      const mWord = t.match(
+        /\b(one|two|three|four|five|six|seven)\s+(?:day|days)\b/
+      );
       if (mWord) days = numberWords[mWord[1]];
     }
     days = days && days > 0 ? days : undefined;
 
     // destination: substring after 'in' or 'to' (but avoid seasons like "in winter")
     let dest = extractDestination(text);
-    const isSeasonWord = /^(spring|summer|autumn|fall|winter)\b/.test(dest || "");
+    const isSeasonWord = /^(spring|summer|autumn|fall|winter)\b/.test(
+      dest || ""
+    );
     if (isSeasonWord || isNonPlaceKeyword(dest)) dest = undefined;
 
     // categories
@@ -231,19 +282,22 @@ export default function DiscoverPage() {
     if (/(hiking|hike|trail|trek)/.test(t)) category = "hike";
     else if (/(museum|gallery|exhibit)/.test(t)) category = "museum";
     else if (/(food|restaurant|eat|dining)/.test(t)) category = "food";
-    else if (/(viewpoint|scenic|lookout|sunset)/.test(t)) category = "viewpoint";
+    else if (/(viewpoint|scenic|lookout|sunset)/.test(t))
+      category = "viewpoint";
 
     // budget
     let budget;
     if (/(premium|luxury|expensive|high-end|high end)/.test(t)) budget = "high";
-    else if (/(mid\s*-?\s*range|midrange|moderate|standard)/.test(t)) budget = "mid";
+    else if (/(mid\s*-?\s*range|midrange|moderate|standard)/.test(t))
+      budget = "mid";
     else if (/(cheap|budget|low\s*cost|economy)/.test(t)) budget = "low";
 
     // pace
     let pace;
     if (/(relaxed|easy|slow|chill|leisurely)/.test(t)) pace = "relaxed";
     else if (/(balanced|normal|average|moderate)/.test(t)) pace = "balanced";
-    else if (/(packed|busy|full|intense|fast|fast\s*-?\s*paced)/.test(t)) pace = "packed";
+    else if (/(packed|busy|full|intense|fast|fast\s*-?\s*paced)/.test(t))
+      pace = "packed";
 
     // season
     let season;
@@ -257,7 +311,8 @@ export default function DiscoverPage() {
 
   // Low-race helper that both parses and (optionally) generates immediately
   const handlePlanFromNL = async (generateAfter = false) => {
-    const { days, dest, category, budget, pace, season } = parseTripQuery(nlQuery);
+    const { days, dest, category, budget, pace, season } =
+      parseTripQuery(nlQuery);
 
     // Update UI state
     // Always prefer destination from NL; also reflect it in the search box
@@ -277,7 +332,10 @@ export default function DiscoverPage() {
     if (season) setItSeason(season);
 
     // Refresh list results (non-blocking)
-    performSearch({ ...query, dest: dest || query.dest, lat: undefined, lng: undefined }, nextFilters);
+    performSearch(
+      { ...query, dest: dest || query.dest, lat: undefined, lng: undefined },
+      nextFilters
+    );
 
     if (!generateAfter) return;
 
@@ -288,7 +346,12 @@ export default function DiscoverPage() {
       budget: budget || itBudget,
       pace: pace || itPace,
       season: season || itSeason,
-      interests: (itInterests || category || nextFilters.category?.[0] || "").toString(),
+      interests: (
+        itInterests ||
+        category ||
+        nextFilters.category?.[0] ||
+        ""
+      ).toString(),
     };
     if (hasDest) paramsObj.dest = hasDest;
     else if (query.lat && query.lng) {
@@ -309,7 +372,11 @@ export default function DiscoverPage() {
       track?.("discover_itinerary_generate", { source: "nl", ...paramsObj });
     } catch (e) {
       const apiMsg = e?.response?.data?.error?.message || e?.message || "";
-      setItError(apiMsg ? `Failed to generate itinerary: ${apiMsg}` : "Failed to generate itinerary");
+      setItError(
+        apiMsg
+          ? `Failed to generate itinerary: ${apiMsg}`
+          : "Failed to generate itinerary"
+      );
     } finally {
       setItLoading(false);
     }
@@ -317,11 +384,23 @@ export default function DiscoverPage() {
 
   const generatePlan = async () => {
     // Parse NL first to sync controls
-    const { days: daysFromText, dest: destFromText, category: catFromText, budget: budgetFromText, pace: paceFromText, season: seasonFromText } = parseTripQuery(nlQuery);
+    const {
+      days: daysFromText,
+      dest: destFromText,
+      category: catFromText,
+      budget: budgetFromText,
+      pace: paceFromText,
+      season: seasonFromText,
+    } = parseTripQuery(nlQuery);
 
     // Always prefer destination from NL; also reflect it in the search box
     if (destFromText) {
-      setQuery((q) => ({ ...q, dest: destFromText, lat: undefined, lng: undefined }));
+      setQuery((q) => ({
+        ...q,
+        dest: destFromText,
+        lat: undefined,
+        lng: undefined,
+      }));
     }
     if (typeof daysFromText === "number" && daysFromText > 0) {
       setParsedDays(daysFromText);
@@ -346,7 +425,10 @@ export default function DiscoverPage() {
     try {
       const { generateItinerary } = await import("../../services/itinerary");
       const paramsObj = {
-        days: (typeof daysFromText === "number" && daysFromText > 0) ? daysFromText : (parsedDays || itDays),
+        days:
+          typeof daysFromText === "number" && daysFromText > 0
+            ? daysFromText
+            : parsedDays || itDays,
         budget: budgetFromText || itBudget,
         pace: paceFromText || itPace,
         season: seasonFromText || itSeason,
@@ -363,7 +445,11 @@ export default function DiscoverPage() {
     } catch (e) {
       console.error("Itinerary generate error", e);
       const apiMsg = e?.response?.data?.error?.message || e?.message || "";
-      setItError(apiMsg ? `Failed to generate itinerary: ${apiMsg}` : "Failed to generate itinerary");
+      setItError(
+        apiMsg
+          ? `Failed to generate itinerary: ${apiMsg}`
+          : "Failed to generate itinerary"
+      );
     } finally {
       setItLoading(false);
     }
@@ -373,7 +459,16 @@ export default function DiscoverPage() {
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
-      <Paper sx={{ p: 2, mb: 2 }}>
+      <Paper
+        sx={{
+          p: 2,
+          mb: 2,
+          borderRadius: 3,
+          bgcolor: panelBg,
+          border: `1px solid ${borderColor}`,
+          boxShadow: softShadow,
+        }}
+      >
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} md={6}>
             <TextField
@@ -382,17 +477,34 @@ export default function DiscoverPage() {
               value={query.dest}
               onChange={(e) => {
                 const val = e.target.value;
-                setQuery((q) => ({ ...q, dest: val, lat: val ? undefined : q.lat, lng: val ? undefined : q.lng }));
+                setQuery((q) => ({
+                  ...q,
+                  dest: val,
+                  lat: val ? undefined : q.lat,
+                  lng: val ? undefined : q.lng,
+                }));
               }}
-              InputProps={{ startAdornment: (
-                <InputAdornment position="start"><SearchIcon /></InputAdornment>
-              ) }}
-              onKeyDown={(e) => { if (e.key === "Enter") runSearch(); }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") runSearch();
+              }}
             />
           </Grid>
           {/* Distance input removed */}
           <Grid item xs={12} md="auto">
-            <Button variant="outlined" startIcon={<MyLocationIcon />} onClick={handleNearMe}>Near me</Button>
+            <Button
+              variant="outlined"
+              startIcon={<MyLocationIcon />}
+              onClick={handleNearMe}
+            >
+              Near me
+            </Button>
           </Grid>
           {/* Map/List view controls removed intentionally */}
         </Grid>
@@ -403,50 +515,84 @@ export default function DiscoverPage() {
               label="Describe your trip (e.g., “5-day fast-paced budget trip in Boston in winter”)"
               value={nlQuery}
               onChange={(e) => setNlQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") generatePlan(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") generatePlan();
+              }}
             />
             {/* Removed top Generate button to avoid duplicates; use planner panel button below */}
             {/* Itinerary planner controls */}
-            <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 1 }}>
-              <select
-                value={parsedDays || itDays}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setItDays(v);
-                  setParsedDays(v); // keep in sync with NL-derived value
-                }}
-              >
-                <option value={1}>1 day</option>
-                <option value={2}>2 day</option>
-                <option value={3}>3 day</option>
-                <option value={4}>4 day</option>
-                <option value={5}>5 days</option>
-                <option value={6}>6 day</option>
-                <option value={7}>7 days</option>
-              </select>
-              <select value={itBudget} onChange={(e) => setItBudget(e.target.value)}>
-                <option value="low">Budget</option>
-                <option value="mid">Mid-range</option>
-                <option value="high">Premium</option>
-              </select>
-              <select value={itPace} onChange={(e) => setItPace(e.target.value)}>
-                <option value="relaxed">Relaxed</option>
-                <option value="balanced">Balanced</option>
-                <option value="packed">Packed</option>
-              </select>
-              <select value={itSeason} onChange={(e) => setItSeason(e.target.value)}>
-                <option value="any">Any</option>
-                <option value="spring">Spring</option>
-                <option value="summer">Summer</option>
-                <option value="autumn">Autumn</option>
-                <option value="winter">Winter</option>
-              </select>
-              <input
-                type="text"
-                placeholder="Interests (comma-separated)"
+            <Box
+              sx={{
+                mt: 2,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 1.5,
+              }}
+            >
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Days</InputLabel>
+                <Select
+                  label="Days"
+                  value={parsedDays || itDays}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setItDays(v);
+                    setParsedDays(v);
+                  }}
+                >
+                  <MenuItem value={1}>1 day</MenuItem>
+                  <MenuItem value={2}>2 days</MenuItem>
+                  <MenuItem value={3}>3 days</MenuItem>
+                  <MenuItem value={4}>4 days</MenuItem>
+                  <MenuItem value={5}>5 days</MenuItem>
+                  <MenuItem value={6}>6 days</MenuItem>
+                  <MenuItem value={7}>7 days</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 140 }}>
+                <InputLabel>Budget</InputLabel>
+                <Select
+                  label="Budget"
+                  value={itBudget}
+                  onChange={(e) => setItBudget(e.target.value)}
+                >
+                  <MenuItem value="low">Budget</MenuItem>
+                  <MenuItem value="mid">Mid-range</MenuItem>
+                  <MenuItem value="high">Premium</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 140 }}>
+                <InputLabel>Pace</InputLabel>
+                <Select
+                  label="Pace"
+                  value={itPace}
+                  onChange={(e) => setItPace(e.target.value)}
+                >
+                  <MenuItem value="relaxed">Relaxed</MenuItem>
+                  <MenuItem value="balanced">Balanced</MenuItem>
+                  <MenuItem value="packed">Packed</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 140 }}>
+                <InputLabel>Season</InputLabel>
+                <Select
+                  label="Season"
+                  value={itSeason}
+                  onChange={(e) => setItSeason(e.target.value)}
+                >
+                  <MenuItem value="any">Any</MenuItem>
+                  <MenuItem value="spring">Spring</MenuItem>
+                  <MenuItem value="summer">Summer</MenuItem>
+                  <MenuItem value="autumn">Autumn</MenuItem>
+                  <MenuItem value="winter">Winter</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                size="small"
+                label="Interests (comma-separated)"
                 value={itInterests}
                 onChange={(e) => setItInterests(e.target.value)}
-                style={{ minWidth: 240 }}
+                sx={{ minWidth: 220 }}
               />
             </Box>
           </Box>
@@ -475,7 +621,10 @@ export default function DiscoverPage() {
             label="Kid-friendly"
             color={filters.kidFriendly ? "primary" : "default"}
             onClick={() => {
-              const nextFilters = { ...filters, kidFriendly: !filters.kidFriendly };
+              const nextFilters = {
+                ...filters,
+                kidFriendly: !filters.kidFriendly,
+              };
               setFilters(nextFilters);
               performSearch(query, nextFilters);
             }}
@@ -484,7 +633,10 @@ export default function DiscoverPage() {
             label="Accessible"
             color={filters.accessibility ? "primary" : "default"}
             onClick={() => {
-              const nextFilters = { ...filters, accessibility: !filters.accessibility };
+              const nextFilters = {
+                ...filters,
+                accessibility: !filters.accessibility,
+              };
               setFilters(nextFilters);
               performSearch(query, nextFilters);
             }}
@@ -492,32 +644,72 @@ export default function DiscoverPage() {
           {/* Removed: Open now, duration chips, Free/Paid chips */}
         </Box>
         <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
-          <Button variant="contained" onClick={runSearch} startIcon={<SearchIcon />}>Search</Button>
+          <Button
+            variant="contained"
+            onClick={runSearch}
+            startIcon={<SearchIcon />}
+          >
+            Search
+          </Button>
         </Box>
       </Paper>
       {/* Itinerary planner (beta) */}
       {itineraryMode && (
-        <Paper sx={{ p: 2, mb: 2 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+        <Paper
+          sx={{
+            p: 2,
+            mb: 2,
+            borderRadius: 3,
+            bgcolor: panelBg,
+            border: `1px solid ${borderColor}`,
+            boxShadow: softShadow,
+          }}
+        >
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            sx={{ mb: 1 }}
+          >
             <Typography variant="h6">Itinerary planner (beta)</Typography>
             <Stack direction="row" spacing={1}>
-              <Button size="small" variant="contained" disabled={itLoading} onClick={generatePlan}>
+              <Button
+                size="small"
+                variant="contained"
+                disabled={itLoading}
+                onClick={generatePlan}
+              >
                 {itLoading ? "Generating…" : "Generate itinerary"}
               </Button>
               {itinerary && (
-                <Button size="small" onClick={() => setItinerary(null)}>Clear</Button>
+                <Button size="small" onClick={() => setItinerary(null)}>
+                  Clear
+                </Button>
               )}
             </Stack>
           </Stack>
-          {itError && <Typography variant="body2" color="error" sx={{ mb: 1 }}>{itError}</Typography>}
+          {itError && (
+            <Typography variant="body2" color="error" sx={{ mb: 1 }}>
+              {itError}
+            </Typography>
+          )}
           {Array.isArray(itinerary?.days) && (
             <Stack spacing={2}>
               {itinerary.days.map((d) => (
                 <Box key={d.day}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Day {d.day}</Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    Day {d.day}
+                  </Typography>
                   <Stack spacing={0.5} sx={{ mt: 0.5 }}>
                     {(d.blocks || []).map((b, idx) => (
-                      <Typography key={idx} variant="body2" color="text.secondary">• {b.time ? `${b.time}: ` : ""}{b.title} — {b.description}</Typography>
+                      <Typography
+                        key={idx}
+                        variant="body2"
+                        color="text.secondary"
+                      >
+                        • {b.time ? `${b.time}: ` : ""}
+                        {b.title} — {b.description}
+                      </Typography>
                     ))}
                   </Stack>
                 </Box>
@@ -526,7 +718,9 @@ export default function DiscoverPage() {
                 <Box>
                   <Typography variant="subtitle2">Tips</Typography>
                   {itinerary.tips.map((t, i) => (
-                    <Typography key={i} variant="body2" color="text.secondary">{t}</Typography>
+                    <Typography key={i} variant="body2" color="text.secondary">
+                      {t}
+                    </Typography>
                   ))}
                 </Box>
               )}
@@ -539,62 +733,102 @@ export default function DiscoverPage() {
 
       <Grid container spacing={2}>
         {loading && (
-          <Grid item xs={12}><Box sx={{ py: 6, textAlign: "center" }}><CircularProgress /></Box></Grid>
+          <Grid item xs={12}>
+            <Box sx={{ py: 6, textAlign: "center" }}>
+              <CircularProgress />
+            </Box>
+          </Grid>
         )}
         {/* Empty-state message removed per request */}
-        {!loading && results.map((item) => (
-          <Grid key={item.id} item xs={12} md={6} lg={4}>
-            <Card onClick={() => {
-              // If itinerary mode, pass parsed days and inferred interest to destination page to auto-generate
-              const params = new URLSearchParams();
-              if (itineraryMode && parsedDays) params.set("days", String(parsedDays));
-              if (itineraryMode && filters.category?.length === 1) params.set("interests", filters.category[0]);
-              const suffix = params.toString() ? `?${params.toString()}` : "";
-              navigate(`/destinations/${encodeURIComponent(item.id)}${suffix}`);
-            }} sx={{ cursor: "pointer", height: "100%", display: "flex", flexDirection: "column" }}>
-              {item.thumbnail ? (
-                <CardMedia
-                  component="img"
-                  image={toAbsoluteUrl(item.thumbnail)}
-                  alt={item.name}
-                  sx={{
-                    width: "100%",
-                    height: 220,
-                    objectFit: "cover",
-                    display: "block",
-                    borderTopLeftRadius: (theme) => theme.shape.borderRadius,
-                    borderTopRightRadius: (theme) => theme.shape.borderRadius,
-                  }}
-                />
-              ) : (
-                <Box
-                  sx={{
-                    width: "100%",
-                    height: 220,
-                    bgcolor: "grey.100",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "text.secondary",
-                  }}
-                >
-                  <Typography variant="body2">No image</Typography>
-                </Box>
-              )}
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 0.5 }}>{item.name}</Typography>
-                {item.blurb && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{item.blurb}</Typography>
+        {!loading &&
+          results.map((item) => (
+            <Grid key={item.id} item xs={12} md={6} lg={4}>
+              <Card
+                onClick={() => {
+                  // If itinerary mode, pass parsed days and inferred interest to destination page to auto-generate
+                  const params = new URLSearchParams();
+                  if (itineraryMode && parsedDays)
+                    params.set("days", String(parsedDays));
+                  if (itineraryMode && filters.category?.length === 1)
+                    params.set("interests", filters.category[0]);
+                  const suffix = params.toString()
+                    ? `?${params.toString()}`
+                    : "";
+                  navigate(
+                    `/destinations/${encodeURIComponent(item.id)}${suffix}`
+                  );
+                }}
+                sx={{
+                  cursor: "pointer",
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  bgcolor: cardBg,
+                  border: `1px solid ${borderColor}`,
+                  boxShadow: softShadow,
+                }}
+              >
+                {item.thumbnail ? (
+                  <CardMedia
+                    component="img"
+                    image={toAbsoluteUrl(item.thumbnail)}
+                    alt={item.name}
+                    sx={{
+                      width: "100%",
+                      height: 220,
+                      objectFit: "cover",
+                      display: "block",
+                      borderTopLeftRadius: (theme) => theme.shape.borderRadius,
+                      borderTopRightRadius: (theme) => theme.shape.borderRadius,
+                    }}
+                  />
+                ) : (
+                  <Box
+                    sx={{
+                      width: "100%",
+                      height: 220,
+                      bgcolor: mutedSurface,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "text.secondary",
+                    }}
+                  >
+                    <Typography variant="body2">No image</Typography>
+                  </Box>
                 )}
-                <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-                  {item.categories?.slice(0, 4).map((t) => <Chip key={t} label={t.replaceAll("_", " ")} size="small" />)}
-                  {item.openNow && <Chip color="success" label="Open now" size="small" />}
-                  {item.badges?.map((b) => <Chip key={b} label={b} size="small" />)}
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 0.5 }}>
+                    {item.name}
+                  </Typography>
+                  {item.blurb && (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 1.5 }}
+                    >
+                      {item.blurb}
+                    </Typography>
+                  )}
+                  <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+                    {item.categories?.slice(0, 4).map((t) => (
+                      <Chip
+                        key={t}
+                        label={t.replaceAll("_", " ")}
+                        size="small"
+                      />
+                    ))}
+                    {item.openNow && (
+                      <Chip color="success" label="Open now" size="small" />
+                    )}
+                    {item.badges?.map((b) => (
+                      <Chip key={b} label={b} size="small" />
+                    ))}
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
       </Grid>
     </Container>
   );

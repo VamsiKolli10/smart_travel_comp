@@ -16,6 +16,13 @@ export async function addSavedPhrase(payload) {
 
 /** DELETE /api/saved-phrases/:id -> true */
 export async function removeSavedPhrase(id) {
-  await api.delete(`/saved-phrases/${id}`);
-  return true;
+  try {
+    await api.delete(`/saved-phrases/${id}`);
+    return true;
+  } catch (error) {
+    if (error?.response?.status === 404) {
+      return false; // already gone (e.g., offline cache stale)
+    }
+    throw error;
+  }
 }

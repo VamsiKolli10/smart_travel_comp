@@ -42,13 +42,26 @@ async function search(req, res) {
       page = 1,
     } = req.query;
 
+    const pageNumber = Math.max(1, parseInt(page, 10) || 1);
+
     let center;
+    let resolvedDestination = null;
     if (lat && lng) {
       center = { lat: Number(lat), lng: Number(lng) };
     } else if (dest) {
       // Use existing, well-tested geocoder shared with Stays
       const ge = await geocodeCity(dest, lang);
       center = { lat: ge.lat, lng: ge.lng };
+      resolvedDestination = {
+        query: dest,
+        display: ge.display,
+        address: ge.address,
+        city: ge.city,
+        state: ge.state,
+        country: ge.country,
+        lat: ge.lat,
+        lng: ge.lng,
+      };
     } else {
       return res
         .status(400)
@@ -83,10 +96,20 @@ async function search(req, res) {
 
     // Pagination
     const pageSize = 20;
-    const start = (Number(page) - 1) * pageSize;
+    const totalResults = items.length;
+    const totalPages = Math.max(1, Math.ceil(totalResults / pageSize));
+    const currentPage = Math.min(pageNumber, totalPages);
+    const start = (currentPage - 1) * pageSize;
     const slice = items.slice(start, start + pageSize);
 
-    return res.json({ items: slice, total: items.length, page: Number(page), pageSize });
+    return res.json({
+      items: slice,
+      total: totalResults,
+      page: currentPage,
+      pageSize,
+      totalPages,
+      resolvedDestination,
+    });
   } catch (e) {
     logError(e, { endpoint: "/api/poi/search", query: req.query });
     const status = e.response?.status || e.status || 500;
