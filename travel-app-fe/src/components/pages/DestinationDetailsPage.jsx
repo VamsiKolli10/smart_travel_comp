@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
   Container,
@@ -11,15 +11,19 @@ import {
   Button,
   Link,
 } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { getPOIDetails } from "../../services/poi";
 import PhotoCarousel from "../stays/PhotoCarousel";
 import MapView from "../discover/MapView";
+// Itinerary planner removed from details page per request
 
 export default function DestinationDetailsPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Itinerary state removed
 
   useEffect(() => {
     const run = async () => {
@@ -38,6 +42,8 @@ export default function DestinationDetailsPage() {
     run();
   }, [id]);
 
+  // Removed auto-generation; planner now lives on destinations home page
+
   if (loading) return <Container sx={{ py: 6 }}><Typography>Loading…</Typography></Container>;
   if (error) return <Container sx={{ py: 6 }}><Typography color="error">{error}</Typography></Container>;
   if (!data) return null;
@@ -47,6 +53,17 @@ export default function DestinationDetailsPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }}>
+      <Box sx={{ mb: 1 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => {
+            if (window.history.length > 1) navigate(-1);
+            else navigate("/destinations");
+          }}
+        >
+          Back
+        </Button>
+      </Box>
       <Box sx={{ mb: 2 }}>
         <Typography variant="h4" sx={{ fontWeight: 700 }}>{data.name}</Typography>
         <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: "wrap" }}>
@@ -123,4 +140,3 @@ export default function DestinationDetailsPage() {
     </Container>
   );
 }
-

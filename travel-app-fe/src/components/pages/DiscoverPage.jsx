@@ -38,6 +38,18 @@ export default function DiscoverPage() {
   const [error, setError] = useState("");
   const [results, setResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [itineraryMode, setItineraryMode] = useState(false);
+  const [nlQuery, setNlQuery] = useState("");
+  const [parsedDays, setParsedDays] = useState(undefined);
+  const [itDays, setItDays] = useState(3);
+  const [itBudget, setItBudget] = useState("mid");
+  const [itPace, setItPace] = useState("balanced");
+  const [itSeason, setItSeason] = useState("any");
+  const [itInterests, setItInterests] = useState("");
+  const [itLoading, setItLoading] = useState(false);
+  const [itError, setItError] = useState("");
+  const [itinerary, setItinerary] = useState(null);
+  // Removed inline itinerary generation on Discover page per request
 
   const toAbsoluteUrl = (maybeRelative) => {
     if (!maybeRelative) return maybeRelative;
@@ -136,6 +148,229 @@ export default function DiscoverPage() {
     });
   };
 
+  // Very lightweight NL parser: extracts days, destination, category, budget, pace, and season
+  const cleanDest = (segment) => {
+    if (!segment) return undefined;
+    let s = segment.toLowerCase().trim();
+    // Drop leading determiners
+    s = s.replace(/^(the|city of)\s+/i, "");
+    // Remove trailing season phrases (e.g., "boston in winter")
+    s = s.replace(/\s+(?:in|during)\s+(spring|summer|autumn|fall|winter)\b.*$/i, "");
+    // Remove trailing qualifiers like "for hiking", "with kids", "near downtown"
+    s = s.replace(/\s+(?:for|with|near|around|about|regarding)\s+.*$/i, "");
+    // Strip stray punctuation
+    s = s.replace(/[.,;:!]+$/g, "");
+    s = s.trim();
+    if (!s) return undefined;
+    return s;
+  };
+  const extractDestination = (text) => {
+    const t = String(text || "");
+    // Match endings like: in Boston [in winter], to Paris, for Tokyo in summer
+    const m = t.match(/(?:in|to|for)\s+([A-Za-z\s]+?)(?:\s+(?:in|during)\s+(spring|summer|autumn|fall|winter)\b)?\s*$/i);
+    if (m && m[1]) return cleanDest(m[1]);
+    return undefined;
+  };
+  const isNonPlaceKeyword = (s) => {
+    if (!s) return true;
+    const kw = s.toLowerCase().trim();
+    // categories / modifiers that are not places
+    const nonPlaces = new Set([
+      "hike",
+      "hiking",
+      "museum",
+      "food",
+      "viewpoint",
+      "kid-friendly",
+      "kid friendly",
+      "accessible",
+      "budget",
+      "mid-range",
+      "midrange",
+      "premium",
+      "luxury",
+      "relaxed",
+      "balanced",
+      "packed",
+      "spring",
+      "summer",
+      "autumn",
+      "fall",
+      "winter",
+    ]);
+    return nonPlaces.has(kw);
+  };
+  const parseTripQuery = (text) => {
+    const t = String(text || "").toLowerCase();
+    const numberWords = {
+      one: 1,
+      two: 2,
+      three: 3,
+      four: 4,
+      five: 5,
+      six: 6,
+      seven: 7,
+    };
+    let days;
+    // Accept numeric and word forms; handle plurals and hyphenated
+    const mNum = t.match(/\b(\d+)\s*(?:day|days|d)\b|\b(\d+)-(?:day|days)\b/);
+    if (mNum) days = parseInt(mNum[1] || mNum[2], 10);
+    if (!days) {
+      const mWord = t.match(/\b(one|two|three|four|five|six|seven)\s+(?:day|days)\b/);
+      if (mWord) days = numberWords[mWord[1]];
+    }
+    days = days && days > 0 ? days : undefined;
+
+    // destination: substring after 'in' or 'to' (but avoid seasons like "in winter")
+    let dest = extractDestination(text);
+    const isSeasonWord = /^(spring|summer|autumn|fall|winter)\b/.test(dest || "");
+    if (isSeasonWord || isNonPlaceKeyword(dest)) dest = undefined;
+
+    // categories
+    let category;
+    if (/(hiking|hike|trail|trek)/.test(t)) category = "hike";
+    else if (/(museum|gallery|exhibit)/.test(t)) category = "museum";
+    else if (/(food|restaurant|eat|dining)/.test(t)) category = "food";
+    else if (/(viewpoint|scenic|lookout|sunset)/.test(t)) category = "viewpoint";
+
+    // budget
+    let budget;
+    if (/(premium|luxury|expensive|high-end|high end)/.test(t)) budget = "high";
+    else if (/(mid\s*-?\s*range|midrange|moderate|standard)/.test(t)) budget = "mid";
+    else if (/(cheap|budget|low\s*cost|economy)/.test(t)) budget = "low";
+
+    // pace
+    let pace;
+    if (/(relaxed|easy|slow|chill|leisurely)/.test(t)) pace = "relaxed";
+    else if (/(balanced|normal|average|moderate)/.test(t)) pace = "balanced";
+    else if (/(packed|busy|full|intense|fast|fast\s*-?\s*paced)/.test(t)) pace = "packed";
+
+    // season
+    let season;
+    if (/spring/.test(t)) season = "spring";
+    else if (/summer/.test(t)) season = "summer";
+    else if (/(autumn|fall)/.test(t)) season = "autumn";
+    else if (/winter/.test(t)) season = "winter";
+
+    return { days, dest, category, budget, pace, season };
+  };
+
+  // Low-race helper that both parses and (optionally) generates immediately
+  const handlePlanFromNL = async (generateAfter = false) => {
+    const { days, dest, category, budget, pace, season } = parseTripQuery(nlQuery);
+
+    // Update UI state
+    // Always prefer destination from NL; also reflect it in the search box
+    if (dest) {
+      setQuery((q) => ({ ...q, dest, lat: undefined, lng: undefined }));
+    }
+    if (days) {
+      setParsedDays(days);
+      setItDays(days);
+    }
+    const nextFilters = { ...filters };
+    if (category) nextFilters.category = [category];
+    setFilters(nextFilters);
+    if (category) setItInterests(category);
+    if (budget) setItBudget(budget);
+    if (pace) setItPace(pace);
+    if (season) setItSeason(season);
+
+    // Refresh list results (non-blocking)
+    performSearch({ ...query, dest: dest || query.dest, lat: undefined, lng: undefined }, nextFilters);
+
+    if (!generateAfter) return;
+
+    // Build params directly to avoid relying on async setState
+    const hasDest = (dest || query.dest || "").trim();
+    const paramsObj = {
+      days: days || parsedDays || itDays,
+      budget: budget || itBudget,
+      pace: pace || itPace,
+      season: season || itSeason,
+      interests: (itInterests || category || nextFilters.category?.[0] || "").toString(),
+    };
+    if (hasDest) paramsObj.dest = hasDest;
+    else if (query.lat && query.lng) {
+      paramsObj.lat = query.lat;
+      paramsObj.lng = query.lng;
+    } else {
+      // No location: don't call API
+      return;
+    }
+
+    setItLoading(true);
+    setItError("");
+    setItinerary(null);
+    try {
+      const { generateItinerary } = await import("../../services/itinerary");
+      const data = await generateItinerary(paramsObj);
+      setItinerary(data);
+      track?.("discover_itinerary_generate", { source: "nl", ...paramsObj });
+    } catch (e) {
+      const apiMsg = e?.response?.data?.error?.message || e?.message || "";
+      setItError(apiMsg ? `Failed to generate itinerary: ${apiMsg}` : "Failed to generate itinerary");
+    } finally {
+      setItLoading(false);
+    }
+  };
+
+  const generatePlan = async () => {
+    // Parse NL first to sync controls
+    const { days: daysFromText, dest: destFromText, category: catFromText, budget: budgetFromText, pace: paceFromText, season: seasonFromText } = parseTripQuery(nlQuery);
+
+    // Always prefer destination from NL; also reflect it in the search box
+    if (destFromText) {
+      setQuery((q) => ({ ...q, dest: destFromText, lat: undefined, lng: undefined }));
+    }
+    if (typeof daysFromText === "number" && daysFromText > 0) {
+      setParsedDays(daysFromText);
+      setItDays(daysFromText);
+    }
+    if (catFromText) {
+      const nextFilters = { ...filters, category: [catFromText] };
+      setFilters(nextFilters);
+      setItInterests(catFromText);
+    }
+    if (budgetFromText) setItBudget(budgetFromText);
+    if (paceFromText) setItPace(paceFromText);
+    if (seasonFromText) setItSeason(seasonFromText);
+
+    const destEffective = (destFromText || query.dest || "").trim();
+    const hasCoords = query.lat && query.lng;
+    if (!destEffective && !hasCoords) return;
+
+    setItLoading(true);
+    setItError("");
+    setItinerary(null);
+    try {
+      const { generateItinerary } = await import("../../services/itinerary");
+      const paramsObj = {
+        days: (typeof daysFromText === "number" && daysFromText > 0) ? daysFromText : (parsedDays || itDays),
+        budget: budgetFromText || itBudget,
+        pace: paceFromText || itPace,
+        season: seasonFromText || itSeason,
+        interests: itInterests || catFromText || filters.category?.[0] || "",
+      };
+      if (destEffective) paramsObj.dest = destEffective;
+      else {
+        paramsObj.lat = query.lat;
+        paramsObj.lng = query.lng;
+      }
+      const data = await generateItinerary(paramsObj);
+      setItinerary(data);
+      track?.("discover_itinerary_generate", { source: "panel", ...paramsObj });
+    } catch (e) {
+      console.error("Itinerary generate error", e);
+      const apiMsg = e?.response?.data?.error?.message || e?.message || "";
+      setItError(apiMsg ? `Failed to generate itinerary: ${apiMsg}` : "Failed to generate itinerary");
+    } finally {
+      setItLoading(false);
+    }
+  };
+
+  // Inline itinerary generation removed
+
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
       <Paper sx={{ p: 2, mb: 2 }}>
@@ -161,6 +396,61 @@ export default function DiscoverPage() {
           </Grid>
           {/* Map/List view controls removed intentionally */}
         </Grid>
+        {itineraryMode && (
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Describe your trip (e.g., “5-day fast-paced budget trip in Boston in winter”)"
+              value={nlQuery}
+              onChange={(e) => setNlQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") generatePlan(); }}
+            />
+            {/* Removed top Generate button to avoid duplicates; use planner panel button below */}
+            {/* Itinerary planner controls */}
+            <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 1 }}>
+              <select
+                value={parsedDays || itDays}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setItDays(v);
+                  setParsedDays(v); // keep in sync with NL-derived value
+                }}
+              >
+                <option value={1}>1 day</option>
+                <option value={2}>2 day</option>
+                <option value={3}>3 day</option>
+                <option value={4}>4 day</option>
+                <option value={5}>5 days</option>
+                <option value={6}>6 day</option>
+                <option value={7}>7 days</option>
+              </select>
+              <select value={itBudget} onChange={(e) => setItBudget(e.target.value)}>
+                <option value="low">Budget</option>
+                <option value="mid">Mid-range</option>
+                <option value="high">Premium</option>
+              </select>
+              <select value={itPace} onChange={(e) => setItPace(e.target.value)}>
+                <option value="relaxed">Relaxed</option>
+                <option value="balanced">Balanced</option>
+                <option value="packed">Packed</option>
+              </select>
+              <select value={itSeason} onChange={(e) => setItSeason(e.target.value)}>
+                <option value="any">Any</option>
+                <option value="spring">Spring</option>
+                <option value="summer">Summer</option>
+                <option value="autumn">Autumn</option>
+                <option value="winter">Winter</option>
+              </select>
+              <input
+                type="text"
+                placeholder="Interests (comma-separated)"
+                value={itInterests}
+                onChange={(e) => setItInterests(e.target.value)}
+                style={{ minWidth: 240 }}
+              />
+            </Box>
+          </Box>
+        )}
         <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 1 }}>
           {CATEGORY_CHIPS.map((c) => (
             <Chip
@@ -176,6 +466,11 @@ export default function DiscoverPage() {
               }}
             />
           ))}
+          <Chip
+            label="🗺️ Itinerary"
+            color={itineraryMode ? "primary" : "default"}
+            onClick={() => setItineraryMode((v) => !v)}
+          />
           <Chip
             label="Kid-friendly"
             color={filters.kidFriendly ? "primary" : "default"}
@@ -200,6 +495,45 @@ export default function DiscoverPage() {
           <Button variant="contained" onClick={runSearch} startIcon={<SearchIcon />}>Search</Button>
         </Box>
       </Paper>
+      {/* Itinerary planner (beta) */}
+      {itineraryMode && (
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+            <Typography variant="h6">Itinerary planner (beta)</Typography>
+            <Stack direction="row" spacing={1}>
+              <Button size="small" variant="contained" disabled={itLoading} onClick={generatePlan}>
+                {itLoading ? "Generating…" : "Generate itinerary"}
+              </Button>
+              {itinerary && (
+                <Button size="small" onClick={() => setItinerary(null)}>Clear</Button>
+              )}
+            </Stack>
+          </Stack>
+          {itError && <Typography variant="body2" color="error" sx={{ mb: 1 }}>{itError}</Typography>}
+          {Array.isArray(itinerary?.days) && (
+            <Stack spacing={2}>
+              {itinerary.days.map((d) => (
+                <Box key={d.day}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Day {d.day}</Typography>
+                  <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                    {(d.blocks || []).map((b, idx) => (
+                      <Typography key={idx} variant="body2" color="text.secondary">• {b.time ? `${b.time}: ` : ""}{b.title} — {b.description}</Typography>
+                    ))}
+                  </Stack>
+                </Box>
+              ))}
+              {Array.isArray(itinerary.tips) && itinerary.tips.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2">Tips</Typography>
+                  {itinerary.tips.map((t, i) => (
+                    <Typography key={i} variant="body2" color="text.secondary">{t}</Typography>
+                  ))}
+                </Box>
+              )}
+            </Stack>
+          )}
+        </Paper>
+      )}
 
       {/* Error message removed per request */}
 
@@ -210,9 +544,42 @@ export default function DiscoverPage() {
         {/* Empty-state message removed per request */}
         {!loading && results.map((item) => (
           <Grid key={item.id} item xs={12} md={6} lg={4}>
-            <Card onClick={() => navigate(`/destinations/${encodeURIComponent(item.id)}`)} sx={{ cursor: "pointer", height: "100%", display: "flex", flexDirection: "column" }}>
-              {item.thumbnail && (
-                <CardMedia component="img" height={180} image={toAbsoluteUrl(item.thumbnail)} alt={item.name} />
+            <Card onClick={() => {
+              // If itinerary mode, pass parsed days and inferred interest to destination page to auto-generate
+              const params = new URLSearchParams();
+              if (itineraryMode && parsedDays) params.set("days", String(parsedDays));
+              if (itineraryMode && filters.category?.length === 1) params.set("interests", filters.category[0]);
+              const suffix = params.toString() ? `?${params.toString()}` : "";
+              navigate(`/destinations/${encodeURIComponent(item.id)}${suffix}`);
+            }} sx={{ cursor: "pointer", height: "100%", display: "flex", flexDirection: "column" }}>
+              {item.thumbnail ? (
+                <CardMedia
+                  component="img"
+                  image={toAbsoluteUrl(item.thumbnail)}
+                  alt={item.name}
+                  sx={{
+                    width: "100%",
+                    height: 220,
+                    objectFit: "cover",
+                    display: "block",
+                    borderTopLeftRadius: (theme) => theme.shape.borderRadius,
+                    borderTopRightRadius: (theme) => theme.shape.borderRadius,
+                  }}
+                />
+              ) : (
+                <Box
+                  sx={{
+                    width: "100%",
+                    height: 220,
+                    bgcolor: "grey.100",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "text.secondary",
+                  }}
+                >
+                  <Typography variant="body2">No image</Typography>
+                </Box>
               )}
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 0.5 }}>{item.name}</Typography>

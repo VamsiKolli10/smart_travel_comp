@@ -12,6 +12,7 @@ const phrasebookRoutes = require("./routes/phrasebookRoutes");
 const savedPhraseRoutes = require("./routes/savedPhraseRoutes");
 const staysRoutes = require("./routes/staysRoutes");
 const poiRoutes = require("./routes/poiRoutes");
+const itineraryRoutes = require("./routes/itineraryRoutes");
 const { db } = require("./config/firebaseAdmin");
 const { requireAuth } = require("./middleware/authenticate");
 const {
@@ -73,6 +74,10 @@ const endpointLimits = {
   "/api/poi/search": {
     windowMs: 60000, // 1 minute
     max: 60,
+  },
+  "/api/itinerary/generate": {
+    windowMs: 60000,
+    max: 12, // keep lower to control AI costs
   },
 };
 
@@ -237,6 +242,7 @@ function createApp() {
   app.use("/api/saved-phrases", requireAuth(), savedPhraseRoutes);
   app.use("/api/stays", staysRoutes);
   app.use("/api/poi", poiRoutes);
+  app.use("/api/itinerary", itineraryRoutes);
 
   app.use((req, res) =>
     res.status(404).json(

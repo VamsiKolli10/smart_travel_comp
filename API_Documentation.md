@@ -395,6 +395,40 @@ The API logs security-related events, including:
     }
     ```
 
+### Itinerary
+
+- GET `/api/itinerary/generate`
+  - Description: Generate a structured itinerary (1/3/7-day) for a destination using AI (OpenRouter) with a sample fallback if AI is not configured.
+  - Access: Public.
+  - Rate Limit: 12 requests per minute (in addition to role-based limits).
+  - Query Parameters:
+    - One of: `placeId` | `dest` | `lat`+`lng`
+      - `placeId`: Google Place ID (e.g., `places/ChIJ...`).
+      - `dest`: Free-text destination (city/area) to geocode.
+      - `lat`,`lng`: Coordinates to anchor the plan.
+    - `days` (optional): 1 | 3 | 7 (default: 3).
+    - `budget` (optional): `low|mid|high` (default: `mid`).
+    - `pace` (optional): `relaxed|balanced|packed` (default: `balanced`).
+    - `season` (optional): `any|spring|summer|autumn|winter` (default: `any`).
+    - `interests` (optional): Comma-separated (e.g., `food, culture`).
+    - `lang` (optional): Language hint for place lookup (default: `en`).
+  - Response example:
+    ```json
+    {
+      "destination": { "id": "places/ChIJ...", "name": "Paris" },
+      "params": { "days": 3, "budget": "mid", "pace": "balanced", "season": "any", "interests": "food, culture" },
+      "days": [
+        {
+          "day": 1,
+          "blocks": [
+            { "title": "Activity 1", "description": "Suggested activity aligned with food", "time": "Morning" }
+          ]
+        }
+      ],
+      "tips": ["Group nearby activities to reduce transit time"]
+    }
+    ```
+
 ### Points of Interest (POI)
 
 - GET `/api/poi/search`
