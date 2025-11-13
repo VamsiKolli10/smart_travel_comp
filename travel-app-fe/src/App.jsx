@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext.jsx";
 import ProtectedRoute from "./components/common/ProtectedRoute";
+import PublicRoute from "./components/common/PublicRoute";
 import AppLayout from "./components/layout/AppLayout";
 import { AppearanceProvider } from "./contexts/AppearanceContext.jsx";
 import { FeatureFlagsProvider } from "./contexts/FeatureFlagsContext.jsx";
@@ -36,11 +37,13 @@ export default function App() {
           <AnalyticsProvider>
             <Routes>
               {/* 🌐 Public routes */}
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route element={<PublicRoute />}>
+                <Route path="/" element={<Landing />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+              </Route>
 
               {/* 🔒 Protected routes (require auth) */}
               <Route element={<ProtectedRoute />}>

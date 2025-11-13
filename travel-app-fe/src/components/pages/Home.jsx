@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -21,6 +21,9 @@ import Button from "../common/Button";
 import { ModuleCard, ModuleCardGrid } from "../common/ModuleCard";
 import { fetchProfile } from "../../services/user";
 import { setUser } from "../../store/slices/authSlice";
+import useTravelContext from "../../hooks/useTravelContext";
+import { formatDestinationLabel } from "../../utils/destination";
+import { readRecentActivity } from "../../utils/recentActivity";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -28,6 +31,9 @@ export default function Dashboard() {
   const dispatch = useDispatch();
   const theme = useTheme();
   const [animationComplete, setAnimationComplete] = useState(false);
+  const [recentActivity, setRecentActivity] = useState(() =>
+    readRecentActivity(5)
+  );
 
   useEffect(() => {
     fetchProfile().then((resp) => dispatch(setUser(resp)));
@@ -38,11 +44,41 @@ export default function Dashboard() {
     return () => clearTimeout(timer);
   }, []);
 
-  const recentActivity = [
-    { action: "Translated", text: "Where is the bathroom?", time: "2 min ago" },
-    { action: "Saved phrase", text: "Thank you very much", time: "1 hour ago" },
-    { action: "Viewed", text: "Museum of Fine Arts", time: "3 hours ago" },
-  ];
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const handler = () => setRecentActivity(readRecentActivity(5));
+    window.addEventListener("recent-activity-updated", handler);
+    window.addEventListener("storage", handler);
+    return () => {
+      window.removeEventListener("recent-activity-updated", handler);
+      window.removeEventListener("storage", handler);
+    };
+  }, []);
+  const relativeTimeFormatter = useMemo(
+    () => new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }),
+    []
+  );
+
+  const formatRelativeTime = (timestamp) => {
+    if (!timestamp) return "";
+    const diff = timestamp - Date.now();
+    const units = [
+      { value: 60 * 60 * 24, unit: "day" },
+      { value: 60 * 60, unit: "hour" },
+      { value: 60, unit: "minute" },
+      { value: 1, unit: "second" },
+    ];
+    const diffInSeconds = diff / 1000;
+    for (const { value, unit } of units) {
+      if (Math.abs(diffInSeconds) >= value || unit === "second") {
+        return relativeTimeFormatter.format(
+          Math.round(diffInSeconds / value),
+          unit
+        );
+      }
+    }
+    return "";
+  };
 
   const dashboardCards = [
     {
@@ -103,6 +139,35 @@ export default function Dashboard() {
     },
   ];
 
+  const {
+    destinationCity,
+    destinationState,
+    destinationCountry,
+    destinationDisplayName,
+    destination,
+  } = useTravelContext();
+
+  const activityIcon = (type) => {
+    switch (type) {
+      case "translation":
+        return "🌐";
+      case "phrasebook":
+        return "📚";
+      case "stays":
+        return "🏨";
+      default:
+        return "✨";
+    }
+  };
+
+  const locationChipLabel =
+    formatDestinationLabel({
+      city: destinationCity || destinationDisplayName || destination,
+      state: destinationState,
+      country: destinationCountry,
+      fallback: destinationDisplayName || destination,
+    }) || "Set destination";
+
   if (!user) return null;
 
   return (
@@ -112,7 +177,7 @@ export default function Dashboard() {
       actions={
         <Stack direction="row" spacing={1.5}>
           <Chip
-            label="Boston, MA"
+            label={locationChipLabel}
             color="primary"
             variant="outlined"
             sx={{ fontWeight: 600 }}
@@ -356,52 +421,55 @@ export default function Dashboard() {
                 Recent Activity
               </Typography>
               <Stack spacing={1.5}>
-                {recentActivity.map((item, index) => (
-                  <motion.div
-                    key={`${item.action}-${item.time}`}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.5 + index * 0.15, duration: 0.3 }}
-                  >
-                    <Stack
-                      direction="row"
-                      spacing={2}
-                      alignItems="center"
-                      sx={{
-                        p: 1.5,
-                        borderRadius: 2,
-                        backgroundColor: "rgba(33,128,141,0.08)",
-                        transition: "all 0.2s ease",
-                        "&:hover": {
-                          backgroundColor: "rgba(33,128,141,0.12)",
-                          transform: "translateX(4px)",
-                        },
-                      }}
+                {recentActivity.length ? (
+                  recentActivity.map((item, index) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.5 + index * 0.15, duration: 0.3 }}
                     >
-                      <Box sx={{ fontSize: 24 }}>
-                        {item.action === "Translated"
-                          ? "🌐"
-                          : item.action === "Saved phrase"
-                          ? "💾"
-                          : "👁️"}
-                      </Box>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ fontWeight: 600 }}
-                        >
-                          {item.action}
+                      <Stack
+                        direction="row"
+                        spacing={2}
+                        alignItems="center"
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 2,
+                          backgroundColor: "rgba(33,128,141,0.08)",
+                          transition: "all 0.2s ease",
+                          "&:hover": {
+                            backgroundColor: "rgba(33,128,141,0.12)",
+                            transform: "translateX(4px)",
+                          },
+                        }}
+                      >
+                        <Box sx={{ fontSize: 24 }}>
+                          {activityIcon(item.type)}
+                        </Box>
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography
+                            variant="subtitle2"
+                            sx={{ fontWeight: 600 }}
+                          >
+                            {item.title}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {item.description || "Activity recorded"}
+                          </Typography>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatRelativeTime(item.timestamp)}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          “{item.text}”
-                        </Typography>
-                      </Box>
-                      <Typography variant="caption" color="text.secondary">
-                        {item.time}
-                      </Typography>
-                    </Stack>
-                  </motion.div>
-                ))}
+                      </Stack>
+                    </motion.div>
+                  ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No recent activity yet. Start translating, generating
+                    phrasebooks, or searching stays to see it here.
+                  </Typography>
+                )}
               </Stack>
             </CardContent>
           </ModuleCard>

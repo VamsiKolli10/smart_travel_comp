@@ -86,11 +86,17 @@ function validateRequestSignature(options = {}) {
       return next();
     }
 
+    // Skip signature validation if the request already has a verified Firebase user context
+    if (req.userVerified && req.user) {
+      return next();
+    }
+
     // Skip signature validation for certain paths
     const skipPaths = [
       "/api/users",
       "/api/profile",
       "/api/phrasebook",
+      "/api/translate",
       "/api/auth",
       "/api/login",
       "/api/token",

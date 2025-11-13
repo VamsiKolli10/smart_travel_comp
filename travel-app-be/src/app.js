@@ -13,8 +13,10 @@ const savedPhraseRoutes = require("./routes/savedPhraseRoutes");
 const staysRoutes = require("./routes/staysRoutes");
 const poiRoutes = require("./routes/poiRoutes");
 const itineraryRoutes = require("./routes/itineraryRoutes");
+const culturalEtiquetteRoutes = require("./routes/culturalEtiquetteRoutes");
+const cultureIntelligenceRoutes = require("./routes/cultureIntelligenceRoutes");
 const { db } = require("./config/firebaseAdmin");
-const { requireAuth } = require("./middleware/authenticate");
+const { requireAuth, attachUserContext } = require("./middleware/authenticate");
 const {
   expressErrorHandler,
   createErrorResponse,
@@ -45,8 +47,7 @@ const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || "1mb";
 const roleLimits = {
   admin: 120, // Admins can make more requests
   user: 60, // Regular users
-  // Increase anonymous headroom to avoid incidental 429s from image fetches
-  anonymous: 120, // Unauthenticated users
+  anonymous: 20, // Anonymous users have limited access
 };
 
 // Endpoint-specific rate limits
@@ -132,23 +133,16 @@ function createApp() {
 
   app.use(express.json({ limit: requestBodyLimit }));
 
-  // Apply role-based rate limiting to the API, but skip specific public endpoints
+  // Hydrate user context (if any) before applying role-based rate limits
+  app.use(attachUserContext);
+
+  // Apply role-based rate limiting to the API
   const roleLimiter = createRoleBasedLimiter({
     windowMs: rateLimitWindowMs,
     limits: roleLimits,
     defaultMessage: "Too many requests for your role",
   });
-  app.use("/api", (req, res, next) => {
-    const fullPath = req.originalUrl || req.url || "";
-    const pathOnly = req.path || "";
-    const skipPaths = [
-      "/api/stays/photo", // high-volume image proxy
-    ];
-    if (skipPaths.some((p) => fullPath.startsWith(p) || pathOnly.startsWith(p))) {
-      return next();
-    }
-    return roleLimiter(req, res, next);
-  });
+  app.use("/api", roleLimiter);
 
   // Apply endpoint-specific rate limiting
   Object.entries(endpointLimits).forEach(([path, limits]) => {
@@ -243,6 +237,12 @@ function createApp() {
   app.use("/api/stays", staysRoutes);
   app.use("/api/poi", poiRoutes);
   app.use("/api/itinerary", itineraryRoutes);
+
+  // Unified Culture Intelligence API
+  app.use("/api/culture", cultureIntelligenceRoutes);
+
+  // Legacy cultural-etiquette endpoint retained as thin wrapper for compatibility
+  app.use("/api/cultural-etiquette", culturalEtiquetteRoutes);
 
   app.use((req, res) =>
     res.status(404).json(

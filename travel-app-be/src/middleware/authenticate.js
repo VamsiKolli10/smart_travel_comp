@@ -30,62 +30,94 @@ function extractRoles(decodedToken = {}) {
   return Array.from(roles);
 }
 
+async function resolveUserFromRequest(req, { enforceHeader = true } = {}) {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    if (enforceHeader) {
+      throw new Error("Missing or invalid Authorization header");
+    }
+    return null;
+  }
+
+  const token = authHeader.slice("Bearer ".length);
+  const decoded = await adminAuth.verifyIdToken(token);
+  const roles = extractRoles(decoded);
+
+  if (decoded.exp * 1000 < Date.now()) {
+    const err = new Error("Token has expired");
+    err.code = "token-expired";
+    throw err;
+  }
+
+  if (decoded.revoked === true) {
+    const err = new Error("Token has been revoked");
+    err.code = "token-revoked";
+    throw err;
+  }
+
+  if (decoded.ip && decoded.ip !== req.ip) {
+    const err = new Error("Token IP mismatch");
+    err.code = "token-ip-mismatch";
+    throw err;
+  }
+
+  return { decoded, roles };
+}
+
+function hydrateRequestWithUser(req, decoded, roles) {
+  req.user = decoded;
+  req.userRoles = roles;
+  req.userId = decoded.uid;
+  req.userVerified = true;
+  req.securityContext = {
+    ...req.securityContext,
+    authenticated: true,
+    userId: decoded.uid,
+    tokenId: decoded.jti,
+    roles,
+    fingerprint: generateRequestFingerprint(req),
+    timestamp: Date.now(),
+  };
+}
+
+async function attachUserContext(req, _res, next) {
+  try {
+    const result = await resolveUserFromRequest(req, {
+      enforceHeader: false,
+    });
+    if (result) {
+      hydrateRequestWithUser(req, result.decoded, result.roles);
+    }
+  } catch (err) {
+    req.userVerified = false;
+    logError(err, {
+      message: "Failed to hydrate user context for rate limiting",
+      ip: req.ip,
+      path: req.path,
+    });
+  } finally {
+    next();
+  }
+}
+
 function requireAuth(options = {}) {
   const { allowRoles = ["user", "admin"], onUnauthorized = null } = options;
 
   return async function authenticate(req, res, next) {
-    const authHeader = req.headers.authorization || "";
-    if (!authHeader.startsWith("Bearer ")) {
-      return res
-        .status(401)
-        .json(
-          createErrorResponse(
-            401,
-            ERROR_CODES.UNAUTHORIZED,
-            "Missing or invalid Authorization header"
-          )
-        );
-    }
-
     try {
-      const token = authHeader.slice("Bearer ".length);
-      const decoded = await adminAuth.verifyIdToken(token);
-      const roles = extractRoles(decoded);
+      let decoded = null;
+      let roles = [];
 
-      // Check for token expiration
-      if (decoded.exp * 1000 < Date.now()) {
-        logError(new Error("Token expired"), {
-          user: decoded.uid,
-          tokenId: decoded.jti,
-          fingerprint: generateRequestFingerprint(req),
+      if (req.userVerified && req.user) {
+        decoded = req.user;
+        roles = req.userRoles || extractRoles(decoded);
+      } else {
+        const result = await resolveUserFromRequest(req, {
+          enforceHeader: true,
         });
-        return res
-          .status(401)
-          .json(
-            createErrorResponse(
-              401,
-              ERROR_CODES.UNAUTHORIZED,
-              "Token has expired"
-            )
-          );
-      }
-
-      // Check for token revocation
-      if (decoded.revoked === true) {
-        logError(new Error("Token revoked"), {
-          user: decoded.uid,
-          tokenId: decoded.jti,
-          fingerprint: generateRequestFingerprint(req),
-        });
-        return res
-          .status(401)
-          .json(
-            createErrorResponse(
-              401,
-              ERROR_CODES.UNAUTHORIZED,
-              "Token has been revoked"
-            )
-          );
+        decoded = result.decoded;
+        roles = result.roles;
+        hydrateRequestWithUser(req, decoded, roles);
       }
 
       const allowed = roles.some((role) => allowRoles.includes(role));
@@ -111,42 +143,6 @@ function requireAuth(options = {}) {
           );
       }
 
-      // Add additional security checks
-      // Check if the token is being used from the same IP that it was issued to (if IP is included in token)
-      if (decoded.ip && decoded.ip !== req.ip) {
-        logError(new Error("Token IP mismatch"), {
-          user: decoded.uid,
-          tokenIp: decoded.ip,
-          requestIp: req.ip,
-          fingerprint: generateRequestFingerprint(req),
-        });
-        return res
-          .status(401)
-          .json(
-            createErrorResponse(
-              401,
-              ERROR_CODES.UNAUTHORIZED,
-              "Token is not valid for this IP address"
-            )
-          );
-      }
-
-      // Set user information
-      req.user = decoded;
-      req.userRoles = roles;
-      req.userId = decoded.uid;
-
-      // Create a security context for this request
-      req.securityContext = {
-        ...req.securityContext,
-        authenticated: true,
-        userId: decoded.uid,
-        tokenId: decoded.jti,
-        roles: roles,
-        fingerprint: generateRequestFingerprint(req),
-        timestamp: Date.now(),
-      };
-
       next();
     } catch (err) {
       logError(err, {
@@ -163,4 +159,4 @@ function requireAuth(options = {}) {
   };
 }
 
-module.exports = { requireAuth };
+module.exports = { requireAuth, attachUserContext };
