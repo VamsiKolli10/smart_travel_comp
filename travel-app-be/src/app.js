@@ -12,6 +12,7 @@ const phrasebookRoutes = require("./routes/phrasebookRoutes");
 const savedPhraseRoutes = require("./routes/savedPhraseRoutes");
 const staysRoutes = require("./routes/staysRoutes");
 const poiRoutes = require("./routes/poiRoutes");
+const itineraryRoutes = require("./routes/itineraryRoutes");
 const culturalEtiquetteRoutes = require("./routes/culturalEtiquetteRoutes");
 const cultureIntelligenceRoutes = require("./routes/cultureIntelligenceRoutes");
 const { db } = require("./config/firebaseAdmin");
@@ -74,6 +75,10 @@ const endpointLimits = {
   "/api/poi/search": {
     windowMs: 60000, // 1 minute
     max: 60,
+  },
+  "/api/itinerary/generate": {
+    windowMs: 60000,
+    max: 12, // keep lower to control AI costs
   },
 };
 
@@ -231,6 +236,13 @@ function createApp() {
   app.use("/api/saved-phrases", requireAuth(), savedPhraseRoutes);
   app.use("/api/stays", staysRoutes);
   app.use("/api/poi", poiRoutes);
+  app.use("/api/itinerary", itineraryRoutes);
+
+  // Unified Culture Intelligence API
+  app.use("/api/culture", cultureIntelligenceRoutes);
+
+  // Legacy cultural-etiquette endpoint retained as thin wrapper for compatibility
+  app.use("/api/cultural-etiquette", culturalEtiquetteRoutes);
 
   // Unified Culture Intelligence API
   app.use("/api/culture", cultureIntelligenceRoutes);
