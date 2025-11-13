@@ -1,5 +1,4 @@
-NVIRONMENT_VARIABLES.md</path>
-<content"># Environment Variables Configuration
+# Environment Variables Configuration
 
 ## Table of Contents
 
@@ -43,20 +42,22 @@ Choose one of these methods:
 
 | Variable                       | Description          | Example                   | Required |
 | ------------------------------ | -------------------- | ------------------------- | -------- |
-| `FIREBASE_API_KEY`             | Firebase web API key | `AIzaSy...`               | Yes      |
-| `FIREBASE_AUTH_DOMAIN`         | Firebase auth domain | `project.firebaseapp.com` | Yes      |
-| `FIREBASE_PROJECT_ID`          | Firebase project ID  | `my-project`              | Yes      |
-| `FIREBASE_STORAGE_BUCKET`      | Storage bucket URL   | `project.appspot.com`     | Yes      |
-| `FIREBASE_MESSAGING_SENDER_ID` | Messaging sender ID  | `123456789`               | Yes      |
-| `FIREBASE_APP_ID`              | Firebase app ID      | `1:123456:web:abc`        | Yes      |
+| `FBAPP_API_KEY`                | Firebase web API key | `AIzaSy...`               | Yes      |
+| `FBAPP_AUTH_DOMAIN`            | Firebase auth domain | `project.firebaseapp.com` | Yes      |
+| `FBAPP_PROJECT_ID`             | Firebase project ID  | `my-project`              | Yes      |
+| `FBAPP_STORAGE_BUCKET`         | Storage bucket URL   | `project.appspot.com`     | Yes      |
+| `FBAPP_MESSAGING_SENDER_ID`    | Messaging sender ID  | `123456789`               | Yes      |
+| `FBAPP_APP_ID`                 | Firebase app ID      | `1:123456:web:abc`        | Yes      |
 
 ### External API Keys
 
-| Variable                | Description               | Required                    |
-| ----------------------- | ------------------------- | --------------------------- |
-| `GOOGLE_PLACES_API_KEY` | Google Places API key     | Yes                         |
-| `OPENROUTER_API_KEY`    | OpenRouter API key for AI | Yes                         |
-| `OPENROUTER_MODEL`      | AI model name             | No (default: `gpt-4o-mini`) |
+| Variable                    | Description                                | Required                    |
+| --------------------------- | ------------------------------------------ | --------------------------- |
+| `GOOGLE_PLACES_API_KEY`     | Google Places / POI / Stays search key     | Yes                         |
+| `OPENROUTER_API_KEY`        | OpenRouter API key for AI phrasebooks/etc. | Yes                         |
+| `OPENROUTER_MODEL`          | Default AI model name                      | No (default: `gpt-4o-mini`) |
+| `ITINERARY_MODEL`           | Optional dedicated itinerary model         | No                          |
+| `ITINERARY_ENABLE_FALLBACK` | Enable static/sample itinerary fallback    | No (default: `true`)        |
 
 ### Security Settings
 
@@ -69,13 +70,13 @@ Choose one of these methods:
 
 ### Advanced Configuration
 
-| Variable                        | Description               | Default | Notes                            |
-| ------------------------------- | ------------------------- | ------- | -------------------------------- |
-| `LOG_LEVEL`                     | Logging level             | `info`  | `error`, `warn`, `info`, `debug` |
-| `ENABLE_REQUEST_LOGGING`        | Log all requests          | `true`  | Set to `false` in production     |
-| `ENABLE_PERFORMANCE_MONITORING` | Track performance metrics | `false` | Enable for APM                   |
-| `CACHE_TTL_SECONDS`             | Default cache TTL         | `3600`  | Cache duration in seconds        |
-| `CULTURE_BRIEF_CACHE_VERSION`   | Culture brief cache namespace | `1` | Bump to invalidate cached briefs in Firestore |
+| Variable                        | Description                   | Default | Notes                                         |
+| ------------------------------- | ----------------------------- | ------- | --------------------------------------------- |
+| `LOG_LEVEL`                     | Logging level                 | `info`  | `error`, `warn`, `info`, `debug`              |
+| `ENABLE_REQUEST_LOGGING`        | Log all requests              | `true`  | Set to `false` in production                  |
+| `ENABLE_PERFORMANCE_MONITORING` | Track performance metrics     | `false` | Enable for APM                                |
+| `CACHE_TTL_SECONDS`             | Default cache TTL             | `3600`  | Cache duration in seconds                     |
+| `CULTURE_BRIEF_CACHE_VERSION`   | Culture brief cache namespace | `1`     | Bump to invalidate cached briefs in Firestore |
 
 ## Frontend Variables
 
@@ -94,11 +95,13 @@ All frontend variables must be prefixed with `VITE_` to be accessible in the bro
 
 ### API Configuration
 
-| Variable                   | Description                  | Example                   | Required |
-| -------------------------- | ---------------------------- | ------------------------- | -------- |
-| `VITE_API_URL`             | Backend API base URL         | `https://api.example.com` | Yes      |
-| `VITE_API_TIMEOUT`         | API request timeout          | `30000`                   | No       |
-| `VITE_ENABLE_OFFLINE_MODE` | Enable offline functionality | `true`                    | No       |
+| Variable                        | Description                                      | Example                       | Required |
+| ------------------------------- | ------------------------------------------------ | ----------------------------- | -------- |
+| `VITE_API_URL`                  | Backend API base URL (include `/api` suffix)     | `https://api.example.com/api` | Yes      |
+| `VITE_API_TIMEOUT`              | API request timeout (ms)                         | `30000`                       | No       |
+| `VITE_ENABLE_OFFLINE_MODE`      | Enable offline caching utilities                 | `true`                        | No       |
+| `VITE_ENABLE_ITINERARY_PLANNER` | Toggle Discover Itinerary planner (beta)         | `true`                        | No       |
+| `VITE_ANALYTICS_WRITE_KEY`      | Analytics key (if using external analytics tool) | `env-specific`                | No       |
 
 ### Feature Flags
 
@@ -238,12 +241,12 @@ FIRESTORE_PREFER_REST=true
 
 # Firebase
 FIREBASE_ADMIN_CREDENTIALS=your_service_account_json_here
-FIREBASE_API_KEY=your_firebase_web_api_key
-FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-FIREBASE_MESSAGING_SENDER_ID=123456789
-FIREBASE_APP_ID=1:123456:web:abc
+FBAPP_API_KEY=your_firebase_web_api_key
+FBAPP_AUTH_DOMAIN=your-project.firebaseapp.com
+FBAPP_PROJECT_ID=your-project-id
+FBAPP_STORAGE_BUCKET=your-project.appspot.com
+FBAPP_MESSAGING_SENDER_ID=123456789
+FBAPP_APP_ID=1:123456:web:abc
 
 # External APIs
 GOOGLE_PLACES_API_KEY=your_google_places_api_key
@@ -395,5 +398,5 @@ module.exports = { validateEnv };
 
 ---
 
-**Last Updated**: 2025-11-11  
-**Version**: 1.0.0
+**Last Updated**: 2025-11-13
+**Version**: 1.1.0

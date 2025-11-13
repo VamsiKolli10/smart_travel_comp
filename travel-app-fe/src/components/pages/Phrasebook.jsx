@@ -61,6 +61,27 @@ const AnimatedCard = motion(Card);
 const AnimatedStack = motion(Stack);
 const AnimatedGrid = motion(Grid);
 
+const normalizeLanguageForApi = (value = "") => {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  const resolved = resolveLanguageCode(trimmed);
+  if (resolved) return resolved.toLowerCase();
+
+  const match = trimmed.match(/^([a-z]{2,3})(?:[-_]?([a-z]{2}))?$/i);
+  if (match) {
+    const lang = match[1]?.toLowerCase() || "";
+    const region = match[2];
+    if (region) {
+      return `${lang}-${region.toUpperCase()}`;
+    }
+    return lang;
+  }
+  if (/^auto$/i.test(trimmed)) {
+    return "";
+  }
+  return "";
+};
+
 export default function Phrasebook() {
   const {
     sourceLanguageName,
@@ -220,10 +241,12 @@ export default function Phrasebook() {
   const savedKeys = useMemo(
     () =>
       new Set(
-        saved.map(
-          (item) =>
-            `${item.phrase?.toLowerCase()}::${item.targetLang?.toLowerCase()}`
-        )
+        saved.map((item) => {
+          const normalizedLang =
+            normalizeLanguageForApi(item.targetLang) ||
+            (item.targetLang || "").trim().toLowerCase();
+          return `${item.phrase?.toLowerCase()}::${normalizedLang}`;
+        })
       ),
     [saved]
   );
@@ -232,11 +255,10 @@ export default function Phrasebook() {
 
   const isSaved = (item) => {
     if (!item?.phrase || !currentTargetLang) return false;
-    return savedKeys.has(
-      `${item.phrase.toLowerCase()}::${(
-        item.targetLang || currentTargetLang
-      ).toLowerCase()}`
-    );
+    const normalizedLang =
+      normalizeLanguageForApi(item.targetLang || currentTargetLang) ||
+      (item.targetLang || currentTargetLang || "").toLowerCase();
+    return savedKeys.has(`${item.phrase.toLowerCase()}::${normalizedLang}`);
   };
 
   const handleGenerate = async (e) => {
@@ -279,10 +301,28 @@ export default function Phrasebook() {
   const toggleSave = async (item) => {
     if (!item?.phrase) return;
     const lang = item.targetLang || currentTargetLang;
+    const normalizedTargetLang = normalizeLanguageForApi(lang);
+    if (!normalizedTargetLang) {
+      setError(
+        "Unable to determine the target language. Please pick a language."
+      );
+      return;
+    }
+
+    const normalizedSourceLang = normalizeLanguageForApi(
+      result?.sourceLang || sourceLang
+    );
+    if (!normalizedSourceLang) {
+      setError(
+        "Unable to determine the source language. Please pick a language."
+      );
+      return;
+    }
+
     const existing = saved.find(
       (entry) =>
         entry.phrase?.toLowerCase() === item.phrase.toLowerCase() &&
-        entry.targetLang?.toLowerCase() === lang?.toLowerCase()
+        normalizeLanguageForApi(entry.targetLang) === normalizedTargetLang
     );
 
     if (existing) {
@@ -307,8 +347,8 @@ export default function Phrasebook() {
         meaning: item.meaning,
         usageExample: item.usageExample,
         topic: result?.topic || topic,
-        sourceLang: result?.sourceLang || sourceLang,
-        targetLang: lang,
+        sourceLang: normalizedSourceLang,
+        targetLang: normalizedTargetLang,
       });
       setSaved((prev) => {
         const next = [
@@ -319,8 +359,8 @@ export default function Phrasebook() {
             meaning: item.meaning,
             usageExample: item.usageExample,
             topic: result?.topic || topic,
-            sourceLang: result?.sourceLang || sourceLang,
-            targetLang: lang,
+            sourceLang: normalizedSourceLang,
+            targetLang: normalizedTargetLang,
           },
           ...prev,
         ];

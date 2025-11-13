@@ -88,8 +88,6 @@ X-RateLimit-Window: 60000
 
 ## Error Handling
 
-### Standard Error Response
-
 =======
 \*\*\*\*### Standard Error Response
 
@@ -341,66 +339,55 @@ GET /api/poi/search?dest=Rome&distance=3&category=museum&kidFriendly=true
 
 ### Itinerary
 
-- GET `/api/itinerary/generate`
-  - Description: Generate a structured itinerary (1/3/7-day) for a destination using AI (OpenRouter) with a sample fallback if AI is not configured.
-  - Access: Public.
-  - Rate Limit: 12 requests per minute (in addition to role-based limits).
-  - Query Parameters:
-    - One of: `placeId` | `dest` | `lat`+`lng`
-      - `placeId`: Google Place ID (e.g., `places/ChIJ...`).
-      - `dest`: Free-text destination (city/area) to geocode.
-      - `lat`,`lng`: Coordinates to anchor the plan.
-    - `days` (optional): 1 | 3 | 7 (default: 3).
-    - `budget` (optional): `low|mid|high` (default: `mid`).
-    - `pace` (optional): `relaxed|balanced|packed` (default: `balanced`).
-    - `season` (optional): `any|spring|summer|autumn|winter` (default: `any`).
-    - `interests` (optional): Comma-separated (e.g., `food, culture`).
-    - `lang` (optional): Language hint for place lookup (default: `en`).
-  - Response example:
-    ```json
-    {
-    "destination": { "id": "places/ChIJ...", "name": "Paris" },
-    "params": {
+Generate an AI-assisted itinerary used by the Discover page (Itinerary planner beta) and Destination Details deep-links.
+
+**Endpoint:** `GET /api/itinerary/generate`
+**Access:** Public
+**Rate Limit:** 12 requests/minute (in addition to role-based limits)
+
+**Query Parameters:**
+
+- One of:
+  - `placeId` (string): Google Place ID (e.g., `places/ChIJ...`)
+  - `dest` (string): Free-text destination (city/area) to geocode
+  - `lat` (number) and `lng` (number): Coordinates to anchor the plan
+- `days` (number, optional): e.g. `1`–`14` (defaults to 3 in the current implementation)
+- `budget` (string, optional): `low` | `mid` | `high` (default: `mid`)
+- `pace` (string, optional): `relaxed` | `balanced` | `packed` (default: `balanced`)
+- `season` (string, optional): `any` | `spring` | `summer` | `autumn` | `winter` (default: `any`)
+- `interests` (string, optional): Comma-separated interests (e.g., `food,culture,nightlife`)
+- `lang` (string, optional): Language hint for place lookup (default: `en`)
+
+**Example Response:**
+
+```json
+{
+  "destination": { "id": "places/ChIJ...", "name": "Paris" },
+  "params": {
     "days": 3,
     "budget": "mid",
     "pace": "balanced",
     "season": "any",
-    "interests": "food, culture"
-    },
-    "days": [
+    "interests": "food,culture"
+  },
+  "days": [
     {
-    "day": 1,
-    "blocks": [
-    {
-    "title": "Activity 1",
-    "description": "Suggested activity aligned with food",
-    "time": "Morning"
+      "day": 1,
+      "blocks": [
+        {
+          "title": "Morning in Le Marais",
+          "description": "Coffee and pastry, architecture walk, boutique stops",
+          "time": "09:00"
+        }
+      ]
     }
-    ]
-    }
-    ],
-    "tips": ["Group nearby activities to reduce transit time"]
-    }
-    ],
-    "total": 15,
-    "page": 1,
-    "pageSize": 20,
-    "resolvedDestination": {
-    "query": "Rome",
-    "display": "Rome, Italy",
-    "address": "Rome, Italy",
-    "city": "Rome",
-    "state": "",
-    "country": "Italy",
-    "lat": 41.9028,
-    "lng": 12.4964
-    }
-    }
-    ```
-
-````
-
-### Get POI Details
+  ],
+  "tips": [
+    "Group nearby stops to reduce transit time.",
+    "Pre-book timed entries for popular museums."
+  ]
+}
+```
 
 Get detailed information about a specific point of interest.
 
@@ -414,7 +401,7 @@ Get detailed information about a specific point of interest.
 
 ```http
 GET /api/poi/ChIJ2XeUam9cHRMRIdPqlGObTpU?lang=en
-````
+```
 
 ## Protected Endpoints
 
@@ -760,6 +747,6 @@ curl -X POST "https://your-api-domain.com/api/phrasebook/generate" \
 
 ---
 
-**Last Updated**: 2025-11-11  
-**Version**: 1.0.0  
+**Last Updated**: 2025-11-13
+**Version**: 1.1.0
 **Base URL**: https://your-api-domain.com/api

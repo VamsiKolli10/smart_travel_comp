@@ -15,6 +15,9 @@ import {
   Typography,
   Card,
   CardContent,
+  Stack,
+  Chip,
+  Drawer,
   useTheme,
   useMediaQuery,
 } from "@mui/material";
@@ -24,17 +27,20 @@ import {
   Map as MapIcon,
   ViewList as ListIcon,
   ViewWeek as SplitIcon,
+  FilterList as FilterListIcon,
 } from "@mui/icons-material";
 import { searchStays } from "../../services/stays";
 import FiltersSidebar from "../stays/FiltersSidebar";
 import ResultsList from "../stays/ResultsList";
 import MapView from "../stays/MapView";
 import { useAnalytics } from "../../contexts/AnalyticsContext.jsx";
+import { logRecentActivity } from "../../utils/recentActivity";
 
 export default function StaysSearchPage() {
   const [params, setParams] = useSearchParams();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const [filtersVisible, setFiltersVisible] = useState(() => !isMobile);
 
   const [query, setQuery] = useState({
     dest: params.get("dest") || "",
@@ -53,8 +59,19 @@ export default function StaysSearchPage() {
   const [page, setPage] = useState(Number(params.get("page") || 1));
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
+  const [destinationMeta, setDestinationMeta] = useState(null);
   const [error, setError] = useState("");
   const { trackModuleView, trackEvent } = useAnalytics();
+  const appliedFiltersCount =
+    (filters.type?.length || 0) +
+    (filters.amenities?.length || 0) +
+    (filters.rating ? 1 : 0);
+
+  useEffect(() => {
+    setFiltersVisible(!isMobile);
+  }, [isMobile]);
 
   useEffect(() => {
     trackModuleView("stays");
@@ -84,15 +101,20 @@ export default function StaysSearchPage() {
   // Fixed: performSearch accepts query and filters as parameters to avoid async state delays
   const performSearch = async (
     searchQuery = query,
-    searchFilters = filters
+    searchFilters = filters,
+    pageOverride = page
   ) => {
     setLoading(true);
     setError("");
     try {
+      const effectivePage =
+        pageOverride === undefined || pageOverride === null
+          ? page
+          : pageOverride;
       // Build search params - only include non-empty values
       const searchParams = {
         ...searchQuery,
-        page,
+        page: effectivePage,
       };
 
       // Add type filter only if there are selected types
@@ -112,7 +134,30 @@ export default function StaysSearchPage() {
 
       const data = await searchStays(searchParams);
       setItems(data.items || []);
-      syncUrl();
+      const resolvedTotal = data.total ?? data.items?.length ?? 0;
+      setTotalResults(resolvedTotal);
+      setDestinationMeta(data.resolvedDestination || null);
+      setTotalPages(Math.max(1, data.totalPages || 1));
+      if (typeof data.page === "number") {
+        setPage(data.page);
+      }
+      syncUrl({ page: effectivePage });
+      const destinationLabel =
+        data.resolvedDestination?.display ||
+        data.resolvedDestination?.city ||
+        searchQuery.dest ||
+        (searchQuery.lat && searchQuery.lng ? "Current location" : "Nearby");
+      logRecentActivity({
+        type: "stays",
+        title: "Searched stays",
+        description: `${destinationLabel} · ${resolvedTotal} result${
+          resolvedTotal === 1 ? "" : "s"
+        }`,
+        meta: {
+          page: effectivePage,
+          total: resolvedTotal,
+        },
+      });
       trackEvent("stays_search", {
         hasDestination: Boolean(searchQuery.dest),
         hasCoordinates: Boolean(searchQuery.lat && searchQuery.lng),
@@ -121,13 +166,16 @@ export default function StaysSearchPage() {
           amenities: searchFilters.amenities?.length || 0,
           rating: Boolean(searchFilters.rating),
         },
-        results: data.items?.length || 0,
+        results: (data.total ?? data.items?.length) || 0,
         success: true,
       });
     } catch (e) {
       const apiMsg = e?.response?.data?.error?.message;
       setError(apiMsg || e?.message || "Failed to fetch stays");
       setItems([]);
+      setTotalResults(0);
+      setDestinationMeta(null);
+      setTotalPages(1);
       trackEvent("stays_search", {
         hasDestination: Boolean(searchQuery.dest),
         hasCoordinates: Boolean(searchQuery.lat && searchQuery.lng),
@@ -142,11 +190,31 @@ export default function StaysSearchPage() {
   const runSearch = () => {
     // Only search if we have a destination or coordinates
     if (query.dest || (query.lat && query.lng)) {
-      performSearch(query);
+      const resetPage = 1;
+      setPage(resetPage);
+      performSearch(query, filters, resetPage);
     } else {
       // No query params, show empty state
       setItems([]);
       setLoading(false);
+      setTotalResults(0);
+      setDestinationMeta(null);
+    }
+  };
+
+  const handleFilterChange = (nextFilters) => {
+    setFilters(nextFilters);
+  };
+
+  const handleFiltersApply = (newFilters, options = {}) => {
+    const filtersToApply = newFilters || filters;
+    setFilters(filtersToApply);
+    setPage(1);
+    performSearch(query, filtersToApply, 1);
+    const shouldClose =
+      options.closePanel !== false && !(options?.reason === "auto");
+    if (isMobile && shouldClose) {
+      setFiltersVisible(false);
     }
   };
 
@@ -179,7 +247,7 @@ export default function StaysSearchPage() {
         setPage(1);
 
         // Perform search immediately with new query
-        performSearch(nextQuery).catch((err) => {
+        performSearch(nextQuery, filters, 1).catch((err) => {
           setError(err?.message || "Search failed");
           setLoading(false);
         });
@@ -223,25 +291,62 @@ export default function StaysSearchPage() {
         <Grid container spacing={3} flexDirection="column">
           {/* Header */}
           <Grid item xs={12}>
-            <Typography variant="h4" sx={{ fontWeight: 600, mb: 3 }}>
-              Find Accommodations
-            </Typography>
+            <Stack spacing={1.5} sx={{ mb: 2 }}>
+              <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                Find Accommodations
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Chip
+                  label={
+                    destinationMeta?.display ||
+                    destinationMeta?.city ||
+                    destinationMeta?.query ||
+                    (query.dest?.trim() ? query.dest : "All destinations")
+                  }
+                  color="primary"
+                  variant="outlined"
+                  sx={{ fontWeight: 600 }}
+                />
+                <Chip
+                  label={
+                    loading
+                      ? "Searching…"
+                      : totalResults
+                      ? `${totalResults} stays`
+                      : "No filters applied"
+                  }
+                  variant="outlined"
+                />
+                <Chip label={`Page ${page} / ${totalPages}`} variant="outlined" />
+              </Stack>
+              {destinationMeta?.address && (
+                <Typography variant="body2" color="text.secondary">
+                  Centered on {destinationMeta.address}
+                </Typography>
+              )}
+            </Stack>
           </Grid>
-          <Grid
-            container
-            flexDirection="row"
-            alignItems="flex-start"
-            sx={{ overflowX: "hidden" }}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", md: "row" },
+              gap: { xs: 2, md: 3 },
+              alignItems: "flex-start",
+              width: "100%",
+            }}
           >
             {/* LEFT SIDEBAR - Filters */}
-            {!isMobile && (
-              <Grid
-                item
-                xs={12}
-                md={3}
-                sx={{ overflowY: "auto", maxHeight: "calc(100vh - 120px)" }}
+            {!isMobile && filtersVisible && (
+              <Box
+                sx={{
+                  width: { md: 260, lg: 300 },
+                  flexShrink: 0,
+                  maxHeight: "calc(100vh - 120px)",
+                  position: "sticky",
+                  top: 20,
+                }}
               >
-                <Card sx={{ position: "sticky", top: 20 }}>
+                <Card>
                   <CardContent sx={{ p: 2.5 }}>
                     {/* Search Bar */}
                     <Box sx={{ mb: 2.5 }}>
@@ -323,31 +428,21 @@ export default function StaysSearchPage() {
                     {/* Filters */}
                     <FiltersSidebar
                       filters={filters}
-                      onChange={(newFilters) => {
-                        setFilters(newFilters);
-                      }}
-                      onApply={(newFilters) => {
-                        // Use the filters passed from the component, or fallback to current state
-                        const filtersToApply = newFilters || filters;
-                        setFilters(filtersToApply);
-                        setPage(1);
-                        performSearch(query, filtersToApply);
-                      }}
+                      onChange={handleFilterChange}
+                      onApply={handleFiltersApply}
                     />
                   </CardContent>
                 </Card>
-              </Grid>
+              </Box>
             )}
 
             {/* RIGHT CONTENT */}
-            <Grid
-              container
-              flexDirection={"column"}
-              flexGrow={1}
-              item
-              xs={12}
-              md={isMobile ? 12 : 9}
-              sx={{ overflowX: "hidden" }}
+            <Box
+              sx={{
+                flexGrow: 1,
+                width: "100%",
+                minWidth: 0,
+              }}
             >
               {/* Mobile Search Bar */}
               {isMobile && (
@@ -429,6 +524,25 @@ export default function StaysSearchPage() {
                       Map
                     </ToggleButton>
                   </ToggleButtonGroup>
+                  <Button
+                    variant={filtersVisible ? "outlined" : "contained"}
+                    color="primary"
+                    size="small"
+                    onClick={() => setFiltersVisible((prev) => !prev)}
+                    startIcon={<FilterListIcon sx={{ fontSize: 18 }} />}
+                  >
+                    {!isMobile
+                      ? filtersVisible
+                        ? "Hide filters"
+                        : `Show filters${
+                            appliedFiltersCount
+                              ? ` (${appliedFiltersCount})`
+                              : ""
+                          }`
+                      : `Filters${
+                          appliedFiltersCount ? ` (${appliedFiltersCount})` : ""
+                        }`}
+                  </Button>
                   <Typography variant="body2" color="textSecondary">
                     {loading ? (
                       <Box
@@ -438,7 +552,7 @@ export default function StaysSearchPage() {
                         Searching...
                       </Box>
                     ) : (
-                      `${items.length} results`
+                      `Page ${page} / ${totalPages}`
                     )}
                   </Typography>
                 </CardContent>
@@ -519,35 +633,60 @@ export default function StaysSearchPage() {
                     variant="outlined"
                     disabled={page === 1}
                     onClick={() => {
-                      const newPage = page - 1;
+                      const newPage = Math.max(1, page - 1);
                       setPage(newPage);
-                      performSearch(query, filters);
+                      performSearch(query, filters, newPage);
                     }}
                   >
                     Previous
                   </Button>
                   <Paper sx={{ px: 2, py: 1 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      Page {page}
+                      Page {page} / {totalPages}
                     </Typography>
                   </Paper>
                   <Button
                     variant="outlined"
-                    disabled={items.length < 20} // Disable if we got fewer items than page size
+                    disabled={page >= totalPages}
                     onClick={() => {
                       const newPage = page + 1;
                       setPage(newPage);
-                      performSearch(query, filters);
+                      performSearch(query, filters, newPage);
                     }}
                   >
                     Next
                   </Button>
                 </Box>
               )}
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </Grid>
       </Container>
+      <Drawer
+        anchor="right"
+        open={isMobile && filtersVisible}
+        onClose={() => setFiltersVisible(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", sm: "85%" },
+            maxWidth: 420,
+            borderTopLeftRadius: 16,
+            borderBottomLeftRadius: 16,
+            p: 2,
+          },
+        }}
+      >
+        <Stack spacing={2} sx={{ height: "100%" }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Filters
+          </Typography>
+          <FiltersSidebar
+            filters={filters}
+            onChange={handleFilterChange}
+            onApply={handleFiltersApply}
+          />
+        </Stack>
+      </Drawer>
     </Box>
   );
 }
