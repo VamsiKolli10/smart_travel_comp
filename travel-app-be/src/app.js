@@ -136,13 +136,20 @@ function createApp() {
   // Hydrate user context (if any) before applying role-based rate limits
   app.use(attachUserContext);
 
-  // Apply role-based rate limiting to the API
+  // Apply role-based rate limiting to the API (skip hot paths like /stays/photo which can issue many parallel requests)
   const roleLimiter = createRoleBasedLimiter({
     windowMs: rateLimitWindowMs,
     limits: roleLimits,
     defaultMessage: "Too many requests for your role",
   });
-  app.use("/api", roleLimiter);
+  const roleLimitBypass = ["/stays/photo", "/stays/photo/"];
+  app.use("/api", (req, res, next) => {
+    const path = req.path || "";
+    if (roleLimitBypass.some((p) => path.startsWith(p))) {
+      return next();
+    }
+    return roleLimiter(req, res, next);
+  });
 
   // Apply endpoint-specific rate limiting
   Object.entries(endpointLimits).forEach(([path, limits]) => {
@@ -150,14 +157,18 @@ function createApp() {
   });
 
   // Apply method-based rate limiting to the entire API
-  app.use(
-    "/api",
-    createMethodBasedLimiter({
-      windowMs: rateLimitWindowMs,
-      limits: methodLimits,
-      defaultMessage: "Too many requests for this HTTP method",
-    })
-  );
+  const methodLimiter = createMethodBasedLimiter({
+    windowMs: rateLimitWindowMs,
+    limits: methodLimits,
+    defaultMessage: "Too many requests for this HTTP method",
+  });
+  app.use("/api", (req, res, next) => {
+    const path = req.path || "";
+    if (roleLimitBypass.some((p) => path.startsWith(p))) {
+      return next();
+    }
+    return methodLimiter(req, res, next);
+  });
 
   // Add enhanced security middleware
   app.use(addSecurityHeaders());

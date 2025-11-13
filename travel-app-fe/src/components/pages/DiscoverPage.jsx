@@ -393,21 +393,27 @@ export default function DiscoverPage() {
       season: seasonFromText,
     } = parseTripQuery(nlQuery);
 
+    let nextQuery = query;
     // Always prefer destination from NL; also reflect it in the search box
     if (destFromText) {
-      setQuery((q) => ({
-        ...q,
-        dest: destFromText,
+      const trimmedDest = destFromText.trim();
+      nextQuery = {
+        ...query,
+        dest: trimmedDest,
         lat: undefined,
         lng: undefined,
-      }));
+      };
+      setQuery(nextQuery);
+    } else {
+      nextQuery = { ...query };
     }
     if (typeof daysFromText === "number" && daysFromText > 0) {
       setParsedDays(daysFromText);
       setItDays(daysFromText);
     }
+    let nextFilters = filters;
     if (catFromText) {
-      const nextFilters = { ...filters, category: [catFromText] };
+      nextFilters = { ...filters, category: [catFromText] };
       setFilters(nextFilters);
       setItInterests(catFromText);
     }
@@ -415,9 +421,12 @@ export default function DiscoverPage() {
     if (paceFromText) setItPace(paceFromText);
     if (seasonFromText) setItSeason(seasonFromText);
 
-    const destEffective = (destFromText || query.dest || "").trim();
-    const hasCoords = query.lat && query.lng;
+    const destEffective = (destFromText || nextQuery.dest || "").trim();
+    const hasCoords = nextQuery.lat && nextQuery.lng;
     if (!destEffective && !hasCoords) return;
+
+    // Kick off a fresh POI search so cards update alongside the itinerary
+    performSearch(nextQuery, nextFilters);
 
     setItLoading(true);
     setItError("");
@@ -436,8 +445,8 @@ export default function DiscoverPage() {
       };
       if (destEffective) paramsObj.dest = destEffective;
       else {
-        paramsObj.lat = query.lat;
-        paramsObj.lng = query.lng;
+        paramsObj.lat = nextQuery.lat;
+        paramsObj.lng = nextQuery.lng;
       }
       const data = await generateItinerary(paramsObj);
       setItinerary(data);
@@ -514,7 +523,11 @@ export default function DiscoverPage() {
               fullWidth
               label="Describe your trip (e.g., “5-day fast-paced budget trip in Boston in winter”)"
               value={nlQuery}
-              onChange={(e) => setNlQuery(e.target.value)}
+              onChange={(e) => {
+                setNlQuery(e.target.value);
+                setResults([]);
+                setHasSearched(false);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") generatePlan();
               }}
@@ -587,13 +600,6 @@ export default function DiscoverPage() {
                   <MenuItem value="winter">Winter</MenuItem>
                 </Select>
               </FormControl>
-              <TextField
-                size="small"
-                label="Interests (comma-separated)"
-                value={itInterests}
-                onChange={(e) => setItInterests(e.target.value)}
-                sx={{ minWidth: 220 }}
-              />
             </Box>
           </Box>
         )}
@@ -642,15 +648,6 @@ export default function DiscoverPage() {
             }}
           />
           {/* Removed: Open now, duration chips, Free/Paid chips */}
-        </Box>
-        <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
-          <Button
-            variant="contained"
-            onClick={runSearch}
-            startIcon={<SearchIcon />}
-          >
-            Search
-          </Button>
         </Box>
       </Paper>
       {/* Itinerary planner (beta) */}
@@ -731,105 +728,123 @@ export default function DiscoverPage() {
 
       {/* Error message removed per request */}
 
-      <Grid container spacing={2}>
-        {loading && (
-          <Grid item xs={12}>
-            <Box sx={{ py: 6, textAlign: "center" }}>
-              <CircularProgress />
-            </Box>
-          </Grid>
-        )}
-        {/* Empty-state message removed per request */}
-        {!loading &&
-          results.map((item) => (
-            <Grid key={item.id} item xs={12} md={6} lg={4}>
-              <Card
-                onClick={() => {
-                  // If itinerary mode, pass parsed days and inferred interest to destination page to auto-generate
-                  const params = new URLSearchParams();
-                  if (itineraryMode && parsedDays)
-                    params.set("days", String(parsedDays));
-                  if (itineraryMode && filters.category?.length === 1)
-                    params.set("interests", filters.category[0]);
-                  const suffix = params.toString()
-                    ? `?${params.toString()}`
-                    : "";
-                  navigate(
-                    `/destinations/${encodeURIComponent(item.id)}${suffix}`
-                  );
-                }}
+      {loading ? (
+        <Box sx={{ py: 6, textAlign: "center" }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "minmax(0, 1fr)",
+              sm: "repeat(2, minmax(0, 1fr))",
+              lg: "repeat(3, minmax(0, 1fr))",
+            },
+            gap: { xs: 1.5, md: 2 },
+            width: "100%",
+          }}
+        >
+          {results.map((item) => (
+            <Card
+              key={item.id}
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (itineraryMode && parsedDays)
+                  params.set("days", String(parsedDays));
+                if (itineraryMode && filters.category?.length === 1)
+                  params.set("interests", filters.category[0]);
+                const suffix = params.toString() ? `?${params.toString()}` : "";
+                navigate(`/destinations/${encodeURIComponent(item.id)}${suffix}`);
+              }}
+              sx={{
+                cursor: "pointer",
+                height: { xs: "auto", md: 360 },
+                display: "flex",
+                flexDirection: "column",
+                bgcolor: cardBg,
+                border: `1px solid ${borderColor}`,
+                boxShadow: softShadow,
+                overflow: "hidden",
+              }}
+            >
+              {item.thumbnail ? (
+                <CardMedia
+                  component="img"
+                  image={toAbsoluteUrl(item.thumbnail)}
+                  alt={item.name}
+                  sx={{
+                    width: "100%",
+                    height: { xs: 180, md: 200 },
+                    objectFit: "cover",
+                  }}
+                />
+              ) : (
+                <Box
+                  sx={{
+                    width: "100%",
+                    height: { xs: 180, md: 200 },
+                    bgcolor: mutedSurface,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "text.secondary",
+                  }}
+                >
+                  <Typography variant="body2">No image</Typography>
+                </Box>
+              )}
+              <CardContent
                 sx={{
-                  cursor: "pointer",
-                  height: "100%",
+                  flexGrow: 1,
                   display: "flex",
                   flexDirection: "column",
-                  bgcolor: cardBg,
-                  border: `1px solid ${borderColor}`,
-                  boxShadow: softShadow,
+                  minHeight: 0,
                 }}
               >
-                {item.thumbnail ? (
-                  <CardMedia
-                    component="img"
-                    image={toAbsoluteUrl(item.thumbnail)}
-                    alt={item.name}
+                <Typography variant="h6" sx={{ mb: 0.5 }}>
+                  {item.name}
+                </Typography>
+                {item.blurb && (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
                     sx={{
-                      width: "100%",
-                      height: 220,
-                      objectFit: "cover",
-                      display: "block",
-                      borderTopLeftRadius: (theme) => theme.shape.borderRadius,
-                      borderTopRightRadius: (theme) => theme.shape.borderRadius,
-                    }}
-                  />
-                ) : (
-                  <Box
-                    sx={{
-                      width: "100%",
-                      height: 220,
-                      bgcolor: mutedSurface,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "text.secondary",
+                      mb: 1.5,
+                      flexGrow: 1,
+                      overflow: "hidden",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
                     }}
                   >
-                    <Typography variant="body2">No image</Typography>
-                  </Box>
-                )}
-                <CardContent>
-                  <Typography variant="h6" sx={{ mb: 0.5 }}>
-                    {item.name}
+                    {item.blurb}
                   </Typography>
-                  {item.blurb && (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 1.5 }}
-                    >
-                      {item.blurb}
-                    </Typography>
+                )}
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{ flexWrap: "wrap", mt: "auto" }}
+                >
+                  {item.categories?.slice(0, 4).map((t) => (
+                    <Chip
+                      key={t}
+                      label={t.replaceAll("_", " ")}
+                      size="small"
+                    />
+                  ))}
+                  {item.openNow && (
+                    <Chip color="success" label="Open now" size="small" />
                   )}
-                  <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-                    {item.categories?.slice(0, 4).map((t) => (
-                      <Chip
-                        key={t}
-                        label={t.replaceAll("_", " ")}
-                        size="small"
-                      />
-                    ))}
-                    {item.openNow && (
-                      <Chip color="success" label="Open now" size="small" />
-                    )}
-                    {item.badges?.map((b) => (
-                      <Chip key={b} label={b} size="small" />
-                    ))}
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
+                  {item.badges?.map((b) => (
+                    <Chip key={b} label={b} size="small" />
+                  ))}
+                </Stack>
+              </CardContent>
+            </Card>
           ))}
-      </Grid>
+        </Box>
+      )}
     </Container>
   );
 }

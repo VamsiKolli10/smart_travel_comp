@@ -52,7 +52,7 @@ router.get("/photo", async (req, res) => {
     }
 
     const endpoint = `${PLACES_BASE_URL}/${encodePlacePath(photoName)}/media`;
-    const response = await axios.get(endpoint, {
+    let upstream = await axios.get(endpoint, {
       headers: {
         "X-Goog-Api-Key": GOOGLE_API_KEY,
         "X-Goog-FieldMask": "*",
@@ -68,24 +68,23 @@ router.get("/photo", async (req, res) => {
     res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.setHeader("Access-Control-Allow-Origin", "*");
 
-    // Let the browser follow Google's redirect directly (more robust than re-streaming)
-    if (response.status === 302 && response.headers.location) {
-      res.setHeader(
-        "Cache-Control",
-        "public, max-age=86400, stale-while-revalidate=86400"
-      );
-      return res.redirect(302, response.headers.location);
+    // If Google returns an expiring redirect, fetch it server-side so clients do not cache it
+    if (upstream.status === 302 && upstream.headers.location) {
+      upstream = await axios.get(upstream.headers.location, {
+        responseType: "stream",
+        validateStatus: (status) => status >= 200 && status < 400,
+      });
     }
 
-    if (response.headers["content-type"]) {
-      res.setHeader("Content-Type", response.headers["content-type"]);
+    if (upstream.headers["content-type"]) {
+      res.setHeader("Content-Type", upstream.headers["content-type"]);
     }
     res.setHeader(
       "Cache-Control",
-      "public, max-age=86400, stale-while-revalidate=86400"
+      "public, max-age=3600, stale-while-revalidate=3600"
     );
 
-    return response.data.pipe(res);
+    return upstream.data.pipe(res);
   } catch (e) {
     logError(e, { endpoint: "/api/stays/photo", query: req.query });
     return res
@@ -162,8 +161,20 @@ router.get("/search", async (req, res) => {
     if (type) {
       const wanted = String(type)
         .split(",")
-        .map((s) => s.trim());
-      items = items.filter((i) => wanted.includes(i.type));
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+      if (wanted.length) {
+        items = items.filter((i) => {
+          const tags =
+            (Array.isArray(i.typeTags) && i.typeTags.length
+              ? i.typeTags
+              : i.type
+              ? [i.type]
+              : []
+            ).map((tag) => String(tag).toLowerCase());
+          return tags.some((tag) => wanted.includes(tag));
+        });
+      }
     }
     if (distance) {
       items = items.filter(

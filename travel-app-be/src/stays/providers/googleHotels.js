@@ -37,6 +37,8 @@ const TYPE_ALIASES = {
   resort: ["resort"],
 };
 
+const GENERIC_LODGING_TYPES = new Set(["lodging"]);
+
 const AMENITY_TYPE_MAP = {
   spa: "spa",
   gym: "fitness_center",
@@ -106,6 +108,10 @@ function inferType(types = []) {
     if (aliases.some((alias) => lower.includes(alias))) {
       return key;
     }
+  }
+
+  if (lower.some((alias) => GENERIC_LODGING_TYPES.has(alias))) {
+    return "hotel";
   }
 
   return "lodging";

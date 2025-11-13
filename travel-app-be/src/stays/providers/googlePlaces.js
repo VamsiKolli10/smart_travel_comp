@@ -36,13 +36,15 @@ function placesHeaders(fieldMask, contentType = "application/json") {
 }
 
 const TYPE_ALIASES = {
-  hotel: ["lodging", "hotel"],
-  hostel: ["lodging", "hostel"],
-  guesthouse: ["lodging", "guest_house", "guesthouse", "bed_and_breakfast"],
-  motel: ["lodging", "motel"],
-  apartment: ["lodging", "apartment", "serviced_apartment"],
-  resort: ["lodging", "resort"],
+  hotel: ["hotel"],
+  hostel: ["hostel"],
+  guesthouse: ["guest_house", "guesthouse", "bed_and_breakfast"],
+  motel: ["motel"],
+  apartment: ["apartment", "serviced_apartment"],
+  resort: ["resort"],
 };
+
+const GENERIC_LODGING_TYPES = new Set(["lodging"]);
 
 const AMENITY_TYPE_MAP = {
   spa: "spa",
@@ -105,17 +107,38 @@ function kmBetween(a, b) {
   return 2 * R * Math.atan2(Math.sqrt(s1), Math.sqrt(1 - s1));
 }
 
-function inferType(types = []) {
-  if (!Array.isArray(types) || !types.length) return "lodging";
-  const lower = types.map((t) => t.toLowerCase());
+function classifyTypes({ types = [], primaryType } = {}) {
+  const combined = [];
+  if (primaryType) combined.push(primaryType);
+  if (Array.isArray(types)) combined.push(...types);
+  if (!combined.length) {
+    return { primary: "lodging", tags: ["lodging"] };
+  }
+
+  const lower = combined.map((t) => t.toLowerCase());
+  const tags = new Set();
 
   for (const [key, aliases] of Object.entries(TYPE_ALIASES)) {
     if (aliases.some((alias) => lower.includes(alias))) {
-      return key;
+      tags.add(key);
     }
   }
 
-  return "lodging";
+  if (lower.some((alias) => GENERIC_LODGING_TYPES.has(alias))) {
+    tags.add("hotel");
+    tags.add("lodging");
+  }
+
+  if (!tags.size) tags.add("lodging");
+
+  return {
+    primary: tags.values().next().value || "lodging",
+    tags: Array.from(tags),
+  };
+}
+
+function inferType(types = [], primaryType) {
+  return classifyTypes({ types, primaryType }).primary;
 }
 
 function inferAmenitiesFromTypes(types = []) {
@@ -260,13 +283,19 @@ function mapPlaceToResult(place, center, language = "en") {
       }))
     : [];
 
+  const { primary: inferredType, tags: typeTags } = classifyTypes({
+    types: place.types,
+    primaryType: place.primaryType,
+  });
+
   return {
     id: place.id,
     name: place.displayName?.text || place.displayName || "Accommodation",
     rating: place.rating ?? null,
     reviewsCount: place.userRatingCount ?? null,
     price: pricePayload(place.priceLevel),
-    type: inferType(place.types),
+    type: inferredType,
+    typeTags,
     amenities: collectPlaceFeatures(place),
     location: {
       lat: latitude ?? null,
@@ -321,6 +350,11 @@ function mapPlaceToDetail(place, language = "en") {
       }))
     : [];
 
+  const { primary: inferredType, tags: typeTags } = classifyTypes({
+    types: place.types,
+    primaryType: place.primaryType,
+  });
+
   return {
     id: place.id,
     name: place.displayName?.text || place.displayName || "Accommodation",
@@ -354,7 +388,8 @@ function mapPlaceToDetail(place, language = "en") {
       deeplink: place.googleMapsUri || null,
     },
     sourceLang: place.displayName?.languageCode || language,
-    type: inferType(place.types),
+    type: inferredType,
+    typeTags,
     thumbnail: photos[0]?.url || null,
     raw: {
       businessStatus: place.businessStatus,
@@ -439,8 +474,8 @@ async function nearbyLodging({
   language = "en",
 }) {
   ensureKey();
-  const FIELD_MASK =
-    "places.id,places.displayName,places.shortFormattedAddress,places.formattedAddress,places.location,places.types,places.priceLevel,places.rating,places.userRatingCount,places.photos,places.businessStatus,places.currentOpeningHours,places.regularOpeningHours,places.googleMapsUri,places.accessibilityOptions";
+const FIELD_MASK =
+    "places.id,places.displayName,places.shortFormattedAddress,places.formattedAddress,places.location,places.types,places.primaryType,places.priceLevel,places.rating,places.userRatingCount,places.photos,places.businessStatus,places.currentOpeningHours,places.regularOpeningHours,places.googleMapsUri,places.accessibilityOptions";
 
   try {
     // Google Places API New expects locationRestriction with circle structure
@@ -502,7 +537,7 @@ async function fetchById(placeId, language = "en") {
   }
 
   const FIELD_MASK =
-    "id,displayName,shortFormattedAddress,formattedAddress,location,types,priceLevel,rating,userRatingCount,photos,businessStatus,currentOpeningHours,regularOpeningHours,internationalPhoneNumber,nationalPhoneNumber,websiteUri,editorialSummary,googleMapsUri,accessibilityOptions,reviews,reviews.rating,reviews.text,reviews.relativePublishTimeDescription,reviews.authorAttribution.displayName";
+    "id,displayName,shortFormattedAddress,formattedAddress,location,types,primaryType,priceLevel,rating,userRatingCount,photos,businessStatus,currentOpeningHours,regularOpeningHours,internationalPhoneNumber,nationalPhoneNumber,websiteUri,editorialSummary,googleMapsUri,accessibilityOptions,reviews,reviews.rating,reviews.text,reviews.relativePublishTimeDescription,reviews.authorAttribution.displayName";
 
   try {
     const { data } = await axios.get(
