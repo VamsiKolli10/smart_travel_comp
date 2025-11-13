@@ -20,11 +20,13 @@ import Translation from "./components/pages/Translation";
 import Phrasebook from "./components/pages/Phrasebook";
 import Emergency from "./components/pages/Emergency";
 import CulturalGuide from "./components/pages/CulturalGuide";
-import Destinations from "./components/pages/Destinations";
+// import Destinations from "./components/pages/Destinations";
 
 // ✅ Stays pages
 import StaysSearchPage from "./components/pages/StaysSearchPage";
 import StayDetailsPage from "./components/pages/StayDetailsPage"; // <-- added import
+import DiscoverPage from "./components/pages/DiscoverPage";
+import DestinationDetailsPage from "./components/pages/DestinationDetailsPage";
 
 export default function App() {
   return (
@@ -55,7 +57,32 @@ export default function App() {
                   <Route path="/phrasebook" element={<Phrasebook />} />
                   <Route path="/emergency" element={<Emergency />} />
                   <Route path="/cultural-guide" element={<CulturalGuide />} />
-                  <Route path="/destinations" element={<Destinations />} />
+                  <Route
+                    path="/destinations"
+                    element={
+                      <FeatureGate flag="discoverModule">
+                        <DiscoverPage />
+                      </FeatureGate>
+                    }
+                  />
+
+                  {/* 🧭 Discover (POIs) */}
+                  <Route
+                    path="/discover"
+                    element={
+                      <FeatureGate flag="discoverModule">
+                        <DiscoverPage />
+                      </FeatureGate>
+                    }
+                  />
+                  <Route
+                    path="/destinations/:id"
+                    element={
+                      <FeatureGate flag="discoverModule">
+                        <DestinationDetailsPage />
+                      </FeatureGate>
+                    }
+                  />
 
                   {/* 🏨 Stays (search + details) */}
                   <Route

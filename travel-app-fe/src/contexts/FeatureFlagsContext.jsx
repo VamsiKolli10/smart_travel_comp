@@ -3,6 +3,7 @@ import { createContext, useContext, useMemo, useState } from "react";
 const defaultFlags = {
   translationModule: true,
   staysModule: true,
+  discoverModule: true,
   analyticsEnabled: true,
 };
 

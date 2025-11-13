@@ -64,20 +64,17 @@ router.get("/photo", async (req, res) => {
       validateStatus: (status) => status === 200 || status === 302,
     });
 
-    if (response.status === 302 && response.headers.location) {
-      const redirectResponse = await axios.get(response.headers.location, {
-        responseType: "stream",
-        validateStatus: (status) => status === 200,
-      });
+    // Set permissive headers to avoid CORP blocking when FE and BE differ (5173 vs 8000)
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Access-Control-Allow-Origin", "*");
 
-      if (redirectResponse.headers["content-type"]) {
-        res.setHeader("Content-Type", redirectResponse.headers["content-type"]);
-      }
+    // Let the browser follow Google's redirect directly (more robust than re-streaming)
+    if (response.status === 302 && response.headers.location) {
       res.setHeader(
         "Cache-Control",
         "public, max-age=86400, stale-while-revalidate=86400"
       );
-      return redirectResponse.data.pipe(res);
+      return res.redirect(302, response.headers.location);
     }
 
     if (response.headers["content-type"]) {
