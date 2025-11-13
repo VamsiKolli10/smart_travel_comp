@@ -7,12 +7,22 @@ const DEFAULT_SERVICE_ACCOUNT_PATH = path.resolve(
   "../../serviceAccountKey.json"
 );
 
+const INLINE_CREDENTIAL_ENV_KEYS = [
+  "SERVICE_ACCOUNT_CREDENTIALS",
+  "ADMIN_SERVICE_ACCOUNT",
+  "FIREBASE_ADMIN_CREDENTIALS",
+];
+
 let cachedCredentials;
 
 function loadServiceAccount() {
   if (cachedCredentials) return cachedCredentials;
 
-  const inline = process.env.FIREBASE_ADMIN_CREDENTIALS;
+  const inlineSourceKey = INLINE_CREDENTIAL_ENV_KEYS.find(
+    (key) => !!process.env[key]
+  );
+  const inline = inlineSourceKey ? process.env[inlineSourceKey] : null;
+
   if (inline) {
     try {
       const jsonString = inline.trim().startsWith("{")
@@ -22,7 +32,7 @@ function loadServiceAccount() {
       return cachedCredentials;
     } catch (err) {
       throw new Error(
-        "Failed to parse FIREBASE_ADMIN_CREDENTIALS. Ensure it is valid JSON or base64 encoded JSON."
+        `Failed to parse ${inlineSourceKey}. Ensure it is valid JSON or base64 encoded JSON.`
       );
     }
   }

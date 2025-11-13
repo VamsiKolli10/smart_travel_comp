@@ -60,12 +60,12 @@ FIRESTORE_PREFER_REST=true
 
 # Firebase Configuration
 FIREBASE_ADMIN_CREDENTIALS=<your-firebase-admin-credentials-json>
-FIREBASE_API_KEY=<your-firebase-web-api-key>
-FIREBASE_AUTH_DOMAIN=<your-project>.firebaseapp.com
-FIREBASE_PROJECT_ID=<your-project-id>
-FIREBASE_STORAGE_BUCKET=<your-project>.appspot.com
-FIREBASE_MESSAGING_SENDER_ID=<sender-id>
-FIREBASE_APP_ID=<app-id>
+FBAPP_API_KEY=<your-firebase-web-api-key>
+FBAPP_AUTH_DOMAIN=<your-project>.firebaseapp.com
+FBAPP_PROJECT_ID=<your-project-id>
+FBAPP_STORAGE_BUCKET=<your-project>.appspot.com
+FBAPP_MESSAGING_SENDER_ID=<sender-id>
+FBAPP_APP_ID=<app-id>
 
 # External API Keys
 GOOGLE_PLACES_API_KEY=<your-google-places-api-key>
