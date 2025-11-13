@@ -3,7 +3,7 @@ const path = require("path");
 
 const serviceAccountPath = path.resolve(__dirname, "serviceAccountKey.json");
 const serviceAccount = require(serviceAccountPath);
-const UID = process.argv[2] || "jzj2TECcxNf3aFdn8ySlqdoSgXG3";
+const UID = process.argv[2] || "ODaGc6LggcV6s2PAABDlO3pZwmn2";
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),

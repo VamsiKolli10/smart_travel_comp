@@ -1,399 +1,338 @@
-# API Documentation
+# Smart Travel Companion - API Documentation
 
-## API Overview
+## Table of Contents
 
-This API provides endpoints for user management, translation services, phrase generation, saved phrases, and lodging searches. The API is built with Express.js and uses Firestore as its primary database.
+1. [Overview](#overview)
+2. [Authentication](#authentication)
+3. [Rate Limiting](#rate-limiting)
+4. [Error Handling](#error-handling)
+5. [Public Endpoints](#public-endpoints)
+6. [Protected Endpoints](#protected-endpoints)
+7. [User Management](#user-management)
+8. [Code Examples](#code-examples)
+
+## Overview
+
+Base URL: `https://your-api-domain.com/api`
+
+The Smart Travel Companion API provides travel-related services including translation, phrasebooks, accommodation search, and points of interest discovery.
+
+### Production Status
+
+The application is **production-ready** with:
+
+- ✅ Multi-layer rate limiting (role-based, method-based, endpoint-specific)
+- ✅ Comprehensive security headers and CORS configuration
+- ✅ Standardized error handling and logging
+- ✅ Authentication with Firebase JWT tokens
+- ✅ Role-based access control (Anonymous, User, Admin)
+- ✅ Monitoring and alerting capabilities
+- ✅ All user workflows tested and verified
+
+For deployment instructions, see: `PRODUCTION_DEPLOYMENT.md`
+For environment setup, see: `ENVIRONMENT_VARIABLES.md`
+For monitoring guidelines, see: `MONITORING_LOGGING.md`
+
+### Content Types
+
+- **Request**: `application/json`
+- **Response**: `application/json`
+
+## Authentication
+
+### Bearer Token Authentication
+
+All protected endpoints require a Firebase JWT token in the Authorization header:
+
+```http
+Authorization: Bearer <jwt_token>
+```
+
+### Token Format
+
+- Standard JWT token from Firebase Authentication
+- Includes user ID, email, roles, and expiration
+- Must be valid and not expired
+
+## Rate Limiting
+
+### Rate Limit Headers
+
+All responses include rate limiting headers:
+
+```http
+X-RateLimit-Limit: 20
+X-RateLimit-Remaining: 15
+X-RateLimit-Reset: 1640995200
+X-RateLimit-Window: 60000
+```
+
+### Rate Limits by Role
+
+| Role      | Requests/Minute | Reset Window |
+| --------- | --------------- | ------------ |
+| Anonymous | 20              | 60 seconds   |
+| User      | 60              | 60 seconds   |
+| Admin     | 120             | 60 seconds   |
+
+### Endpoint-Specific Limits
+
+| Endpoint                   | Requests/Minute | Notes       |
+| -------------------------- | --------------- | ----------- |
+| `/api/users`               | 20              | Admin only  |
+| `/api/translate`           | 30              | Per user    |
+| `/api/phrasebook/generate` | 10              | Per user    |
+| `/api/stays/search`        | 40              | Per user    |
+| `/api/stays/photo`         | 300             | Photo proxy |
+| `/api/poi/search`          | 60              | Per user    |
 
 ## Error Handling
 
-The API implements a standardized error handling system to provide consistent error responses across all endpoints:
-
-### Error Response Format
-
-All errors follow a consistent JSON structure:
+\*\*\*\*### Standard Error Response
 
 ```json
 {
-  "status": "error",
   "error": {
     "code": "ERROR_CODE",
-    "message": "Human-readable error message",
-    "details": {
-      /* Optional additional error context */
-    }
+    "message": "Human readable message",
+    "details": {}
   }
 }
 ```
 
 ### Error Codes
 
-The following error codes are used throughout the API:
+| Code                     | HTTP Status | Description                       |
+| ------------------------ | ----------- | --------------------------------- |
+| `UNAUTHORIZED`           | 401         | Missing or invalid authentication |
+| `FORBIDDEN`              | 403         | Insufficient permissions          |
+| `NOT_FOUND`              | 404         | Resource not found                |
+| `VALIDATION_ERROR`       | 400         | Invalid request data              |
+| `RATE_LIMIT_EXCEEDED`    | 429         | Rate limit exceeded               |
+| `EXTERNAL_SERVICE_ERROR` | 502         | External API failure              |
+| `DB_ERROR`               | 500         | Database operation failed         |
 
-- **INTERNAL_ERROR**: Generic server error
-- **NOT_FOUND**: Requested resource not found
-- **BAD_REQUEST**: Invalid request parameters
-- **UNAUTHORIZED**: Authentication required or failed
-- **FORBIDDEN**: Insufficient permissions
-- **METHOD_NOT_ALLOWED**: HTTP method not supported
-- **DB_ERROR**: Database operation error
-- **DB_NOT_FOUND**: Document or collection not found in database
-- **VALIDATION_ERROR**: Request validation failed
-- **EXTERNAL_SERVICE_ERROR**: Error from external API or service
-- **EXTERNAL_SERVICE_TIMEOUT**: External service timeout
-- **CORS_ERROR**: CORS policy violation
-- **RATE_LIMIT_EXCEEDED**: Request rate limit exceeded
+## Public Endpoints
 
-### Error Logging
+### Search Accommodations
 
-All errors are logged with context information including:
+Search for hotels and other accommodations.
 
-- Error message and stack trace
-- Request URL and method
-- User ID (if authenticated)
-- Request body (sanitized)
-- Additional contextual data
+**Endpoint:** `GET /api/stays/search`
 
-This information helps with debugging and monitoring the API.
+**Parameters:**
 
-## Rate Limiting
+- `dest` (string, optional): Destination city name
+- `lat` (number, optional): Latitude coordinate
+- `lng` (number, optional): Longitude coordinate
+- `rating` (number, optional): Minimum rating (1-5)
+- `distance` (number, optional): Search radius in km (default: 5)
+- `type` (string, optional): Comma-separated accommodation types
+- `amenities` (string, optional): Comma-separated required amenities
+- `page` (number, optional): Page number (default: 1)
+- `lang` (string, optional): Language code (default: "en")
 
-This API implements rate limiting to prevent abuse and ensure fair usage. The rate limits are applied in multiple dimensions:
+**Response Fields:**
 
-1. **Role-based Limits**: Different limits based on user roles (admin, user, anonymous)
+- `resolvedDestination` (object, optional): Present when a `dest` query was supplied and successfully geocoded. Includes `query`, `display`, `address`, `city`, `state`, `country`, `lat`, and `lng`.
 
-   - Admins: 120 requests per minute
-   - Regular users: 60 requests per minute
-   - Unauthenticated users: 20 requests per minute
+**Example Request:**
 
-2. **Endpoint-specific Limits**: Some endpoints have additional rate limits
+```http
+GET /api/stays/search?dest=Paris&distance=3&rating=4&type=hotel&lang=en
+```
 
-   - `/api/users`: 20 requests per minute
-   - `/api/translate`: 30 requests per minute
-   - `/api/phrasebook/generate`: 10 requests per minute
-   - `/api/stays/search`: 40 requests per minute
-
-3. **Method-based Limits**: Different limits for different HTTP methods
-   - GET: 100 requests per minute
-   - POST: 50 requests per minute
-   - PUT: 30 requests per minute
-   - PATCH: 20 requests per minute
-   - DELETE: 10 requests per minute
-
-If a rate limit is exceeded, the API will return a 429 status code with a JSON error response:
+**Example Response:**
 
 ```json
 {
-  "status": "error",
-  "error": {
-    "code": "RATE_LIMIT_EXCEEDED",
-    "message": "Too many requests for your role",
-    "details": {
-      "limit": 60,
-      "windowMs": 60000,
-      "resetTime": "2025-11-09T19:10:30.000Z"
+  "items": [
+    {
+      "id": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+      "name": "Hotel Example",
+      "type": "hotel",
+      "description": "A beautiful hotel in Paris",
+      "rating": 4.5,
+      "reviewsCount": 234,
+      "photos": [
+        {
+          "url": "https://example.com/photo.jpg"
+        }
+      ],
+      "price": {
+        "priceLevel": "$$$",
+        "nightlyRate": 200
+      },
+      "amenities": ["WiFi", "Pool", "Gym"],
+      "location": {
+        "address": "123 Main St, Paris",
+        "lat": 48.8566,
+        "lng": 2.3522,
+        "distanceKm": 1.2
+      }
     }
+  ],
+  "page": 1,
+  "pageSize": 20,
+  "total": 45,
+  "resolvedDestination": {
+    "query": "Paris",
+    "display": "Paris, France",
+    "address": "Paris, France",
+    "city": "Paris",
+    "state": "",
+    "country": "France",
+    "lat": 48.8566,
+    "lng": 2.3522
   }
 }
 ```
 
-The `resetTime` field indicates when the rate limit window will reset and new requests will be allowed.
+### Get Accommodation Details
 
-## Security
+Get detailed information about a specific accommodation.
 
-This API implements several security measures to protect against common vulnerabilities and attacks:
+**Endpoint:** `GET /api/stays/{id}`
 
-### Authentication and Authorization
+**Parameters:**
 
-- **JWT Token Authentication**: All protected endpoints require a valid JWT token in the Authorization header.
-- **Role-based Access Control**: Different endpoints require different roles (admin, user).
-- **Token Expiration and Revocation**: Tokens are validated for expiration and revocation status.
-- **IP-based Validation**: Tokens can be bound to specific IP addresses for additional security.
+- `lang` (string, optional): Language code (default: "en")
 
-### Request Security
+**Example Request:**
 
-- **Request Signatures**: Sensitive endpoints require HMAC signatures in the request headers to ensure request integrity.
-- **Timestamp Validation**: Requests must include a timestamp to prevent replay attacks.
-- **User Agent Validation**: Unusual or missing user agents are flagged in strict mode.
-- **Fingerprinting**: Each request is assigned a fingerprint based on IP, user agent, and other headers.
+```http
+GET /api/stays/ChIJN1t_tDeuEmsRUsoyG83frY4?lang=en
+```
 
-### Security Headers
+**Example Response:**
 
-The API includes several security headers by default:
-
-- **Content-Security-Policy**: Restricts the sources of content that can be loaded.
-- **X-XSS-Protection**: Enables browser XSS filtering.
-- **X-Content-Type-Options**: Prevents MIME type sniffing.
-- **X-Frame-Options**: Provides clickjacking protection.
-- **Strict-Transport-Security**: Enforces HTTPS connections.
-
-### Security Logging
-
-The API logs security-related events, including:
-
-- Authentication failures
-- Authorization violations
-- Suspicious request patterns
-- Rate limit violations
-- Invalid signatures or timestamps
-
-## Endpoints
-
-### User Management
-
-- **GET /api/users**
-  - **Description**: Fetch a list of users.
-  - **Access**: Admin required.
-  - **Rate Limit**: 20 requests per minute (additional to role-based limits).
-- **POST /api/users**
-  - **Description**: Add a new user.
-  - **Access**: Admin required.
-  - **Rate Limit**: 20 requests per minute (additional to role-based limits).
-  - **Security**: Requires request signature.
-
-### Profile
-
-- **GET /api/profile**
-  - **Description**: Retrieve the authenticated user's profile.
-  - **Access**: Any authenticated user.
-
-### Translation
-
-- **POST /api/translate**
-
-  - **Description**: Translate text.
-  - **Access**: User or admin required.
-  - **Rate Limit**: 30 requests per minute (additional to role-based limits).
-  - **Security**: Requires request signature.
-  - **Request Body**:
-    ```json
+```json
+{
+  "id": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+  "name": "Hotel Example",
+  "type": "hotel",
+  "description": "A beautiful hotel in the heart of Paris",
+  "rating": 4.5,
+  "reviewsCount": 234,
+  "price": {
+    "priceLevel": "$$$",
+    "nightlyRate": 200,
+    "currency": "EUR"
+  },
+  "amenities": ["WiFi", "Pool", "Gym", "Restaurant"],
+  "location": {
+    "address": "123 Main St, Paris 75001",
+    "lat": 48.8566,
+    "lng": 2.3522
+  },
+  "photos": [
     {
-      "text": "Text to translate",
-      "langPair": "en-es"
+      "url": "https://example.com/photo1.jpg",
+      "caption": "Hotel exterior"
     }
-    ```
-  - **Response**:
-    ```json
+  ]
+}
+```
+
+### Proxy Accommodation Photos
+
+Proxy endpoint for accessing accommodation photos.
+
+**Endpoint:** `GET /api/stays/photo`
+
+**Parameters:**
+
+- `name` (string): Place name from Places API
+- `ref` (string): Photo reference from Places API
+- `maxWidth` (number, optional): Maximum width in pixels
+- `maxHeight` (number, optional): Maximum height in pixels
+
+**Example Request:**
+
+```http
+GET /api/stays/photo?ref=CnBoAAA&maxWidth=800
+```
+
+### Search Points of Interest
+
+Search for points of interest and attractions.
+
+**Endpoint:** `GET /api/poi/search`
+
+**Parameters:**
+
+- `dest` (string, optional): Destination city name
+- `lat` (number, optional): Latitude coordinate
+- `lng` (number, optional): Longitude coordinate
+- `distance` (number, optional): Search radius in km (default: 5)
+- `category` (string, optional): POI category
+- `kidFriendly` (boolean, optional): Filter for kid-friendly places
+- `accessibility` (boolean, optional): Filter for accessible places
+- `openNow` (boolean, optional): Filter for currently open places
+- `timeNeeded` (string, optional): Expected visit duration
+- `cost` (string, optional): Cost level filter
+- `lang` (string, optional): Language code (default: "en")
+- `page` (number, optional): Page number (default: 1)
+
+**Response Fields:**
+
+- `resolvedDestination` (object, optional): Same structure as the stays search endpoint; returned when a textual `dest` was provided and resolved (fields: `query`, `display`, `address`, `city`, `state`, `country`, `lat`, `lng`).
+
+**Example Request:**
+
+```http
+GET /api/poi/search?dest=Rome&distance=3&category=museum&kidFriendly=true
+```
+
+**Example Response:**
+
+```json
+{
+  "items": [
     {
-      "translation": "Texto traducido"
-    }
-    ```
-
-- **GET /api/translate/warmup**
-  - **Description**: Warmup endpoint for translation service.
-  - **Access**: Admin required.
-  - **Query Parameters**:
-    - `pairs`: Comma-separated list of language pairs to warm up
-
-### Phrasebook
-
-- **POST /api/phrasebook/generate**
-  - **Description**: Generate phrases based on provided parameters.
-  - **Access**: User or admin required.
-  - **Rate Limit**: 10 requests per minute (additional to role-based limits).
-  - **Request Body**:
-    ```json
-    {
-      "topic": "Food",
-      "sourceLang": "en",
-      "targetLang": "es",
-      "count": 3
-    }
-    ```
-  - **Response**:
-    ```json
-    {
-      "topic": "Food",
-      "sourceLang": "en",
-      "targetLang": "es",
-      "phrases": [
-        {
-          "phrase": "¿Dónde está el baño?",
-          "transliteration": "",
-          "meaning": "Where is the bathroom?",
-          "usageExample": "Disculpe, ¿dónde está el baño?"
-        }
-      ]
-    }
-    ```
-
-### Saved Phrases
-
-- **GET /api/saved-phrases**
-
-  - **Description**: List saved phrases.
-  - **Access**: Any authenticated user.
-  - **Response**:
-    ```json
-    {
-      "items": [
-        {
-          "id": "phrase_id",
-          "phrase": "¿Dónde está el baño?",
-          "transliteration": "",
-          "meaning": "Where is the bathroom?",
-          "usageExample": "Disculpe, ¿dónde está el baño?",
-          "topic": "Travel",
-          "sourceLang": "es",
-          "targetLang": "en",
-          "createdAt": "2025-11-09T12:00:00.000Z"
-        }
-      ]
-    }
-    ```
-
-- **POST /api/saved-phrases**
-
-  - **Description**: Add a new saved phrase.
-  - **Access**: Any authenticated user.
-  - **Security**: Requires request signature.
-  - **Request Body**:
-    ```json
-    {
-      "phrase": "¿Dónde está el baño?",
-      "transliteration": "",
-      "meaning": "Where is the bathroom?",
-      "usageExample": "Disculpe, ¿dónde está el baño?",
-      "topic": "Travel",
-      "sourceLang": "es",
-      "targetLang": "en"
-    }
-    ```
-  - **Response**:
-    ```json
-    {
-      "id": "new_phrase_id"
-    }
-    ```
-
-- **DELETE /api/saved-phrases/:id**
-  - **Description**: Delete a saved phrase by ID.
-  - **Access**: The user who created the phrase or an admin.
-  - **Security**: Requires request signature.
-  - **Response**:
-    ```json
-    {
-      "ok": true
-    }
-    ```
-
-### Stays
-
-- **GET /api/stays/search**
-
-  - **Description**: Search for lodging based on various parameters.
-  - **Access**: User or admin required.
-  - **Rate Limit**: 40 requests per minute (additional to role-based limits).
-  - **Query Parameters**:
-    - `dest`: Destination city name
-    - `lat`: Latitude (required if `dest` not provided)
-    - `lng`: Longitude (required if `dest` not provided)
-    - `distance`: Search radius in kilometers (default: 5)
-    - `type`: Comma-separated list of accommodation types
-    - `amenities`: Comma-separated list of required amenities
-    - `rating`: Minimum rating
-    - `page`: Page number (default: 1)
-    - `lang`: Language for results (default: en)
-    - `checkInDate`: Check-in date (YYYY-MM-DD format, optional)
-    - `checkOutDate`: Check-out date (YYYY-MM-DD format, optional)
-    - `adults`: Number of adults (default: 2, optional)
-  - **Response**:
-    ```json
-    {
-      "items": [
-        {
-          "id": "hotel_id",
-          "name": "Hotel Example",
-          "type": "hotel",
-          "rating": 4.5,
-          "photos": [
-            {
-              "url": "https://example.com/photo1.jpg",
-              "width": 800,
-              "height": 600,
-              "alt": "Hotel exterior"
-            }
-          ],
-          "price": {
-            "priceLevel": "$$"
-          },
-          "amenities": ["wifi", "pool", "fitness_center"],
-          "location": {
-            "lat": 40.7128,
-            "lng": -74.006,
-            "distanceKm": 1.2,
-            "address": "123 Main St, New York, NY"
-          },
-          "provider": {
-            "name": "Google Hotels",
-            "deeplink": "https://hotels.google.com/hotel/example"
-          }
-        }
-      ],
-      "page": 1,
-      "pageSize": 20,
-      "total": 45
-    }
-    ```
-
-- **GET /api/stays/photo**
-
-  - **Description**: Fetch a photo based on URL from the Google Hotels API.
-  - **Query Parameters**:
-    - `photo_url`: Direct URL to the hotel photo
-    - `maxWidth`: Maximum width in pixels (default: 800)
-    - `maxHeight`: Maximum height in pixels
-  - **Response**: Binary image data with appropriate Content-Type header
-
-- **GET /api/stays/:id**
-  - **Description**: Fetch a stay by ID.
-  - **Access**: User or admin required.
-  - **Query Parameters**:
-    - `lang`: Language for results (default: en)
-  - **Response**:
-    ```json
-    {
-      "id": "hotel_id",
-      "name": "Hotel Example",
-      "type": "hotel",
-      "description": "A comfortable hotel in the city center.",
-      "rating": 4.5,
-      "reviewsCount": 128,
+      "id": "ChIJ2XeUam9cHRMRIdPqlGObTpU",
+      "name": "Vatican Museums",
+      "category": "museum",
+      "description": "World-famous museums with incredible art collections",
+      "rating": 4.6,
+      "reviewsCount": 15420,
+      "price": {
+        "priceLevel": "$$",
+        "admissionPrice": 17
+      },
+      "location": {
+        "address": "Viale Vaticano, 00165 Roma RM",
+        "lat": 41.9039,
+        "lng": 12.4544,
+        "distanceKm": 2.1
+      },
+      "hours": {
+        "monday": "09:00-18:00",
+        "tuesday": "09:00-18:00",
+        "wednesday": "09:00-18:00"
+      },
       "photos": [
         {
-          "url": "https://example.com/photo1.jpg",
-          "width": 800,
-          "height": 600,
-          "alt": "Hotel exterior"
+          "url": "https://example.com/poi1.jpg"
         }
-      ],
-      "price": {
-        "priceLevel": "$$"
-      },
-      "amenities": ["wifi", "pool", "fitness_center"],
-      "location": {
-        "address": "123 Main St, New York, NY",
-        "lat": 40.7128,
-        "lng": -74.006,
-        "distanceKm": 1.2
-      },
-      "phone": "+1-555-123-4567",
-      "website": "https://hotel-example.com",
-      "openingHours": [
-        "Monday: 24 hours",
-        "Tuesday: 24 hours",
-        "Wednesday: 24 hours",
-        "Thursday: 24 hours",
-        "Friday: 24 hours",
-        "Saturday: 24 hours",
-        "Sunday: 24 hours"
-      ],
-      "provider": {
-        "name": "Google Hotels",
-        "deeplink": "https://hotels.google.com/hotel/example"
-      },
-      "thumbnail": "https://example.com/photo1.jpg"
+      ]
     }
-    ```
+  ],
+  "total": 15,
+  "page": 1,
+  "pageSize": 20,
+  "resolvedDestination": {
+    "query": "Rome",
+    "display": "Rome, Italy",
+    "address": "Rome, Italy",
+    "city": "Rome",
+    "state": "",
+    "country": "Italy",
+    "lat": 41.9028,
+    "lng": 12.4964
+  }
+}
+```
 
 ### Itinerary
 
@@ -416,12 +355,22 @@ The API logs security-related events, including:
     ```json
     {
       "destination": { "id": "places/ChIJ...", "name": "Paris" },
-      "params": { "days": 3, "budget": "mid", "pace": "balanced", "season": "any", "interests": "food, culture" },
+      "params": {
+        "days": 3,
+        "budget": "mid",
+        "pace": "balanced",
+        "season": "any",
+        "interests": "food, culture"
+      },
       "days": [
         {
           "day": 1,
           "blocks": [
-            { "title": "Activity 1", "description": "Suggested activity aligned with food", "time": "Morning" }
+            {
+              "title": "Activity 1",
+              "description": "Suggested activity aligned with food",
+              "time": "Morning"
+            }
           ]
         }
       ],
@@ -431,77 +380,366 @@ The API logs security-related events, including:
 
 ### Points of Interest (POI)
 
-- GET `/api/poi/search`
-  - Description: Search attractions and places to visit near a destination or coordinates.
-  - Access: Public.
-  - Rate Limit: 60 requests per minute (in addition to role-based limits).
-  - Query Parameters:
-    - `dest`: Free text for city/country/area (required if `lat`/`lng` not provided)
-    - `lat`,`lng`: Coordinates (required if `dest` not provided)
-    - `distance`: Radius in kilometers (default: 5)
-    - `category`: Comma-separated categories: `museum,hike,viewpoint,food`
-    - `kidFriendly`: `true|false`
-    - `accessibility`: `true|false`
-    - `openNow`: `true|false`
-    - `timeNeeded`: `<2h|half-day|full-day`
-    - `cost`: `free|paid`
-    - `lang`: Result language (default: `en`)
-    - `page`: Page number (default: 1)
-  - Response example:
-    ```json
-    {
-      "items": [
-        {
-          "id": "places/ChIJ...",
-          "name": "City Museum",
-          "blurb": "A comprehensive collection of local history.",
-          "rating": 4.6,
-          "reviewsCount": 1287,
-          "categories": ["museum", "tourist_attraction"],
-          "openingHours": ["Mon: Closed", "Tue: 10:00–18:00"],
-          "openNow": false,
-          "suggestedDuration": "half-day",
-          "badges": ["Closed Mondays"],
-          "photos": [{ "url": "/api/stays/photo?name=places/.../media" }],
-          "thumbnail": "/api/stays/photo?name=places/.../media",
-          "location": {
-            "address": "123 Museum St",
-            "lat": 48.8566,
-            "lng": 2.3522,
-            "distanceKm": 1.4
-          },
-          "provider": {
-            "name": "Google Places",
-            "deeplink": "https://maps.google.com/?cid=..."
-          },
-          "sourceLang": "en"
-        }
-      ],
-      "page": 1,
-      "pageSize": 20,
-      "total": 37
-    }
-    ```
+### Get POI Details
 
-- GET `/api/poi/:id`
-  - Description: Get destination details by Google Place ID (`places/<id>` or raw id).
-  - Access: Public.
-  - Query Parameters:
-    - `lang`: Result language (default: `en`)
-  - Response example:
-    ```json
+Get detailed information about a specific point of interest.
+
+**Endpoint:** `GET /api/poi/{id}`
+
+**Parameters:**
+
+- `lang` (string, optional): Language code (default: "en")
+
+**Example Request:**
+
+```http
+GET /api/poi/ChIJ2XeUam9cHRMRIdPqlGObTpU?lang=en
+```
+
+## Protected Endpoints
+
+### Translate Text
+
+Translate text between supported language pairs.
+
+**Endpoint:** `POST /api/translate`
+
+**Authentication:** Required (User or Admin role)
+
+**Request Body:**
+
+```json
+{
+  "text": "Hello, how are you?",
+  "langPair": "en-es"
+}
+```
+
+**Supported Language Pairs:**
+
+- `en-es` (English ↔ Spanish)
+- `en-fr` (English ↔ French)
+- `en-de` (English ↔ German)
+- `es-fr` (Spanish ↔ French)
+- `es-de` (Spanish ↔ German)
+- `fr-de` (French ↔ German)
+
+**Example Response:**
+
+```json
+{
+  "translation": "Hola, ¿cómo estás?"
+}
+```
+
+### Generate Phrasebook
+
+Generate AI-powered travel phrasebooks.
+
+**Endpoint:** `POST /api/phrasebook/generate`
+
+**Authentication:** Required (User or Admin role)
+
+**Request Body:**
+
+```json
+{
+  "topic": "restaurant",
+  "sourceLang": "en",
+  "targetLang": "es"
+}
+```
+
+**Parameters:**
+
+- `topic` (string): Travel topic (e.g., "restaurant", "shopping", "emergency")
+- `sourceLang` (string): Source language code
+- `targetLang` (string): Target language code
+
+**Example Response:**
+
+```json
+{
+  "topic": "restaurant",
+  "sourceLang": "en",
+  "targetLang": "es",
+  "phrases": [
     {
-      "id": "places/ChIJ...",
-      "name": "City Museum",
-      "description": "A leading museum ...",
-      "rating": 4.6,
-      "reviewsCount": 1287,
-      "photos": [{ "url": "/api/stays/photo?name=places/.../media" }],
-      "location": { "address": "123 Museum St", "lat": 48.8566, "lng": 2.3522 },
-      "phone": "+33 ...",
-      "website": "https://example.org",
-      "openingHours": ["Mon: Closed", "Tue: 10:00–18:00"],
-      "provider": { "name": "Google Places", "deeplink": "https://maps.google..." },
-      "thumbnail": "/api/stays/photo?name=places/.../media"
+      "phrase": "¿Tienen una mesa para dos?",
+      "transliteration": "¿Tahn een oo-nah meh-sah parah dohs?",
+      "meaning": "Do you have a table for two?",
+      "usageExample": "¿Tienen una mesa para dos personas, por favor?"
+    },
+    {
+      "phrase": "¿Podría ver el menú?",
+      "transliteration": "¿Poh-dree-ah vehr ehl meh-noo?",
+      "meaning": "Could I see the menu?",
+      "usageExample": "Al llegar al restaurante, pregunté: '¿Podría ver el menú?'"
     }
-    ```
+  ]
+}
+```
+
+### List Saved Phrases
+
+Get user's saved phrases.
+
+**Endpoint:** `GET /api/saved-phrases`
+
+**Authentication:** Required (User or Admin role)
+
+**Example Response:**
+
+```json
+{
+  "items": [
+    {
+      "id": "phrase_123",
+      "phrase": "Hola, ¿cómo estás?",
+      "transliteration": "OH-lah, KOH-moh ehs-TAHS?",
+      "meaning": "Hello, how are you?",
+      "usageExample": "Standard greeting when meeting someone",
+      "topic": "greetings",
+      "sourceLang": "es",
+      "targetLang": "en",
+      "createdAt": "2025-11-11T07:00:00Z"
+    }
+  ]
+}
+```
+
+### Save Phrase
+
+Save a phrase to user's collection.
+
+**Endpoint:** `POST /api/saved-phrases`
+
+**Authentication:** Required (User or Admin role)
+
+**Request Body:**
+
+```json
+{
+  "phrase": "Buen día",
+  "transliteration": "Bwehn DEE-ah",
+  "meaning": "Good day",
+  "usageExample": "Standard greeting in the morning",
+  "topic": "greetings",
+  "sourceLang": "es",
+  "targetLang": "en"
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "id": "phrase_456"
+}
+```
+
+### Delete Saved Phrase
+
+Delete a saved phrase.
+
+**Endpoint:** `DELETE /api/saved-phrases/{id}`
+
+**Authentication:** Required (User or Admin role)
+
+**Example Response:**
+
+```json
+{
+  "ok": true
+}
+```
+
+## User Management
+
+### Get User Profile
+
+Get current user's profile information.
+
+**Endpoint:** `GET /api/profile`
+
+**Authentication:** Required (any role)
+
+**Example Response:**
+
+```json
+{
+  "uid": "user123",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "roles": ["user"]
+}
+```
+
+### List Users (Admin Only)
+
+Get list of all users.
+
+**Endpoint:** `GET /api/users`
+
+**Authentication:** Required (Admin role)
+
+**Example Response:**
+
+```json
+[
+  {
+    "uid": "user123",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "roles": ["user"],
+    "createdAt": "2025-11-01T10:00:00Z"
+  }
+]
+```
+
+### Create User (Admin Only)
+
+Create a new user.
+
+**Endpoint:** `POST /api/users`
+
+**Authentication:** Required (Admin role)
+
+**Request Body:**
+
+```json
+{
+  "email": "newuser@example.com",
+  "name": "New User",
+  "roles": ["user"]
+}
+```
+
+## Code Examples
+
+### JavaScript/Node.js
+
+```javascript
+const axios = require("axios");
+
+const API_BASE = "https://your-api-domain.com/api";
+const authToken = "your-jwt-token";
+
+// Search accommodations
+async function searchHotels() {
+  try {
+    const response = await axios.get(`${API_BASE}/stays/search`, {
+      params: {
+        dest: "Paris",
+        distance: 3,
+        rating: 4,
+      },
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error:", error.response.data);
+  }
+}
+
+// Translate text
+async function translateText() {
+  try {
+    const response = await axios.post(
+      `${API_BASE}/translate`,
+      {
+        text: "Hello world",
+        langPair: "en-es",
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error:", error.response.data);
+  }
+}
+```
+
+### Python
+
+```python
+import requests
+
+API_BASE = 'https://your-api-domain.com/api'
+auth_token = 'your-jwt-token'
+headers = {
+    'Authorization': f'Bearer {auth_token}',
+    'Content-Type': 'application/json'
+}
+
+def search_hotels():
+    try:
+        response = requests.get(
+            f'{API_BASE}/stays/search',
+            params={
+                'dest': 'Paris',
+                'distance': 3,
+                'rating': 4
+            },
+            headers=headers
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as error:
+        print(f'Error: {error}')
+
+def translate_text():
+    try:
+        response = requests.post(
+            f'{API_BASE}/translate',
+            json={
+                'text': 'Hello world',
+                'langPair': 'en-es'
+            },
+            headers=headers
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as error:
+        print(f'Error: {error}')
+```
+
+### cURL
+
+```bash
+# Search accommodations
+curl -X GET "https://your-api-domain.com/api/stays/search?dest=Paris&distance=3" \
+  -H "Content-Type: application/json"
+
+# Translate text (authenticated)
+curl -X POST "https://your-api-domain.com/api/translate" \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Hello world",
+    "langPair": "en-es"
+  }'
+
+# Generate phrasebook (authenticated)
+curl -X POST "https://your-api-domain.com/api/phrasebook/generate" \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "restaurant",
+    "sourceLang": "en",
+    "targetLang": "es"
+  }'
+```
+
+---
+
+**Last Updated**: 2025-11-11  
+**Version**: 1.0.0  
+**Base URL**: https://your-api-domain.com/api

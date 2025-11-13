@@ -119,26 +119,8 @@ function createRoleBasedLimiter(options = {}) {
     });
   });
 
-  // Create a default limiter for unknown roles
-  const defaultMaxRequests = limits["anonymous"] || 60;
-  const defaultKeyGenerator = (req) => `${ipKeyGenerator(req)}:anonymous`;
-  const defaultMessageText = `${defaultMessage} for anonymous role`;
-
-  roleLimiters["anonymous"] = createCustomLimiter({
-    windowMs,
-    max: defaultMaxRequests,
-    keyGenerator: defaultKeyGenerator,
-    message: defaultMessageText,
-    onLimitReached: (req, res) => {
-      logError(new Error("Role-based rate limit exceeded"), {
-        ip: req.ip,
-        user: req.user ? req.user.uid : "anonymous",
-        role: "anonymous",
-        path: req.path,
-        method: req.method,
-      });
-    },
-  });
+  // Only create limiters for roles that are explicitly defined
+  // Don't create a default anonymous limiter if not specified
 
   return (req, res, next) => {
     // Get the user role or default to 'anonymous'
@@ -147,8 +129,13 @@ function createRoleBasedLimiter(options = {}) {
         ? req.userRoles[0]
         : "anonymous";
 
+    // Skip rate limiting if this role is not in the defined limits (allows unlimited access)
+    if (!limits[userRole]) {
+      return next();
+    }
+
     // Use the pre-created rate limiter for this role
-    const limiter = roleLimiters[userRole] || roleLimiters["anonymous"];
+    const limiter = roleLimiters[userRole];
     limiter(req, res, next);
   };
 }
@@ -195,29 +182,17 @@ function createMethodBasedLimiter(options = {}) {
     }
   });
 
-  // Create a default limiter for unknown methods
-  const defaultMaxRequests = limits["DEFAULT"] || limits["GET"] || 60;
-  const defaultKeyGenerator = (req) => `${ipKeyGenerator(req)}:DEFAULT`;
-  const defaultMessageText = `${defaultMessage} for requests`;
-
-  methodLimiters["DEFAULT"] = createCustomLimiter({
-    windowMs,
-    max: defaultMaxRequests,
-    keyGenerator: defaultKeyGenerator,
-    message: defaultMessageText,
-    onLimitReached: (req, res) => {
-      logError(new Error("Method-based rate limit exceeded"), {
-        ip: req.ip,
-        user: req.user ? req.user.uid : "anonymous",
-        method: req.method,
-        path: req.path,
-      });
-    },
-  });
+  // Only create limiters for methods that are explicitly defined
+  // Don't create a default limiter if not specified
 
   return (req, res, next) => {
     // Get the HTTP method
     const method = req.method.toUpperCase();
+
+    // Skip rate limiting if this method is not in the defined limits
+    if (!limits[method] && !limits["DEFAULT"]) {
+      return next();
+    }
 
     // Use the pre-created rate limiter for this method
     const limiter = methodLimiters[method] || methodLimiters["DEFAULT"];

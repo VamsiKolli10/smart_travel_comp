@@ -1,7 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Box, Container, Grid, Paper, TextField, Button, InputAdornment, CircularProgress, Alert, Typography, Chip, Card, CardContent, CardMedia, Stack, useTheme, useMediaQuery } from "@mui/material";
-import { Search as SearchIcon, MyLocation as MyLocationIcon } from "@mui/icons-material";
+import {
+  Box,
+  Container,
+  Grid,
+  Paper,
+  TextField,
+  Button,
+  InputAdornment,
+  CircularProgress,
+  Alert,
+  Typography,
+  Chip,
+  Card,
+  CardContent,
+  CardMedia,
+  Stack,
+  useTheme,
+  useMediaQuery,
+} from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import {
+  Search as SearchIcon,
+  MyLocation as MyLocationIcon,
+  DirectionsWalk as DirectionsWalkIcon,
+  Star as StarIcon,
+  AccessTime as AccessTimeIcon,
+  Public as PublicIcon,
+  Launch as LaunchIcon,
+} from "@mui/icons-material";
 import { searchPOIs } from "../../services/poi";
 import { useAnalytics } from "../../contexts/AnalyticsContext.jsx";
 
@@ -19,6 +46,12 @@ export default function DiscoverPage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isDarkMode = theme.palette.mode === "dark";
+  const panelBg = alpha(theme.palette.background.paper, isDarkMode ? 0.96 : 1);
+  const cardBg = alpha(theme.palette.background.paper, isDarkMode ? 0.92 : 1);
+  const borderColor = alpha(theme.palette.divider, isDarkMode ? 0.35 : 0.75);
+  const mutedSurface = alpha(theme.palette.background.default, isDarkMode ? 0.6 : 0.92);
+  const softShadow = theme.shadows[isDarkMode ? 6 : 1];
   const { track } = useAnalytics();
 
   const [query, setQuery] = useState({
@@ -373,7 +406,16 @@ export default function DiscoverPage() {
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
-      <Paper sx={{ p: 2, mb: 2 }}>
+      <Paper
+        sx={{
+          p: 2,
+          mb: 2,
+          borderRadius: 3,
+          bgcolor: panelBg,
+          border: `1px solid ${borderColor}`,
+          boxShadow: softShadow,
+        }}
+      >
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} md={6}>
             <TextField
@@ -497,7 +539,16 @@ export default function DiscoverPage() {
       </Paper>
       {/* Itinerary planner (beta) */}
       {itineraryMode && (
-        <Paper sx={{ p: 2, mb: 2 }}>
+        <Paper
+          sx={{
+            p: 2,
+            mb: 2,
+            borderRadius: 3,
+            bgcolor: panelBg,
+            border: `1px solid ${borderColor}`,
+            boxShadow: softShadow,
+          }}
+        >
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
             <Typography variant="h6">Itinerary planner (beta)</Typography>
             <Stack direction="row" spacing={1}>
@@ -544,14 +595,25 @@ export default function DiscoverPage() {
         {/* Empty-state message removed per request */}
         {!loading && results.map((item) => (
           <Grid key={item.id} item xs={12} md={6} lg={4}>
-            <Card onClick={() => {
-              // If itinerary mode, pass parsed days and inferred interest to destination page to auto-generate
-              const params = new URLSearchParams();
-              if (itineraryMode && parsedDays) params.set("days", String(parsedDays));
-              if (itineraryMode && filters.category?.length === 1) params.set("interests", filters.category[0]);
-              const suffix = params.toString() ? `?${params.toString()}` : "";
-              navigate(`/destinations/${encodeURIComponent(item.id)}${suffix}`);
-            }} sx={{ cursor: "pointer", height: "100%", display: "flex", flexDirection: "column" }}>
+            <Card
+              onClick={() => {
+                // If itinerary mode, pass parsed days and inferred interest to destination page to auto-generate
+                const params = new URLSearchParams();
+                if (itineraryMode && parsedDays) params.set("days", String(parsedDays));
+                if (itineraryMode && filters.category?.length === 1) params.set("interests", filters.category[0]);
+                const suffix = params.toString() ? `?${params.toString()}` : "";
+                navigate(`/destinations/${encodeURIComponent(item.id)}${suffix}`);
+              }}
+              sx={{
+                cursor: "pointer",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                bgcolor: cardBg,
+                border: `1px solid ${borderColor}`,
+                boxShadow: softShadow,
+              }}
+            >
               {item.thumbnail ? (
                 <CardMedia
                   component="img"
@@ -571,7 +633,7 @@ export default function DiscoverPage() {
                   sx={{
                     width: "100%",
                     height: 220,
-                    bgcolor: "grey.100",
+                    bgcolor: mutedSurface,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
