@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Box,
@@ -35,18 +35,36 @@ import ResultsList from "../stays/ResultsList";
 import MapView from "../stays/MapView";
 import { useAnalytics } from "../../contexts/AnalyticsContext.jsx";
 import { logRecentActivity } from "../../utils/recentActivity";
+import useTravelContext from "../../hooks/useTravelContext";
 
 export default function StaysSearchPage() {
   const [params, setParams] = useSearchParams();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [filtersVisible, setFiltersVisible] = useState(() => !isMobile);
+  const {
+    destination,
+    destinationDisplayName,
+    destinationLat,
+    destinationLng,
+    setDestinationContext,
+  } = useTravelContext();
+  const contextDestination = useMemo(
+    () => (destinationDisplayName || destination || "").trim(),
+    [destinationDisplayName, destination]
+  );
+  const initialLat = params.get("lat")
+    ? Number(params.get("lat"))
+    : destinationLat ?? undefined;
+  const initialLng = params.get("lng")
+    ? Number(params.get("lng"))
+    : destinationLng ?? undefined;
 
   const [query, setQuery] = useState({
-    dest: params.get("dest") || "",
+    dest: params.get("dest") || contextDestination || "",
     distance: Number(params.get("distance") || 3),
-    lat: params.get("lat") ? Number(params.get("lat")) : undefined,
-    lng: params.get("lng") ? Number(params.get("lng")) : undefined,
+    lat: initialLat,
+    lng: initialLng,
   });
 
   const [filters, setFilters] = useState({
@@ -76,6 +94,38 @@ export default function StaysSearchPage() {
   useEffect(() => {
     trackModuleView("stays");
   }, [trackModuleView]);
+
+  useEffect(() => {
+    if (!contextDestination && !destinationLat && !destinationLng) return;
+    setQuery((prev) => {
+      const sameDestination =
+        contextDestination &&
+        prev.dest &&
+        prev.dest.toLowerCase() === contextDestination.toLowerCase();
+      const sameCoordinates =
+        destinationLat !== null &&
+        destinationLat !== undefined &&
+        destinationLng !== null &&
+        destinationLng !== undefined &&
+        prev.lat === destinationLat &&
+        prev.lng === destinationLng;
+      if (sameDestination || sameCoordinates) {
+        return prev;
+      }
+      return {
+        ...prev,
+        dest: contextDestination || prev.dest,
+        lat:
+          destinationLat !== null && destinationLat !== undefined
+            ? destinationLat
+            : prev.lat,
+        lng:
+          destinationLng !== null && destinationLng !== undefined
+            ? destinationLng
+            : prev.lng,
+      };
+    });
+  }, [contextDestination, destinationLat, destinationLng]);
 
   const syncUrl = (extra = {}) => {
     const merged = {
@@ -147,6 +197,39 @@ export default function StaysSearchPage() {
         data.resolvedDestination?.city ||
         searchQuery.dest ||
         (searchQuery.lat && searchQuery.lng ? "Current location" : "Nearby");
+
+      const destinationPayload = data.resolvedDestination
+        ? {
+            display: data.resolvedDestination.display || destinationLabel,
+            city: data.resolvedDestination.city,
+            state: data.resolvedDestination.state,
+            country: data.resolvedDestination.country,
+            lat: data.resolvedDestination.lat,
+            lng: data.resolvedDestination.lng,
+          }
+        : {
+            display: destinationLabel,
+            city: data.resolvedDestination?.city || searchQuery.dest || "",
+            state: data.resolvedDestination?.state || "",
+            country: data.resolvedDestination?.country || "",
+            lat: searchQuery.lat,
+            lng: searchQuery.lng,
+          };
+
+      if (destinationLabel && setDestinationContext) {
+        setDestinationContext(
+          destinationLabel,
+          {
+            display: destinationPayload.display || destinationLabel,
+            city: destinationPayload.city,
+            state: destinationPayload.state,
+            country: destinationPayload.country,
+            lat: destinationPayload.lat,
+            lng: destinationPayload.lng,
+          },
+          { source: "stays-search" }
+        );
+      }
       logRecentActivity({
         type: "stays",
         title: "Searched stays",

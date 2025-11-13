@@ -1,17 +1,19 @@
-const {setGlobalOptions} = require("firebase-functions/v2/options");
-const {onRequest} = require("firebase-functions/v2/https");
+const functions = require("firebase-functions/v1");
 const {createApp} = require("./src/app");
 
-// Configure defaults for all deployed functions.
-setGlobalOptions({
-  region: process.env.FUNCTION_REGION || "us-central1",
-  memoryMiB: 1024,
-  timeoutSeconds: 60,
-  maxInstances: Number(process.env.FUNCTION_MAX_INSTANCES || 20),
-  minInstances: Number(process.env.FUNCTION_MIN_INSTANCES || 0),
-});
-
 const app = createApp();
+const region = process.env.FUNCTION_REGION || "us-central1";
+const memory = process.env.FUNCTION_MEMORY || "1GB";
+const timeoutSeconds = Number(process.env.FUNCTION_TIMEOUT || 60);
+const minInstances = Number(process.env.FUNCTION_MIN_INSTANCES || 0);
+const maxInstances = Number(process.env.FUNCTION_MAX_INSTANCES || 10);
 
-// Expose the Express API as a single HTTPS function.
-exports.api = onRequest(app);
+exports.api = functions
+  .region(region)
+  .runWith({
+    memory,
+    timeoutSeconds,
+    minInstances,
+    maxInstances,
+  })
+  .https.onRequest(app);

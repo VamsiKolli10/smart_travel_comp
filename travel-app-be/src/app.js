@@ -35,9 +35,16 @@ const {
   validateRequestSignature,
 } = require("./utils/security");
 
-const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean) || ["http://localhost"];
+const allowedOrigins =
+  process.env.CORS_ALLOWED_ORIGINS?.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean) || [
+    "http://localhost",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://smarttravelcompanion-9ed6c.web.app",
+    "https://smarttravelcompanion-9ed6c.firebaseapp.com",
+  ];
 
 const rateLimitWindowMs = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
 const rateLimitMax = Number(process.env.RATE_LIMIT_MAX || 60);
@@ -102,6 +109,7 @@ function createApp() {
         }
         return callback(new Error("Not allowed by CORS"));
       },
+      credentials: true,
     })
   );
 

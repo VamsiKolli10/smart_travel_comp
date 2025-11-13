@@ -97,12 +97,18 @@ function validateRequestSignature(options = {}) {
       "/api/profile",
       "/api/phrasebook",
       "/api/translate",
+      "/api/saved-phrases",
+      "/api/itinerary",
+      "/api/cultural",
+      "/api/culture",
+      "/api/poi",
+      "/api/stays",
       "/api/auth",
       "/api/login",
       "/api/token",
       "/api/session",
+      "/api/register",
       "/api/dashboard",
-      "/api/stays", // Allow stays API without signature validation
     ];
     if (skipPaths.some((path) => req.path.startsWith(path))) {
       return next();
