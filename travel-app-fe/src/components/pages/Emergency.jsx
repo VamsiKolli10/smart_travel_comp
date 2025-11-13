@@ -23,6 +23,7 @@ import PageContainer from "../layout/PageContainer";
 import Button from "../common/Button";
 import emergencyNumbersByCountry from "../../data/emergencyNumbersByCountry";
 import emergencyLocationAliases from "../../data/emergencyLocationAliases";
+import useTravelContext from "../../hooks/useTravelContext";
 
 const emergencyTips = [
   {
@@ -59,7 +60,29 @@ export default function Emergency() {
   const [searchError, setSearchError] = useState("");
   const [searchedEntry, setSearchedEntry] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState("");
+  const [isManualEditing, setIsManualEditing] = useState(false);
   const fallbackNumber = "911";
+  const {
+    destination,
+    destinationDisplayName,
+    destinationCity,
+    destinationCountry,
+    setDestinationContext,
+  } = useTravelContext();
+  const contextLocation = useMemo(
+    () =>
+      (destinationCity ||
+        destinationDisplayName ||
+        destination ||
+        destinationCountry ||
+        ""
+      ).trim(),
+    [destinationCity, destinationCountry, destinationDisplayName, destination]
+  );
+  const contextCountry = useMemo(
+    () => (destinationCountry || "").trim(),
+    [destinationCountry]
+  );
 
   const alertNumber = useMemo(() => {
     if (!searchedEntry) return fallbackNumber;
@@ -120,11 +143,12 @@ export default function Emergency() {
     );
   };
 
-  const runCountrySearch = (rawValue = countryQuery) => {
+  const runCountrySearch = (rawValue = countryQuery, options = {}) => {
     if (!rawValue.trim()) {
       setSearchedEntry(null);
       setSearchError("Enter a country name to search.");
       setSelectedCountry("");
+      if (!options.skipManualReset) setIsManualEditing(false);
       return;
     }
     const match = findCountryEntry(rawValue);
@@ -132,12 +156,63 @@ export default function Emergency() {
       setSearchedEntry(match);
       setSelectedCountry(match.country);
       setSearchError("");
+      const trimmedValue = rawValue.trim();
+      const displayLabel = trimmedValue || match.country;
+      const aliasEntry =
+        emergencyLocationAliases.find(
+          (alias) =>
+            alias.name.toLowerCase() === trimmedValue.toLowerCase()
+        ) ||
+        emergencyLocationAliases.find((alias) =>
+          alias.name.toLowerCase().includes(trimmedValue.toLowerCase())
+        );
+      const derivedCity =
+        aliasEntry &&
+        aliasEntry.country.toLowerCase() === match.country.toLowerCase() &&
+        aliasEntry.name.toLowerCase() !== match.country.toLowerCase()
+          ? aliasEntry.name
+          : trimmedValue &&
+            trimmedValue.toLowerCase() !== match.country.toLowerCase()
+          ? trimmedValue
+          : "";
+      if (setDestinationContext) {
+        setDestinationContext(
+          displayLabel,
+          {
+            display: displayLabel,
+            city: derivedCity || "",
+            country: match.country,
+          },
+          { source: "emergency" }
+        );
+      }
+      if (!options.skipManualReset) setIsManualEditing(false);
     } else {
       setSearchedEntry(null);
       setSelectedCountry("");
       setSearchError(`No emergency data found for "${rawValue}".`);
+      if (!options.skipManualReset) setIsManualEditing(false);
     }
   };
+
+  useEffect(() => {
+    if (!contextLocation) return;
+    if (isManualEditing) return;
+    if (
+      contextLocation.toLowerCase() === countryQuery.trim().toLowerCase() ||
+      contextLocation.toLowerCase() === selectedCountry.toLowerCase()
+    ) {
+      return;
+    }
+    setCountryQuery(contextLocation);
+    runCountrySearch(contextLocation, { skipManualReset: true });
+  }, [contextLocation, countryQuery, selectedCountry, isManualEditing]);
+
+  useEffect(() => {
+    if (!contextCountry) return;
+    if (contextCountry === selectedCountry) return;
+    setSelectedCountry(contextCountry);
+  }, [contextCountry, selectedCountry]);
 
   useEffect(() => {
     if (!countryQuery.trim()) {
@@ -148,6 +223,7 @@ export default function Emergency() {
   }, [countryQuery]);
 
   const handleCountrySelect = (value) => {
+    setIsManualEditing(false);
     setCountryQuery(value);
     setSelectedCountry(value);
     if (value) {
@@ -256,9 +332,15 @@ export default function Emergency() {
             >
               <TextField
                 value={countryQuery}
-                onChange={(e) => setCountryQuery(e.target.value)}
+                onChange={(e) => {
+                  setIsManualEditing(true);
+                  setCountryQuery(e.target.value);
+                }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") runCountrySearch();
+                  if (e.key === "Enter") {
+                    setIsManualEditing(false);
+                    runCountrySearch();
+                  }
                 }}
                 placeholder="Search a country or city"
                 helperText='Examples: "Paris", "New York City"'
@@ -288,7 +370,10 @@ export default function Emergency() {
               <Button
                 variant="contained"
                 startIcon={<SearchIcon />}
-                onClick={runCountrySearch}
+                onClick={() => {
+                  setIsManualEditing(false);
+                  runCountrySearch();
+                }}
                 sx={{ alignSelf: { xs: "stretch", md: "center" } }}
               >
                 Search

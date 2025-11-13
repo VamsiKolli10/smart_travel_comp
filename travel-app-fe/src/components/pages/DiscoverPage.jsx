@@ -35,6 +35,7 @@ import {
 } from "@mui/icons-material";
 import { searchPOIs } from "../../services/poi";
 import { useAnalytics } from "../../contexts/AnalyticsContext.jsx";
+import useTravelContext from "../../hooks/useTravelContext";
 
 const CATEGORY_CHIPS = [
   { key: "museum", label: "Museum", icon: "🖼️" },
@@ -60,11 +61,26 @@ export default function DiscoverPage() {
   );
   const softShadow = theme.shadows[isDarkMode ? 6 : 1];
   const { track } = useAnalytics();
+  const {
+    destination,
+    destinationDisplayName,
+    destinationLat,
+    destinationLng,
+    setDestinationContext,
+  } = useTravelContext();
+  const contextDestination = useMemo(
+    () => (destinationDisplayName || destination || "").trim(),
+    [destinationDisplayName, destination]
+  );
 
   const [query, setQuery] = useState({
-    dest: params.get("dest") || "",
-    lat: params.get("lat") ? Number(params.get("lat")) : undefined,
-    lng: params.get("lng") ? Number(params.get("lng")) : undefined,
+    dest: params.get("dest") || contextDestination || "",
+    lat: params.get("lat")
+      ? Number(params.get("lat"))
+      : destinationLat ?? undefined,
+    lng: params.get("lng")
+      ? Number(params.get("lng"))
+      : destinationLng ?? undefined,
   });
 
   const [filters, setFilters] = useState({
@@ -125,6 +141,39 @@ export default function DiscoverPage() {
     setParams(queryParams, { replace: true });
   }, [queryParams, setParams]);
 
+  useEffect(() => {
+    if (!contextDestination && destinationLat == null && destinationLng == null)
+      return;
+    setQuery((prev) => {
+      const sameDest =
+        contextDestination &&
+        prev.dest &&
+        prev.dest.toLowerCase() === contextDestination.toLowerCase();
+      const sameCoords =
+        destinationLat !== null &&
+        destinationLat !== undefined &&
+        destinationLng !== null &&
+        destinationLng !== undefined &&
+        prev.lat === destinationLat &&
+        prev.lng === destinationLng;
+      if (sameDest || sameCoords) {
+        return prev;
+      }
+      return {
+        ...prev,
+        dest: contextDestination || prev.dest,
+        lat:
+          destinationLat !== null && destinationLat !== undefined
+            ? destinationLat
+            : prev.lat,
+        lng:
+          destinationLng !== null && destinationLng !== undefined
+            ? destinationLng
+            : prev.lng,
+      };
+    });
+  }, [contextDestination, destinationLat, destinationLng]);
+
   // Helper so we can search with fresh local state right after a click
   const performSearch = async (localQuery = query, localFilters = filters) => {
     setHasSearched(true);
@@ -140,6 +189,25 @@ export default function DiscoverPage() {
         accessibility: localFilters.accessibility,
       });
       setResults(items || []);
+      if ((localQuery.dest && localQuery.dest.trim()) || (localQuery.lat && localQuery.lng)) {
+        const label =
+          localQuery.dest?.trim() ||
+          (localQuery.lat && localQuery.lng
+            ? `Lat ${localQuery.lat.toFixed(2)}, Lng ${localQuery.lng.toFixed(2)}`
+            : "");
+        if (label) {
+          setDestinationContext(
+            label,
+            {
+              display: label,
+              city: localQuery.dest?.trim() || "",
+              lat: localQuery.lat,
+              lng: localQuery.lng,
+            },
+            { source: "discover-search" }
+          );
+        }
+      }
       track?.("discover_search", { ...localQuery, ...localFilters });
     } catch (e) {
       console.error("Discover search error", e);

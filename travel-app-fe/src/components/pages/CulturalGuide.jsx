@@ -57,22 +57,22 @@ export default function CulturalGuide() {
 
   // Keep local inputs in sync when global context changes elsewhere
   useEffect(() => {
-    if (destination && destination !== destinationInput) {
-      setDestinationInput(destination);
+    if (destination !== undefined && destination !== destinationInput) {
+      setDestinationInput(destination || "");
     }
-  }, [destination, destinationInput]);
+  }, [destination]);
 
   useEffect(() => {
     if (culture !== undefined && culture !== cultureInput) {
-      setCultureInput(culture);
+      setCultureInput(culture || "");
     }
-  }, [culture, cultureInput]);
+  }, [culture]);
 
   useEffect(() => {
-    if (language && language !== languageInput) {
-      setLanguageInput(language);
+    if (language !== undefined && language !== languageInput) {
+      setLanguageInput(language || "en");
     }
-  }, [language, languageInput]);
+  }, [language]);
 
   const handleApply = (event) => {
     event.preventDefault();
