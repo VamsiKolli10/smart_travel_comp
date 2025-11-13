@@ -51,7 +51,9 @@ export default function CulturalGuide() {
     }
   }, [destination, language, setDestinationContext, updateTravelContext]);
 
-  const [destinationInput, setDestinationInput] = useState(destination || "Tokyo");
+  const [destinationInput, setDestinationInput] = useState(
+    destination || "Tokyo"
+  );
   const [cultureInput, setCultureInput] = useState(culture || "");
   const [languageInput, setLanguageInput] = useState(language || "en");
 
@@ -108,10 +110,13 @@ export default function CulturalGuide() {
               <CardContent>
                 <Stack spacing={2}>
                   <Box>
-                    <Typography variant="h6">Choose your destination</Typography>
+                    <Typography variant="h6">
+                      Choose your destination
+                    </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Update the fields below to pull the latest etiquette brief, localized
-                      phrases, and safety tips from the Culture Intelligence service.
+                      Update the fields below to pull the latest etiquette
+                      brief, localized phrases, and safety tips from the Culture
+                      Intelligence service.
                     </Typography>
                   </Box>
                   <Grid container spacing={2}>
@@ -125,7 +130,7 @@ export default function CulturalGuide() {
                         required
                       />
                     </Grid>
-                    <Grid item xs={12} md={6}>
+                    {/* <Grid item xs={12} md={6}>
                       <TextField
                         label="Culture focus"
                         placeholder="optional"
@@ -133,7 +138,7 @@ export default function CulturalGuide() {
                         onChange={(e) => setCultureInput(e.target.value)}
                         fullWidth
                       />
-                    </Grid>
+                    </Grid> */}
                     <Grid item xs={12} md={6}>
                       <TextField
                         label="Language"
@@ -144,7 +149,12 @@ export default function CulturalGuide() {
                         fullWidth
                       />
                     </Grid>
-                    <Grid item xs={12} md={6} sx={{ display: "flex", alignItems: "stretch" }}>
+                    <Grid
+                      item
+                      xs={12}
+                      md={6}
+                      sx={{ display: "flex", alignItems: "stretch" }}
+                    >
                       <Button
                         type="submit"
                         variant="contained"
@@ -162,7 +172,9 @@ export default function CulturalGuide() {
                     {featuredDestinations.map((item) => (
                       <Chip
                         key={item.destination}
-                        label={`${item.destination} • ${item.language.toUpperCase()}`}
+                        label={`${
+                          item.destination
+                        } • ${item.language.toUpperCase()}`}
                         onClick={() => {
                           setDestinationInput(item.destination);
                           setCultureInput(item.culture);
@@ -181,12 +193,14 @@ export default function CulturalGuide() {
                           );
                         }}
                         variant={
-                          destination === item.destination && language === item.language
+                          destination === item.destination &&
+                          language === item.language
                             ? "filled"
                             : "outlined"
                         }
                         color={
-                          destination === item.destination && language === item.language
+                          destination === item.destination &&
+                          language === item.language
                             ? "primary"
                             : "default"
                         }
@@ -203,14 +217,29 @@ export default function CulturalGuide() {
                   What you’ll get
                 </Typography>
                 <Stack component="ul" spacing={1} sx={{ pl: 2, mb: 0 }}>
-                  <Typography component="li" variant="body2" color="text.secondary">
-                    Fresh etiquette briefs cached for only 24 hours with manual refresh control.
+                  <Typography
+                    component="li"
+                    variant="body2"
+                    color="text.secondary"
+                  >
+                    Fresh etiquette briefs cached for only 24 hours with manual
+                    refresh control.
                   </Typography>
-                  <Typography component="li" variant="body2" color="text.secondary">
-                    Inline Culture Coach Q&A for nuanced scenarios and follow-up questions.
+                  <Typography
+                    component="li"
+                    variant="body2"
+                    color="text.secondary"
+                  >
+                    Inline Culture Coach Q&A for nuanced scenarios and follow-up
+                    questions.
                   </Typography>
-                  <Typography component="li" variant="body2" color="text.secondary">
-                    Optional language + culture focus to tailor phrasing and emphasis.
+                  <Typography
+                    component="li"
+                    variant="body2"
+                    color="text.secondary"
+                  >
+                    Optional language + culture focus to tailor phrasing and
+                    emphasis.
                   </Typography>
                 </Stack>
               </CardContent>
