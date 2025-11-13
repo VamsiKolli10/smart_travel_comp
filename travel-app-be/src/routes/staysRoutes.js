@@ -118,12 +118,25 @@ router.get("/search", async (req, res) => {
       adults,
     } = req.query;
 
+    const pageNumber = Math.max(1, parseInt(page, 10) || 1);
+
     let center;
+    let resolvedDestination = null;
     if (lat && lng) {
       center = { lat: Number(lat), lng: Number(lng) };
     } else if (dest) {
       const ge = await geocodeCity(dest, lang);
       center = { lat: ge.lat, lng: ge.lng };
+      resolvedDestination = {
+        query: dest,
+        display: ge.display,
+        address: ge.address,
+        city: ge.city,
+        state: ge.state,
+        country: ge.country,
+        lat: ge.lat,
+        lng: ge.lng,
+      };
     } else {
       return res
         .status(400)
@@ -183,15 +196,20 @@ router.get("/search", async (req, res) => {
     }
 
     // simple pagination
-    const pageSize = 20;
-    const start = (Number(page) - 1) * pageSize;
+    const pageSize = 5;
+    const totalResults = items.length;
+    const totalPages = Math.max(1, Math.ceil(totalResults / pageSize));
+    const currentPage = Math.min(pageNumber, totalPages);
+    const start = (currentPage - 1) * pageSize;
     const slice = items.slice(start, start + pageSize);
 
     res.json({
       items: slice,
-      page: Number(page),
+      page: currentPage,
       pageSize,
-      total: items.length,
+      total: totalResults,
+      totalPages,
+      resolvedDestination,
     });
   } catch (e) {
     logError(e, { endpoint: "/api/stays/search", query: req.query });

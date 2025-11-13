@@ -14,12 +14,15 @@ import {
 import { getPOIDetails } from "../../services/poi";
 import PhotoCarousel from "../stays/PhotoCarousel";
 import MapView from "../discover/MapView";
+import CulturalEtiquette from "./CulturalEtiquette";
+import useTravelContext from "../../hooks/useTravelContext";
 
 export default function DestinationDetailsPage() {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { setDestinationContext } = useTravelContext();
 
   useEffect(() => {
     const run = async () => {
@@ -38,21 +41,85 @@ export default function DestinationDetailsPage() {
     run();
   }, [id]);
 
-  if (loading) return <Container sx={{ py: 6 }}><Typography>Loading…</Typography></Container>;
-  if (error) return <Container sx={{ py: 6 }}><Typography color="error">{error}</Typography></Container>;
+  useEffect(() => {
+    if (data?.name) {
+      setDestinationContext(
+        data.location?.address || data.name,
+        {
+          display: data.name,
+          address: data.location?.address,
+          lat: data.location?.lat,
+          lng: data.location?.lng,
+        },
+        { source: "destination-details" }
+      );
+    }
+  }, [data?.name, data?.location, setDestinationContext]);
+
+  if (loading)
+    return (
+      <Container
+        maxWidth={false}
+        sx={{
+          py: 6,
+          px: { xs: 1.5, sm: 2.5, md: 3.5 },
+          width: "100%",
+          maxWidth: "min(1800px, 100%)",
+          mx: "auto",
+        }}
+      >
+        <Typography>Loading…</Typography>
+      </Container>
+    );
+  if (error)
+    return (
+      <Container
+        maxWidth={false}
+        sx={{
+          py: 6,
+          px: { xs: 1.5, sm: 2.5, md: 3.5 },
+          width: "100%",
+          maxWidth: "min(1800px, 100%)",
+          mx: "auto",
+        }}
+      >
+        <Typography color="error">{error}</Typography>
+      </Container>
+    );
   if (!data) return null;
 
-  const hero = data.photos?.length ? <PhotoCarousel photos={data.photos} /> : null;
-  const openNow = data.openingHours?.length ? data.openingHours : data.openingHours;
+  const hero = data.photos?.length ? (
+    <PhotoCarousel photos={data.photos} />
+  ) : null;
+  const openNow = data.openingHours?.length
+    ? data.openingHours
+    : data.openingHours;
 
   return (
-    <Container maxWidth="lg" sx={{ py: 3 }}>
+    <Container
+      maxWidth={false}
+      sx={{
+        py: 3,
+        px: { xs: 1.5, sm: 2.5, md: 3.5, lg: 4.5 },
+        width: "100%",
+        maxWidth: "min(1800px, 100%)",
+        mx: "auto",
+      }}
+    >
       <Box sx={{ mb: 2 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>{data.name}</Typography>
+        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          {data.name}
+        </Typography>
         <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: "wrap" }}>
-          {typeof data.rating === "number" && <Chip label={`${data.rating.toFixed(1)}★`} />}
-          {data.price?.priceLevel && <Chip label={`Price: ${data.price.priceLevel}`} />}
-          {data.badges?.map((b) => <Chip key={b} label={b} />)}
+          {typeof data.rating === "number" && (
+            <Chip label={`${data.rating.toFixed(1)}★`} />
+          )}
+          {data.price?.priceLevel && (
+            <Chip label={`Price: ${data.price.priceLevel}`} />
+          )}
+          {data.badges?.map((b) => (
+            <Chip key={b} label={b} />
+          ))}
         </Stack>
       </Box>
 
@@ -61,25 +128,49 @@ export default function DestinationDetailsPage() {
       <Grid container spacing={3} sx={{ mt: 1 }}>
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 2, mb: 2 }}>
-            <Typography variant="h6" sx={{ mb: 1 }}>Overview</Typography>
-            <Typography variant="body1" color="text.secondary">{data.description || "No description available."}</Typography>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Overview
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {data.description || "No description available."}
+            </Typography>
           </Paper>
 
           <Paper sx={{ p: 2, mb: 2 }}>
-            <Typography variant="h6" sx={{ mb: 1 }}>How to get there</Typography>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              How to get there
+            </Typography>
             <Box sx={{ height: 300 }}>
-              <MapView items={[{ id: data.id, name: data.name, location: data.location }]} loading={false} interactive={false} />
+              <MapView
+                items={[
+                  { id: data.id, name: data.name, location: data.location },
+                ]}
+                loading={false}
+                interactive={false}
+              />
             </Box>
             {data.provider?.deeplink && (
               <Box sx={{ mt: 1 }}>
-                <Button variant="outlined" component={Link} href={data.provider.deeplink} target="_blank" rel="noopener">Open in Maps</Button>
+                <Button
+                  variant="outlined"
+                  component={Link}
+                  href={data.provider.deeplink}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  Open in Maps
+                </Button>
               </Box>
             )}
           </Paper>
 
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" sx={{ mb: 1 }}>Near this place</Typography>
-            <Typography variant="body2" color="text.secondary">Coming soon: nearby POIs with walking distances.</Typography>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Near this place
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Coming soon: nearby POIs with walking distances.
+            </Typography>
           </Paper>
         </Grid>
 
@@ -87,30 +178,46 @@ export default function DestinationDetailsPage() {
           <Paper sx={{ p: 2, mb: 2 }}>
             <Typography variant="h6">Practical info</Typography>
             <Stack spacing={1} sx={{ mt: 1 }}>
-              {Array.isArray(data.openingHours) && data.openingHours.length > 0 && (
-                <Box>
-                  <Typography variant="subtitle2">Opening hours</Typography>
-                  {data.openingHours.map((line, idx) => (
-                    <Typography key={idx} variant="body2" color="text.secondary">{line}</Typography>
-                  ))}
-                </Box>
-              )}
+              {Array.isArray(data.openingHours) &&
+                data.openingHours.length > 0 && (
+                  <Box>
+                    <Typography variant="subtitle2">Opening hours</Typography>
+                    {data.openingHours.map((line, idx) => (
+                      <Typography
+                        key={idx}
+                        variant="body2"
+                        color="text.secondary"
+                      >
+                        {line}
+                      </Typography>
+                    ))}
+                  </Box>
+                )}
               {data.website && (
-                <Typography variant="body2">Website: <Link href={data.website} target="_blank" rel="noopener">{data.website}</Link></Typography>
+                <Typography variant="body2">
+                  Website:{" "}
+                  <Link href={data.website} target="_blank" rel="noopener">
+                    {data.website}
+                  </Link>
+                </Typography>
               )}
               {data.phone && (
                 <Typography variant="body2">Phone: {data.phone}</Typography>
               )}
               {data.location?.address && (
-                <Typography variant="body2">Address: {data.location.address}</Typography>
+                <Typography variant="body2">
+                  Address: {data.location.address}
+                </Typography>
               )}
             </Stack>
           </Paper>
 
           <Paper sx={{ p: 2, mb: 2 }}>
             <Typography variant="h6">Safety & etiquette</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Check our Culture module for local etiquette, dress codes, and photography rules.
+            <CulturalEtiquette sx={{ mt: 2 }} />
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Check our Culture module for local etiquette, dress codes, and
+              photography rules.
             </Typography>
           </Paper>
 
@@ -123,4 +230,3 @@ export default function DestinationDetailsPage() {
     </Container>
   );
 }
-

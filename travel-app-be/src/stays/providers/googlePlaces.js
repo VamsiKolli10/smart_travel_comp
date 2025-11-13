@@ -204,6 +204,39 @@ function buildPhotoProxy(name, { maxWidth, maxHeight } = {}) {
   return `${PHOTO_PROXY_PATH}?${params.toString()}`;
 }
 
+function parseCityStateCountry(address, fallbackCity = "") {
+  if (!address || typeof address !== "string") {
+    const label = (fallbackCity || "").trim();
+    return { city: label, state: "", country: "" };
+  }
+
+  const parts = address
+    .split(",")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  if (!parts.length) {
+    const label = (fallbackCity || "").trim();
+    return { city: label, state: "", country: "" };
+  }
+
+  const country = parts.pop() || "";
+  let state = "";
+  if (parts.length >= 2) {
+    state = parts.pop() || "";
+  }
+
+  let city = parts.join(", ");
+  if (!city) {
+    city = parts[0] || "";
+  }
+  if (!city && fallbackCity) {
+    city = fallbackCity.trim();
+  }
+
+  return { city: city.trim(), state: state.trim(), country: country.trim() };
+}
+
 function mapPlaceToResult(place, center, language = "en") {
   const latitudeRaw = place.location?.latitude;
   const longitudeRaw = place.location?.longitude;
@@ -329,7 +362,7 @@ function mapPlaceToDetail(place, language = "en") {
   };
 }
 
-async function geocodeCity(city, language = "en") {
+async function geocodeCity(cityQuery, language = "en") {
   ensureKey();
   const FIELD_MASK =
     "places.id,places.displayName,places.shortFormattedAddress,places.formattedAddress,places.location";
@@ -337,7 +370,7 @@ async function geocodeCity(city, language = "en") {
     const { data } = await axios.post(
       `${PLACES_BASE_URL}/places:searchText`,
       {
-        textQuery: city,
+        textQuery: cityQuery,
         languageCode: language,
       },
       {
@@ -354,14 +387,30 @@ async function geocodeCity(city, language = "en") {
       throw new Error("Unable to geocode city coordinates");
     }
 
+    const displayName =
+      place.displayName?.text ||
+      place.displayName ||
+      place.formattedAddress ||
+      place.shortFormattedAddress ||
+      cityQuery;
+    const formattedAddress =
+      place.shortFormattedAddress ||
+      place.formattedAddress ||
+      place.displayName?.text ||
+      cityQuery;
+    const { city, state, country } = parseCityStateCountry(
+      formattedAddress,
+      place.displayName?.text || cityQuery
+    );
+
     return {
       lat,
       lng,
-      display:
-        place.formattedAddress ||
-        place.shortFormattedAddress ||
-        place.displayName?.text ||
-        city,
+      display: displayName,
+      address: formattedAddress,
+      city,
+      state,
+      country,
     };
   } catch (error) {
     console.error("Geocode error:", {
