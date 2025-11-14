@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Card,
@@ -11,6 +12,7 @@ import {
 } from "@mui/material";
 import PageContainer from "../layout/PageContainer";
 import Button from "../common/Button";
+import useTravelContext from "../../hooks/useTravelContext";
 
 const categories = [
   "all",
@@ -25,6 +27,11 @@ const destinations = [
   {
     id: 1,
     name: "Museum of Fine Arts",
+    city: "Boston",
+    state: "MA",
+    country: "USA",
+    lat: 42.3394,
+    lng: -71.0942,
     category: "museums",
     type: "Museum",
     rating: 4.8,
@@ -39,6 +46,11 @@ const destinations = [
   {
     id: 2,
     name: "Boston Common",
+    city: "Boston",
+    state: "MA",
+    country: "USA",
+    lat: 42.355,
+    lng: -71.0656,
     category: "parks",
     type: "Public Park",
     rating: 4.6,
@@ -58,6 +70,11 @@ const destinations = [
   {
     id: 3,
     name: "Faneuil Hall Marketplace",
+    city: "Boston",
+    state: "MA",
+    country: "USA",
+    lat: 42.360,
+    lng: -71.055,
     category: "shopping",
     type: "Shopping Center",
     rating: 4.4,
@@ -72,6 +89,11 @@ const destinations = [
   {
     id: 4,
     name: "Fenway Park",
+    city: "Boston",
+    state: "MA",
+    country: "USA",
+    lat: 42.3467,
+    lng: -71.0972,
     category: "landmarks",
     type: "Sports Venue",
     rating: 4.7,
@@ -85,6 +107,11 @@ const destinations = [
   {
     id: 5,
     name: "Isabella Stewart Gardner Museum",
+    city: "Boston",
+    state: "MA",
+    country: "USA",
+    lat: 42.3387,
+    lng: -71.0994,
     category: "museums",
     type: "Art Museum",
     rating: 4.5,
@@ -99,6 +126,11 @@ const destinations = [
   {
     id: 6,
     name: "North End",
+    city: "Boston",
+    state: "MA",
+    country: "USA",
+    lat: 42.3648,
+    lng: -71.0543,
     category: "restaurants",
     type: "Historic District",
     rating: 4.6,
@@ -122,8 +154,29 @@ const categoryLabels = {
 };
 
 export default function Destinations() {
+  const navigate = useNavigate();
+  const { setDestinationContext } = useTravelContext();
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const handleViewStays = (destination) => {
+    setDestinationContext(destination.name, {
+      display: destination.name,
+      city: destination.city,
+      state: destination.state,
+      country: destination.country,
+      lat: destination.lat,
+      lng: destination.lng,
+      source: "destinations",
+    });
+    const params = new URLSearchParams({
+      dest: destination.name,
+    });
+    if (destination.lat && destination.lng) {
+      params.set("lat", destination.lat.toString());
+      params.set("lng", destination.lng.toString());
+    }
+    navigate(`/stays?${params.toString()}`);
+  };
 
   const filtered = useMemo(() => {
     return destinations.filter((place) => {
@@ -287,19 +340,10 @@ export default function Destinations() {
                   </Stack>
                   <Button
                     size="small"
-                    variant="outlined"
-                    onClick={() => {
-                      // placeholder for navigation/integration
-                      window.open(
-                        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                          destination.name
-                        )}`,
-                        "_blank",
-                        "noopener,noreferrer"
-                      );
-                    }}
+                    variant="contained"
+                    onClick={() => handleViewStays(destination)}
                   >
-                    View on Maps
+                    View nearby stays
                   </Button>
                 </Box>
               </Card>
