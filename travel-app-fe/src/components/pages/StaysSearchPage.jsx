@@ -400,7 +400,10 @@ export default function StaysSearchPage() {
                   }
                   variant="outlined"
                 />
-                <Chip label={`Page ${page} / ${totalPages}`} variant="outlined" />
+                <Chip
+                  label={`Page ${page} / ${totalPages}`}
+                  variant="outlined"
+                />
               </Stack>
               {destinationMeta?.address && (
                 <Typography variant="body2" color="text.secondary">
@@ -597,10 +600,6 @@ export default function StaysSearchPage() {
                     <ToggleButton value="list" aria-label="list">
                       <ListIcon sx={{ mr: 0.5 }} />
                       List
-                    </ToggleButton>
-                    <ToggleButton value="split" aria-label="split">
-                      <SplitIcon sx={{ mr: 0.5 }} />
-                      Split
                     </ToggleButton>
                     <ToggleButton value="map" aria-label="map">
                       <MapIcon sx={{ mr: 0.5 }} />

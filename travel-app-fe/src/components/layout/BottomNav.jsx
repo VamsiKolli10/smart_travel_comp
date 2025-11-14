@@ -157,7 +157,7 @@ export default function BottomNav() {
                 {action.icon}
                 {action.label === "Phrasebook" && (
                   <Badge
-                    badgeContent={3}
+                    // badgeContent={3}
                     color="error"
                     sx={{
                       "& .MuiBadge-badge": {
