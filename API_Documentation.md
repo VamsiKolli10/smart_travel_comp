@@ -85,13 +85,14 @@ X-RateLimit-Window: 60000
 | `/api/stays/search`        | 40              | Per user    |
 | `/api/stays/photo`         | 300             | Photo proxy |
 | `/api/poi/search`          | 60              | Per user    |
+| `/api/itinerary/generate`  | 12              | AI itinerary planner          |
+| `/api/culture/brief`       | 20 / 40 / 80    | Role-based (anon/user/admin)  |
+| `/api/culture/qa`          | 10              | Culture coach (per IP)        |
+| `/api/culture/contextual`  | 60              | Micro-tips (per IP)           |
 
 ## Error Handling
 
-=======
-\*\*\*\*### Standard Error Response
-
-> > > > > > > refs/remotes/origin/development-sprint5
+### Standard Error Response
 
 ```json
 {
@@ -403,6 +404,152 @@ Get detailed information about a specific point of interest.
 GET /api/poi/ChIJ2XeUam9cHRMRIdPqlGObTpU?lang=en
 ```
 
+### Culture Intelligence Brief
+
+Generate a structured etiquette brief for a destination. Responses are cached in Firestore (`cultureIntelligenceBriefs`) for 24 hours per destination/culture/language combination; bump `CULTURE_BRIEF_CACHE_VERSION` or send `refresh=1` to bypass.
+
+- **Endpoint:** `GET /api/culture/brief`
+- **Access:** Public
+- **Rate Limit:** Role-based (20 req/min anonymous, 40 user, 80 admin) in addition to the global limiter
+
+**Query Parameters:**
+
+- `destination` (string, required): City/country or region (e.g., `Tokyo`, `Oaxaca`)
+- `culture` (string, optional): Override cultural lens (defaults to `destination`)
+- `language` (string, optional): ISO code for localized output (default `en`)
+- `refresh` or `forceRefresh` (string, optional): `1`, `true`, or `force` skips the cache for a fresh brief
+
+**Example Request:**
+
+```http
+GET /api/culture/brief?destination=Tokyo&language=en
+```
+
+**Example Response:**
+
+```json
+{
+  "destination": "Tokyo",
+  "culture": "Japan",
+  "language": "en",
+  "categories": {
+    "greetings": [
+      "Offer a slight bow when greeting elders or service staff.",
+      "Use honorifics such as -san after surnames unless invited otherwise.",
+      "Avoid overly firm handshakes; gentle and brief is preferred."
+    ],
+    "dining": [
+      "Never stick chopsticks upright in rice—it resembles funeral rites.",
+      "Use the opposite end of chopsticks to take food from shared plates.",
+      "Slurping noodles is acceptable and can signal enjoyment."
+    ],
+    "dress_code": [
+      "Dress smart-casual when visiting shrines or nicer restaurants.",
+      "Cover shoulders and knees in religious spaces.",
+      "Carry easy-to-remove shoes for homes or traditional inns."
+    ],
+    "gestures": [
+      "Avoid pointing directly at people; use an open hand instead.",
+      "Be mindful of personal space, especially on public transit.",
+      "Hand items (business cards, receipts) with both hands."
+    ],
+    "taboos": [
+      "Do not talk loudly on trains or buses.",
+      "Avoid eating while walking in quiet neighborhoods.",
+      "Refrain from tipping—service charges are included."
+    ],
+    "safety_basics": [
+      "Keep cash handy; many smaller shops remain cash-first.",
+      "Late-night trains stop running around midnight—plan routes ahead."
+    ]
+  },
+  "generatedAt": "2025-02-02T09:12:44.000Z"
+}
+```
+
+### Culture Coach Q&A
+
+Conversational endpoint for follow-up etiquette or safety questions. Useful for chat-style UIs on the Destination Details page.
+
+- **Endpoint:** `POST /api/culture/qa`
+- **Access:** Public
+- **Rate Limit:** 10 requests/minute per IP (layered with the global/role limiter)
+
+**Request Body:**
+
+```json
+{
+  "destination": "Mexico City",
+  "culture": "Mexico",
+  "language": "es",
+  "question": "Is it okay to bargain at artisan markets?",
+  "history": [
+    { "q": "Any tipping norms for restaurants?", "a": "Leave 10-15% in MXN." }
+  ]
+}
+```
+
+- `destination` (string, required)
+- `question` (string, required)
+- `culture` (string, optional)
+- `language` (string, optional, defaults to `en`)
+- `history` (array, optional): Up to 6 `{ q, a }` pairs are trimmed and sanitized
+
+**Example Response:**
+
+```json
+{
+  "answer": "Polite bargaining is expected at many craft markets—start around 10% below the asking price, smile, and accept if the vendor holds firm. Chain stores or clearly marked boutiques typically do not negotiate.",
+  "highlights": [
+    "Use lighthearted tone; avoid aggressive haggling.",
+    "Have small bills ready so you can settle quickly."
+  ]
+}
+```
+
+### Contextual Culture Tips
+
+Returns 1–3 micro-tips scoped to the traveler’s immediate action (translation, phrasebook, POI, or stay detail).
+
+- **Endpoint:** `POST /api/culture/contextual`
+- **Access:** Public
+- **Rate Limit:** 60 requests/minute per IP
+
+**Request Body:**
+
+```json
+{
+  "contextType": "translation",
+  "destination": "Istanbul",
+  "language": "tr",
+  "text": "Where can I find a mosque?",
+  "sourceLang": "en",
+  "targetLang": "tr"
+}
+```
+
+- `contextType` (string, required): `translation` | `phrasebook` | `poi` | `stay`
+- Shared optional fields: `destination`, `language`
+- When `contextType` is `translation`, include `text`, `sourceLang`, `targetLang`
+- When `phrasebook`, send `topic` and optional `phrases[]`
+- When `poi` or `stay`, pass a structured `poi`/`stay` object or `metadata`
+
+**Example Response:**
+
+```json
+{
+  "tips": [
+    "When asking for a mosque, add a brief 'tesekkür ederim' (thank you) afterward.",
+    "Dress modestly and have a scarf/hat ready if the person offers to guide you inside."
+  ],
+  "severity": "info"
+}
+```
+
+### Legacy Cultural Etiquette (Compatibility)
+
+`GET /api/cultural-etiquette` remains available for older clients and simply proxies the modern culture brief implementation. It accepts the same query parameters (`destination`, optional `culture`/`language`) but new integrations should call `/api/culture/brief` directly to benefit from caching and rate-limit headers.
+
 ## Protected Endpoints
 
 ### Translate Text
@@ -672,6 +819,21 @@ async function translateText() {
     console.error("Error:", error.response.data);
   }
 }
+
+// Fetch a culture brief
+async function fetchCultureBrief() {
+  try {
+    const response = await axios.get(`${API_BASE}/culture/brief`, {
+      params: {
+        destination: "Kyoto",
+        language: "en",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error:", error.response.data);
+  }
+}
 ```
 
 ### Python
@@ -716,6 +878,20 @@ def translate_text():
         return response.json()
     except requests.exceptions.RequestException as error:
         print(f'Error: {error}')
+
+def get_culture_brief():
+    try:
+        response = requests.get(
+            f'{API_BASE}/culture/brief',
+            params={
+                'destination': 'Seoul',
+                'language': 'en'
+            }
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as error:
+        print(f'Error: {error}')
 ```
 
 ### cURL
@@ -742,6 +918,19 @@ curl -X POST "https://your-api-domain.com/api/phrasebook/generate" \
     "topic": "restaurant",
     "sourceLang": "en",
     "targetLang": "es"
+  }'
+
+# Fetch a culture brief (public)
+curl -G "https://your-api-domain.com/api/culture/brief" \
+  --data-urlencode "destination=Lisbon" \
+  --data-urlencode "language=pt"
+
+# Ask the culture coach (public, rate limited)
+curl -X POST "https://your-api-domain.com/api/culture/qa" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "destination": "Lisbon",
+    "question": "Any tipping etiquette for cafes?"
   }'
 ```
 

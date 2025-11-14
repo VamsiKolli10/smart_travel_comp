@@ -441,9 +441,15 @@ export default function StaysSearchPage() {
                         size="small"
                         placeholder="Destination"
                         value={query.dest || ""}
-                        onChange={(e) =>
-                          setQuery((q) => ({ ...q, dest: e.target.value }))
-                        }
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setQuery((q) => ({
+                            ...q,
+                            dest: value,
+                            lat: undefined,
+                            lng: undefined,
+                          }));
+                        }}
                         InputProps={{
                           startAdornment: (
                             <InputAdornment position="start">
@@ -540,9 +546,15 @@ export default function StaysSearchPage() {
                         size="small"
                         placeholder="Destination"
                         value={query.dest || ""}
-                        onChange={(e) =>
-                          setQuery((q) => ({ ...q, dest: e.target.value }))
-                        }
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setQuery((q) => ({
+                            ...q,
+                            dest: value,
+                            lat: undefined,
+                            lng: undefined,
+                          }));
+                        }}
                       />
                       <Button
                         variant="contained"

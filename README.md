@@ -103,8 +103,10 @@ The API will be reachable on `http://localhost:8000`. Core routes (see `API_Docu
 | `GET /api/stays/photo`                     | Proxy Google Places photos                                     |
 | `GET /api/poi/search`                      | Search points of interest                                      |
 | `GET /api/poi/:id`                         | Detailed POI information                                       |
-| `GET /api/cultural-etiquette`              | Cultural etiquette guidance                                    |
-| `GET /api/culture-intel`                   | Cultural intelligence / context                                |
+| `GET /api/culture/brief`                   | Cultural intelligence brief (cached Firestore handoff)         |
+| `POST /api/culture/qa`                     | Conversational culture coach                                   |
+| `POST /api/culture/contextual`             | Micro-tips for translation/POI/stay contexts                   |
+| `GET /api/cultural-etiquette`              | Legacy alias for the culture brief                             |
 | `GET /api/itinerary/generate`              | Generate itineraries (used by Discover Itinerary planner beta) |
 
 ### Firestore Rules
@@ -136,6 +138,15 @@ Key UX modules:
 - **Destinations** – Curated destination cards and a **Destination Details** view:
   - Details pages integrate map, photos, reviews, etiquette, and a “Plan itinerary” button that deep-links into Discover with context.
 - **Stays, Translation, Phrasebook, Emergency** – Accessible via the shared layout and aligned with the same MUI/Tailwind design tokens.
+
+### Shared Travel Context & Cultural Signals
+
+A dedicated Redux slice (`travel-app-fe/src/store/slices/travelContextSlice.js`) keeps destination metadata, coordinates, and language pairs synchronized across surfaces through the `useTravelContext` hook. Any screen can call `setDestinationContext`, `setLanguagePair`, or `resetTravelContext` to participate in the global travel state without duplicating logic.
+
+- **Discover, Destinations, and Destination Details** push geocoded payloads from `/api/poi/search` or POI cards into the context so `StaysSearchPage` automatically pre-fills the search box, query params, and map viewport when you navigate back.
+- **Stays search** writes every `resolvedDestination` returned by `/api/stays/search` (display label + lat/lng) into the context and analytics log so Emergency, Discover, and Cultural flows reuse the canonical location even when the traveler typed free-form text.
+- **Emergency.jsx** consumes the context to auto-select contacts and, when the traveler manually searches a country/alias (backed by `travel-app-fe/src/data/emergencyLocationAliases.js`), feeds normalized city/country data back through `setDestinationContext` to keep Stays/Destinations aligned.
+- **Translation, Phrasebook, Cultural Guide/Etiquette, and Discover** surfaces call `setLanguagePair`, ensuring `/api/translate`, `/api/phrasebook/generate`, and the `/api/culture/*` endpoints run with the same language preferences. Culture briefs are cached in Firestore (`cultureIntelligenceBriefs`) for 24 hours per destination/culture/language combo—bump `CULTURE_BRIEF_CACHE_VERSION` to invalidate stale advice.
 
 ---
 
