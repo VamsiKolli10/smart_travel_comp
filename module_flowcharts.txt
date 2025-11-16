@@ -1,0 +1,96 @@
+Smart Travel Companion – Detailed Module Flowcharts
+==================================================
+
+Auth & App Shell
+----------------
+1. App boot → Firebase Auth listener (`AuthContext`) fires → checks cached token.
+2. If unauthenticated → render public routes (Landing/Login/Register).  Login -> Firebase Auth → token stored → context rehydrates.
+3. If authenticated → load user profile + feature flags + theme → render `AppLayout` (Navbar, BottomNav, Outlet) with protected routes.
+
+Shared Travel Context
+---------------------
+1. Any module capturing destination, coordinates, or language calls `setTravelContext`.
+2. Redux slice stores `{destination, display, lat, lng, language, source}` and persists to localStorage.
+3. Subscribers (`useTravelContext`) re-read data → update inputs, API payloads, analytics.
+4. When context cleared (logout/reset) → all dependent modules fall back to empty state.
+
+Destinations Module
+-------------------
+1. User filters/searches local dataset (or `/api/poi/search`).
+2. Selecting a card calls `setDestinationContext` with name + lat/lng + metadata.
+3. Navigates to `/stays?dest=Name&lat=…&lng=…` so URL + context both reflect the choice.
+4. Stays module reacts (see below).
+
+Stays Module
+------------
+1. StaysSearchPage loads →
+   - Reads query params (`dest`, `lat`, `lng`, filters) and travel context → builds `query` state.
+   - Syncs effect: if context destination changes while away, reapply when returning.
+2. User action:
+   a. Manual search → typing clears cached coordinates → hitting Search triggers `performSearch()`.
+   b. Context-driven (from Destinations/Discover) → effect detects new dest/coords and auto-searches.
+3. `performSearch()` flow:
+   - Build request body (dest, lat, lng, distance, filters, pagination) → call `/api/stays/search`.
+   - Backend pipeline: HTTPS → Express → security middleware (rate limit, auth) → `staysRoutes` → controller hits Google Places provider → formats results (items, total, resolvedDestination).
+   - Response returns to FE → set list/map, update pagination, log analytics, write resolved destination back to context.
+4. Opening a stay → navigate to `/stays/:id` → GET `/api/stays/:id` → show detail hero and info → Back button (`navigate(-1)`) returns to previous search with params preserved.
+
+Translation Module
+------------------
+1. User enters text + language pair → POST `/api/translate`.
+2. Backend: Express middleware validates rate limits/signatures → `translationController` loads @xenova/transformers model → performs translation → returns `{translation, detectedLanguage, tokenUsage}`.
+3. FE renders output, optionally allows saving result to phrasebook (see next module).
+
+Phrasebook Module
+-----------------
+1. Generate phrases:
+   - User selects topic + languages → POST `/api/phrasebook/generate`.
+   - Backend calls OpenRouter with structured prompt → normalizes response → FE displays cards.
+2. Saved phrases CRUD:
+   - GET `/api/saved-phrases` on load → Firestore query by user.
+   - User saves/deletes phrase → POST/DELETE `/api/saved-phrases` → backend validates Firebase token → writes Firestore → FE updates list optimistically.
+
+Culture Intelligence Module
+---------------------------
+1. Cultural Guide/Etiquette pages read destination + language from travel context.
+2. When user changes either input, `setTravelContext` updates values and triggers data fetch.
+3. Requests:
+   - `/api/culture-intel` → returns etiquette, safety, customs, faux pas, etc.
+   - `/api/cultural-etiquette` → returns do/don’t lists, greetings, tipping guidance.
+4. Backend: middleware (auth optional, rate limit) → controllers call OpenRouter and internal knowledge base → merges structured response → FE renders sections with retry handling.
+
+Emergency Module
+----------------
+1. Page loads → reads travel context (city/country). If absent, prompts user to select a destination.
+2. Fetch localized emergency data (static JSON or `/api/emergency`) → show police/fire/medical numbers, embassy links, quick tips.
+3. Actions:
+   - Call/SMS buttons invoke `tel:` or `sms:` URIs.
+   - “Share emergency card” uses `navigator.share` (fallback to copy) → success/error toast + analytics event.
+
+Discover Module (POIs & Itinerary)
+----------------------------------
+1. POI Search:
+   - User sets filters (categories, radius, map bounds) → FE calls `/api/poi/search` with lat/lng/context.
+   - Backend queries provider (Google Places or internal cache) → returns POIs with details + photos → FE renders cards + map markers → selecting POI can update travel context or open detail view.
+2. Itinerary Planner:
+   - User fills trip form (destination, days, interests, budget) → POST `/api/itinerary/generate`.
+   - Backend sends structured prompt to OpenRouter (with optional caching) → returns day-by-day plan → FE shows timelines, export/share options.
+
+Emergency/Culture Linkage
+-------------------------
+- When user changes destination in Emergency or Culture modules, both call `setDestinationContext`, keeping Stays/Discover in sync.
+- Conversely, selecting a stay or destination automatically updates Emergency/Culture pages when revisited.
+
+Settings, Appearance & Feature Flags
+------------------------------------
+1. Appearance toggle updates `AppearanceContext` → recalculates MUI theme → persisted to localStorage.
+2. Feature flags fetched via context → determine if modules like Discover/Itinerary are visible.
+
+Deployment & Hosting Flow
+-------------------------
+1. Frontend: `npm --prefix travel-app-fe run build` → copy `dist/` to `travel-app-be/public` → `firebase deploy --only hosting`.
+2. Backend: `firebase deploy --only functions:backend` packages Express app as a Cloud Function (`api`) with Node 20 runtime.
+3. Firebase Hosting rewrites:
+   - `/api/**` → Cloud Function `api`.
+   - `**` → `index.html` for SPA routes.
+4. Function lifecycle: HTTPS request → middleware (cors, helmet, security) → feature routes (translation, stays, culture, etc.) → Firestore/OpenRouter/Google APIs → response proxied back through Hosting origin so browser sees same-domain responses.
