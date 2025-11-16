@@ -1,13 +1,14 @@
-const admin = require("firebase-admin");
-const path = require("path");
+require("dotenv").config();
+const { admin, loadServiceAccount } = require("./src/config/firebaseAdmin");
 
-const serviceAccountPath = path.resolve(__dirname, "serviceAccountKey.json");
-const serviceAccount = require(serviceAccountPath);
-const UID = process.argv[2] || "ODaGc6LggcV6s2PAABDlO3pZwmn2";
+const UID = process.argv[2];
+if (!UID) {
+  console.error("Usage: node verify-user.js <firebase-uid>");
+  process.exit(1);
+}
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+// Force credentials load early so script fails fast when env is missing/malformed.
+loadServiceAccount();
 
 admin
   .auth()

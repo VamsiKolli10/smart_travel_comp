@@ -1,0 +1,52 @@
+const { ZodError } = require("zod");
+const {
+  createErrorResponse,
+  ERROR_CODES,
+} = require("../utils/errorHandler");
+
+function formatZodErrors(error) {
+  return error.errors.map((issue) => {
+    const path = issue.path.join(".");
+    return path ? `${path}: ${issue.message}` : issue.message;
+  });
+}
+
+function buildValidator(schema, target = "body") {
+  return (req, res, next) => {
+    try {
+      const payload =
+        target === "query" ? req.query : target === "params" ? req.params : req.body;
+      const parsed = schema.parse(payload ?? {});
+
+      if (target === "query") {
+        req.query = parsed;
+      } else if (target === "params") {
+        req.params = parsed;
+      } else {
+        req.body = parsed;
+      }
+
+      return next();
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json(
+            createErrorResponse(
+              400,
+              ERROR_CODES.VALIDATION_ERROR,
+              "Invalid request payload",
+              { issues: formatZodErrors(error) }
+            )
+          );
+      }
+      return next(error);
+    }
+  };
+}
+
+const validateBody = (schema) => buildValidator(schema, "body");
+const validateQuery = (schema) => buildValidator(schema, "query");
+const validateParams = (schema) => buildValidator(schema, "params");
+
+module.exports = { validateBody, validateQuery, validateParams };

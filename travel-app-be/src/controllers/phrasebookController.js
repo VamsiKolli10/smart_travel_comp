@@ -4,6 +4,15 @@ const {
   ERROR_CODES,
   logError,
 } = require("../utils/errorHandler");
+const { enforceQuota } = require("../utils/quota");
+const { trackExternalCall } = require("../utils/monitoring");
+
+const phrasebookLimit = Number(
+  process.env.PHRASEBOOK_MAX_REQUESTS_PER_HOUR || 25
+);
+const phrasebookWindow = Number(
+  process.env.PHRASEBOOK_WINDOW_MS || 60 * 60 * 1000
+);
 
 function sanitizeStr(s) {
   return typeof s === "string" ? s.trim() : "";
@@ -102,11 +111,35 @@ async function generatePhrases(req, res) {
     });
 
     // Ask the model for JSON output; client normalizes response_format for providers
+    const quotaResult = enforceQuota({
+      identifier: req.user?.uid || req.ip,
+      key: "phrasebook:generate",
+      limit: phrasebookLimit,
+      windowMs: phrasebookWindow,
+    });
+    if (!quotaResult.allowed) {
+      return res
+        .status(429)
+        .json(
+          createErrorResponse(
+            429,
+            ERROR_CODES.RATE_LIMIT_EXCEEDED,
+            "Phrasebook generation quota exceeded",
+            { resetAt: quotaResult.resetAt }
+          )
+        );
+    }
+
     const raw = await chatComplete({
       system,
       user,
       temperature: 0.4,
       response_format: "json_object",
+    });
+    trackExternalCall({
+      service: "openrouter-phrasebook",
+      userId: req.user?.uid || req.ip,
+      metadata: { topic, sourceLang, targetLang },
     });
 
     let payload;

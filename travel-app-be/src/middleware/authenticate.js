@@ -120,7 +120,12 @@ function requireAuth(options = {}) {
         hydrateRequestWithUser(req, decoded, roles);
       }
 
-      const allowed = roles.some((role) => allowRoles.includes(role));
+      const allowed = roles.some((role) => {
+        if (role === "admin") {
+          return allowRoles.includes("admin") && decoded.admin === true;
+        }
+        return allowRoles.includes(role);
+      });
       if (!allowed) {
         logError(new Error("Insufficient role"), {
           user: decoded.uid,

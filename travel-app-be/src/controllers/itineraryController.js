@@ -4,7 +4,19 @@ const {
   ERROR_CODES,
   logError,
 } = require("../utils/errorHandler");
-const { fetchById: fetchPlaceById, geocodeCity } = require("../stays/providers/googlePlaces");
+const {
+  fetchById: fetchPlaceById,
+  geocodeCity,
+} = require("../stays/providers/googlePlaces");
+const { enforceQuota } = require("../utils/quota");
+const { trackExternalCall } = require("../utils/monitoring");
+
+const itineraryLimit = Number(
+  process.env.ITINERARY_MAX_REQUESTS_PER_HOUR || 20
+);
+const itineraryWindow = Number(
+  process.env.ITINERARY_WINDOW_MS || 60 * 60 * 1000
+);
 
 function sanitizeStr(v, d = "") {
   return typeof v === "string" ? v.trim() : d;
@@ -171,11 +183,35 @@ async function generateItinerary(req, res) {
       },
     });
 
+    const quotaResult = enforceQuota({
+      identifier: req.user?.uid || req.ip,
+      key: "itinerary:generate",
+      limit: itineraryLimit,
+      windowMs: itineraryWindow,
+    });
+    if (!quotaResult.allowed) {
+      return res
+        .status(429)
+        .json(
+          createErrorResponse(
+            429,
+            ERROR_CODES.RATE_LIMIT_EXCEEDED,
+            "Itinerary generation quota exceeded",
+            { resetAt: quotaResult.resetAt }
+          )
+        );
+    }
+
     const raw = await chatComplete({
       system,
       user,
       temperature: 0.4,
       response_format: "json_object",
+    });
+    trackExternalCall({
+      service: "openrouter-itinerary",
+      userId: req.user?.uid || req.ip,
+      metadata: { destination: destination?.name },
     });
 
     let payload;

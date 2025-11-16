@@ -70,4 +70,6 @@ module.exports = {
   normalizeLangPair,
   validateLangCode,
   ensureOwner,
+  LANGUAGE_CODE_PATTERN,
+  DEFAULT_TEXT_MAX,
 };

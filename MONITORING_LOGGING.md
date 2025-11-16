@@ -295,9 +295,9 @@ X-External-API-Time: 95ms
 
 #### API Key Usage
 
-- Monitor Google Places API usage
-- Track OpenRouter API usage
-- Alert on quota approaching limits
+- Monitor Google Places and OpenRouter calls via the built-in `trackExternalCall` utility (emits warnings when `USAGE_ALERT_FALLBACK` or service-specific thresholds are breached).
+- Track per-user consumption through the new quota counters (`STAYS_*`, `POI_*`, `PHRASEBOOK_MAX_REQUESTS_PER_HOUR`, `ITINERARY_MAX_REQUESTS_PER_HOUR`) and surface those metrics alongside billing dashboards.
+- Wire the warning logs into your log aggregation/alerting stack (Datadog, Cloud Logging, etc.) to receive proactive signals before hard quotas are hit.
 
 ## User Analytics
 

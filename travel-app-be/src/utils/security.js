@@ -45,11 +45,19 @@ function createSignature(data, secret) {
  * @returns {boolean} - True if signature is valid, false otherwise
  */
 function verifySignature(data, signature, secret) {
-  const expectedSignature = createSignature(data, secret);
-  return crypto.timingSafeEqual(
-    Buffer.from(signature, "hex"),
-    Buffer.from(expectedSignature, "hex")
-  );
+  if (!signature || typeof signature !== "string") {
+    return false;
+  }
+
+  try {
+    const expectedSignature = createSignature(data, secret);
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, "hex"),
+      Buffer.from(expectedSignature, "hex")
+    );
+  } catch (_err) {
+    return false;
+  }
 }
 
 /**
@@ -78,39 +86,36 @@ function validateRequestSignature(options = {}) {
   const {
     secret = process.env.REQUEST_SIGNING_SECRET,
     methods = ["POST", "PUT", "PATCH", "DELETE"],
+    protectedPaths = [],
+    skipPaths = ["/api/stays/photo"],
   } = options;
 
+  if (!secret) {
+    throw new Error(
+      "REQUEST_SIGNING_SECRET is required to start the API server"
+    );
+  }
+
   return (req, res, next) => {
+    const requestPath = (req.originalUrl || req.path || "").split("?")[0];
+    const shouldSkip = skipPaths.some((path) =>
+      requestPath.startsWith(path)
+    );
+    if (shouldSkip) {
+      return next();
+    }
+
     // Only validate for specified methods
-    if (!methods.includes(req.method)) {
+    const shouldValidateMethod = methods.includes(req.method);
+    const shouldValidatePath = protectedPaths.some((path) =>
+      requestPath.startsWith(path)
+    );
+    if (!shouldValidateMethod && !shouldValidatePath) {
       return next();
     }
 
-    // Skip signature validation if the request already has a verified Firebase user context
+    // Skip signature validation for requests that already carry a verified Firebase user (server-to-server signed calls can still be used when no auth header is present)
     if (req.userVerified && req.user) {
-      return next();
-    }
-
-    // Skip signature validation for certain paths
-    const skipPaths = [
-      "/api/users",
-      "/api/profile",
-      "/api/phrasebook",
-      "/api/translate",
-      "/api/saved-phrases",
-      "/api/itinerary",
-      "/api/cultural",
-      "/api/culture",
-      "/api/poi",
-      "/api/stays",
-      "/api/auth",
-      "/api/login",
-      "/api/token",
-      "/api/session",
-      "/api/register",
-      "/api/dashboard",
-    ];
-    if (skipPaths.some((path) => req.path.startsWith(path))) {
       return next();
     }
 
@@ -183,6 +188,7 @@ function validateRequestSignature(options = {}) {
 
     // Store the fingerprint for tracking
     req.requestFingerprint = generateRequestFingerprint(req);
+    req.requestSignatureValidated = true;
 
     next();
   };

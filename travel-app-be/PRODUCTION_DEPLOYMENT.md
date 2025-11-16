@@ -76,14 +76,22 @@ OPENROUTER_MODEL=gpt-4o-mini
 REQUEST_SIGNING_SECRET=<your-random-secret-string>
 CORS_ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
 
-# Rate Limiting
+# Rate Limiting & Quotas
 RATE_LIMIT_WINDOW_MS=60000
 RATE_LIMIT_MAX=60
+STAYS_PER_USER_PER_HOUR=60
+STAYS_SEARCH_MAX_PER_IP=15
+POI_PER_USER_PER_HOUR=120
+PHRASEBOOK_MAX_REQUESTS_PER_HOUR=25
+ITINERARY_MAX_REQUESTS_PER_HOUR=20
+USAGE_ALERT_FALLBACK=500
 
 # Application Settings
-REQUEST_BODY_LIMIT=1mb
+REQUEST_BODY_LIMIT=256kb
 MAX_TRANSLATION_CHARS=500
 ```
+
+> **Credential handling:** generate a Firebase service-account JSON and base64-encode it (`cat serviceAccount.json | base64`) before assigning it to `FIREBASE_ADMIN_CREDENTIALS`. The backend no longer reads credential files from disk, which prevents accidental leaks in containers and repos.
 
 ### Frontend Environment Variables
 
@@ -167,6 +175,9 @@ Create these composite indexes in Firebase Console:
   - Translation: 30/min
   - Phrasebook generation: 10/min
   - User management: 20/min
+  - Stay search/photo proxy: 15/min per IP + 60/hour per user
+  - POI search: 30/min per IP + 120/hour per user
+  - Itinerary generation: 20/hour per user (protects OpenRouter spend)
 
 ### 2. CORS Configuration
 
@@ -187,6 +198,18 @@ const allowedOrigins = ["https://yourdomain.com", "https://www.yourdomain.com"];
 - Token expiration checking
 - Role-based access control
 - IP validation (optional)
+- Stays search, POI search/details, and itinerary generation now require valid Firebase ID tokens (or signed server-to-server credentials). Keep this requirement when adding new Google/OpenRouter frontends.
+
+### 5. Request Signing
+
+- `REQUEST_SIGNING_SECRET` is mandatory in every environment.
+- Server-to-server clients must include `x-timestamp` (epoch ms) and `x-request-signature` (hex HMAC of `method:path:body:timestamp`).
+- Firebase-authenticated requests bypass signing, but any automation or tooling without ID tokens must sign requests.
+
+### 6. Quota Monitoring
+
+- Use the provided `STAYS_*`, `POI_*`, `PHRASEBOOK_MAX_REQUESTS_PER_HOUR`, and `ITINERARY_MAX_REQUESTS_PER_HOUR` env vars to throttle per-user access before hitting Google/OpenRouter.
+- `USAGE_ALERT_FALLBACK` controls when the in-process monitor emits warnings (visible in logs) for runaway usage.
 
 ## Deployment Steps
 

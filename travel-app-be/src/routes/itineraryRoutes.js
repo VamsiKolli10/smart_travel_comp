@@ -1,9 +1,14 @@
 const express = require("express");
-const router = express.Router();
 const { generateItinerary } = require("../controllers/itineraryController");
+const { validateQuery } = require("../middleware/validate");
+const { itineraryQuerySchema } = require("../utils/schemas");
 
-// Public GET to avoid signature requirement; params via query
-router.get("/generate", generateItinerary);
+const router = express.Router();
+
+router.get(
+  "/generate",
+  validateQuery(itineraryQuerySchema),
+  generateItinerary
+);
 
 module.exports = router;
-

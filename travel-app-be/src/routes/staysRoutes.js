@@ -1,7 +1,6 @@
 const express = require("express");
 const axios = require("axios");
 const router = express.Router();
-const { requireAuth } = require("../middleware/authenticate");
 const {
   geocodeCity,
   nearbyLodging,
@@ -17,6 +16,27 @@ const {
   ERROR_CODES,
   logError,
 } = require("../utils/errorHandler");
+const { requireAuth } = require("../middleware/authenticate");
+const { createCustomLimiter } = require("../utils/rateLimiter");
+const { enforceQuota } = require("../utils/quota");
+const { trackExternalCall } = require("../utils/monitoring");
+
+const searchLimiter = createCustomLimiter({
+  windowMs: Number(process.env.STAYS_SEARCH_WINDOW_MS || 60_000),
+  max: Number(process.env.STAYS_SEARCH_MAX_PER_IP || 15),
+  message: "Too many stay searches from this IP. Please slow down.",
+});
+
+const detailLimiter = createCustomLimiter({
+  windowMs: Number(process.env.STAY_DETAIL_WINDOW_MS || 60_000),
+  max: Number(process.env.STAY_DETAIL_MAX_PER_IP || 30),
+  message: "Too many stay lookups from this IP. Try again shortly.",
+});
+
+const userQuotaLimit = Number(process.env.STAYS_PER_USER_PER_HOUR || 60);
+const userQuotaWindow = Number(
+  process.env.STAYS_PER_USER_WINDOW_MS || 60 * 60 * 1000
+);
 
 const encodePlacePath = (name) =>
   String(name)
@@ -99,23 +119,26 @@ router.get("/photo", async (req, res) => {
   }
 });
 
-// Public search endpoint - no authentication required
-router.get("/search", async (req, res) => {
-  try {
-    const {
-      dest,
-      lat,
-      lng,
-      rating,
-      distance,
-      type,
-      amenities,
-      page = 1,
-      lang = "en",
-      checkInDate,
-      checkOutDate,
-      adults,
-    } = req.query;
+router.get(
+  "/search",
+  requireAuth({ allowRoles: ["user", "admin"] }),
+  searchLimiter,
+  async (req, res) => {
+    try {
+      const {
+        dest,
+        lat,
+        lng,
+        rating,
+        distance,
+        type,
+        amenities,
+        page = 1,
+        lang = "en",
+        checkInDate,
+        checkOutDate,
+        adults,
+      } = req.query;
 
     const pageNumber = Math.max(1, parseInt(page, 10) || 1);
 
@@ -149,11 +172,37 @@ router.get("/search", async (req, res) => {
     }
 
     const radius = Math.round((Number(distance) || 5) * 1000); // km -> meters
+    const quotaResult = enforceQuota({
+      identifier: req.user?.uid || req.userId || req.ip,
+      key: "stays:search",
+      limit: userQuotaLimit,
+      windowMs: userQuotaWindow,
+    });
+    if (!quotaResult.allowed) {
+      return res
+        .status(429)
+        .json(
+          createErrorResponse(
+            429,
+            ERROR_CODES.RATE_LIMIT_EXCEEDED,
+            "Stay search quota exceeded",
+            { resetAt: quotaResult.resetAt }
+          )
+        );
+    }
+
     const raw = await nearbyLodging({
       lat: center.lat,
       lng: center.lng,
       radiusMeters: radius,
       language: lang,
+    });
+    trackExternalCall({
+      service: "google-places-stays",
+      userId: req.user?.uid || req.ip,
+      metadata: {
+        destination: dest || resolvedDestination?.display || "coords",
+      },
     });
     let items = raw.map((e) => toResultItem(e, center, lang));
 
@@ -233,25 +282,54 @@ router.get("/search", async (req, res) => {
         createErrorResponse(status, ERROR_CODES.EXTERNAL_SERVICE_ERROR, message)
       );
   }
-});
-
-// Public endpoint - no authentication required
-router.get("/:id", async (req, res) => {
-  try {
-    const stay = await fetchById(req.params.id, req.query.lang || "en");
-    if (!stay)
-      return res
-        .status(404)
-        .json(
-          createErrorResponse(404, ERROR_CODES.NOT_FOUND, "Stay not found")
-        );
-    res.json(stay);
-  } catch (e) {
-    logError(e, { endpoint: "/api/stays/:id", id: req.params.id });
-    res
-      .status(500)
-      .json(createErrorResponse(500, ERROR_CODES.DB_ERROR, e.message));
   }
-});
+);
+
+router.get(
+  "/:id",
+  requireAuth({ allowRoles: ["user", "admin"] }),
+  detailLimiter,
+  async (req, res) => {
+    try {
+      const quotaResult = enforceQuota({
+        identifier: req.user?.uid || req.ip,
+        key: "stays:detail",
+        limit: Math.max(20, Math.floor(userQuotaLimit / 2)),
+        windowMs: userQuotaWindow,
+      });
+      if (!quotaResult.allowed) {
+        return res
+          .status(429)
+          .json(
+            createErrorResponse(
+              429,
+              ERROR_CODES.RATE_LIMIT_EXCEEDED,
+              "Stay detail quota exceeded",
+              { resetAt: quotaResult.resetAt }
+            )
+          );
+      }
+
+      const stay = await fetchById(req.params.id, req.query.lang || "en");
+      trackExternalCall({
+        service: "google-places-stays",
+        userId: req.user?.uid || req.ip,
+        metadata: { lookup: req.params.id },
+      });
+      if (!stay)
+        return res
+          .status(404)
+          .json(
+            createErrorResponse(404, ERROR_CODES.NOT_FOUND, "Stay not found")
+          );
+      res.json(stay);
+    } catch (e) {
+      logError(e, { endpoint: "/api/stays/:id", id: req.params.id });
+      res
+        .status(500)
+        .json(createErrorResponse(500, ERROR_CODES.DB_ERROR, e.message));
+    }
+  }
+);
 
 module.exports = router;

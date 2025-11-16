@@ -22,21 +22,18 @@ Environment variables are crucial for configuring the Smart Travel Companion app
 | `APP_PORT`              | Server port number (local dev)      | `8000`        | No       |
 | `NODE_ENV`              | Environment mode                    | `development` | No       |
 | `FIRESTORE_PREFER_REST` | Use REST API over gRPC              | `true`        | No       |
-| `REQUEST_BODY_LIMIT`    | Maximum request body size           | `1mb`         | No       |
+| `REQUEST_BODY_LIMIT`    | Maximum request body size           | `256kb`       | No       |
 | `MAX_TRANSLATION_CHARS` | Maximum text length for translation | `500`         | No       |
 
 ### Firebase Configuration
 
 #### Admin Credentials (Backend)
 
-Choose one of these methods:
+| Variable                     | Description                                              | Format                | Required |
+| ---------------------------- | -------------------------------------------------------- | --------------------- | -------- |
+| `FIREBASE_ADMIN_CREDENTIALS` | Base64-encoded (or raw JSON) Firebase service account    | JSON string or base64 | Yes      |
 
-| Variable                         | Description                    | Format                | Required |
-| -------------------------------- | ------------------------------ | --------------------- | -------- |
-| `FIREBASE_ADMIN_CREDENTIALS`     | Service account JSON or base64 | JSON string or base64 | Yes\*    |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account file   | File path             | Yes\*    |
-
-\*One of these is required for backend Firebase operations.
+> :warning: The backend no longer loads credentials from disk. Always inject the service account via `FIREBASE_ADMIN_CREDENTIALS`.
 
 #### Client Configuration (Frontend Integration)
 
@@ -67,6 +64,17 @@ Choose one of these methods:
 | `CORS_ALLOWED_ORIGINS`   | Allowed CORS origins                    | `http://localhost` | Yes      |
 | `RATE_LIMIT_WINDOW_MS`   | Rate limit window in milliseconds       | `60000`            | No       |
 | `RATE_LIMIT_MAX`         | Default rate limit                      | `60`               | No       |
+
+### Quotas & Monitoring
+
+| Variable                         | Description                                             | Default |
+| -------------------------------- | ------------------------------------------------------- | ------- |
+| `STAYS_PER_USER_PER_HOUR`        | Per-user stay search operations per hour                | `60`    |
+| `STAYS_SEARCH_MAX_PER_IP`        | Stay search requests per minute per IP                  | `15`    |
+| `POI_PER_USER_PER_HOUR`          | Per-user POI search quota                               | `120`   |
+| `PHRASEBOOK_MAX_REQUESTS_PER_HOUR` | Phrasebook generations per user per hour              | `25`    |
+| `ITINERARY_MAX_REQUESTS_PER_HOUR`  | Itinerary generations per user per hour               | `20`    |
+| `USAGE_ALERT_FALLBACK`           | Default threshold before emitting external usage alerts | `500`   |
 
 ### Advanced Configuration
 
@@ -121,11 +129,8 @@ GOOGLE_PLACES_API_KEY=your_key_here
 OPENROUTER_API_KEY=your_key_here
 REQUEST_SIGNING_SECRET=your_secret_here
 CORS_ALLOWED_ORIGINS=https://yourdomain.com
-
-# Firebase (choose one method)
-FIREBASE_ADMIN_CREDENTIALS={"type":"service_account",...}
-# OR
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/serviceAccount.json
+# Firebase
+FIREBASE_ADMIN_CREDENTIALS=$(cat serviceAccount.json | base64)
 ```
 
 ### Frontend Required Variables
@@ -169,6 +174,12 @@ VITE_API_URL=https://api.yourdomain.com
 - Use service account with minimal required permissions
 - Enable only required Firebase services
 - Set up proper security rules
+
+### Request Signing
+
+- Configure a strong `REQUEST_SIGNING_SECRET` per environment and rotate regularly.
+- Server-to-server clients must include `x-timestamp` and `x-request-signature` headers for protected routes.
+- Firebase-authenticated clients are already validated by ID tokens, but background jobs or tooling **must** use signed requests.
 
 ### Environment-Specific Settings
 

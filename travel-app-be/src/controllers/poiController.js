@@ -13,6 +13,12 @@ const {
   ERROR_CODES,
   logError,
 } = require("../utils/errorHandler");
+const { enforceQuota } = require("../utils/quota");
+const { trackExternalCall } = require("../utils/monitoring");
+
+const poiSearchLimit = Number(process.env.POI_PER_USER_PER_HOUR || 120);
+const poiWindow = Number(process.env.POI_PER_USER_WINDOW_MS || 60 * 60 * 1000);
+const poiDetailLimit = Math.max(40, Math.floor(poiSearchLimit / 2));
 
 async function wikiSummary(title, lang = "en") {
   try {
@@ -75,12 +81,35 @@ async function search(req, res) {
     }
 
     const radius = Math.round((Number(distance) || 5) * 1000);
+    const quotaResult = enforceQuota({
+      identifier: req.user?.uid || req.ip,
+      key: "poi:search",
+      limit: poiSearchLimit,
+      windowMs: poiWindow,
+    });
+    if (!quotaResult.allowed) {
+      return res
+        .status(429)
+        .json(
+          createErrorResponse(
+            429,
+            ERROR_CODES.RATE_LIMIT_EXCEEDED,
+            "POI search quota exceeded",
+            { resetAt: quotaResult.resetAt }
+          )
+        );
+    }
     const raw = await searchNearbyPoi({
       lat: center.lat,
       lng: center.lng,
       radiusMeters: radius,
       language: lang,
       categories: category,
+    });
+    trackExternalCall({
+      service: "google-places-poi",
+      userId: req.user?.uid || req.ip,
+      metadata: { destination: dest || `${center.lat},${center.lng}` },
     });
 
     // Map and enrich
@@ -127,7 +156,31 @@ async function details(req, res) {
   const { id } = req.params;
   const lang = req.query.lang || "en";
   try {
+    const quotaResult = enforceQuota({
+      identifier: req.user?.uid || req.ip,
+      key: "poi:detail",
+      limit: poiDetailLimit,
+      windowMs: poiWindow,
+    });
+    if (!quotaResult.allowed) {
+      return res
+        .status(429)
+        .json(
+          createErrorResponse(
+            429,
+            ERROR_CODES.RATE_LIMIT_EXCEEDED,
+            "POI detail quota exceeded",
+            { resetAt: quotaResult.resetAt }
+          )
+        );
+    }
+
     const place = await fetchPlaceById(id, lang);
+    trackExternalCall({
+      service: "google-places-poi",
+      userId: req.user?.uid || req.ip,
+      metadata: { lookup: id },
+    });
     if (!place) {
       return res
         .status(404)

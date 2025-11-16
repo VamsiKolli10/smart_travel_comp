@@ -5,8 +5,6 @@ process.env.FIRESTORE_PREFER_REST = process.env.FIRESTORE_PREFER_REST || "true";
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
-
 const translationRoutes = require("./routes/translationRoutes");
 const phrasebookRoutes = require("./routes/phrasebookRoutes");
 const savedPhraseRoutes = require("./routes/savedPhraseRoutes");
@@ -34,6 +32,8 @@ const {
   enhancedAuthorization,
   validateRequestSignature,
 } = require("./utils/security");
+const { validateBody } = require("./middleware/validate");
+const { userWriteSchema } = require("./utils/schemas");
 
 const allowedOrigins =
   process.env.CORS_ALLOWED_ORIGINS?.split(",")
@@ -48,7 +48,14 @@ const allowedOrigins =
 
 const rateLimitWindowMs = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
 const rateLimitMax = Number(process.env.RATE_LIMIT_MAX || 60);
-const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || "1mb";
+const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || "256kb";
+const signingSecret = process.env.REQUEST_SIGNING_SECRET;
+
+if (!signingSecret) {
+  throw new Error(
+    "REQUEST_SIGNING_SECRET is required. Configure a strong secret before starting the API."
+  );
+}
 
 // Role-based rate limits (requests per window)
 const roleLimits = {
@@ -100,6 +107,7 @@ const methodLimits = {
 
 function createApp() {
   const app = express();
+  app.disable("x-powered-by");
 
   app.use(
     cors({
@@ -140,6 +148,7 @@ function createApp() {
   );
 
   app.use(express.json({ limit: requestBodyLimit }));
+  app.use(express.urlencoded({ extended: true, limit: requestBodyLimit }));
 
   // Hydrate user context (if any) before applying role-based rate limits
   app.use(attachUserContext);
@@ -186,8 +195,9 @@ function createApp() {
   // Validate request signatures for sensitive endpoints
   app.use(
     validateRequestSignature({
-      secret: process.env.REQUEST_SIGNING_SECRET || "default-signing-secret",
+      secret: signingSecret,
       methods: ["POST", "PUT", "PATCH", "DELETE"],
+      protectedPaths: ["/api/stays", "/api/poi", "/api/itinerary"],
     })
   );
 
@@ -201,10 +211,10 @@ function createApp() {
     next();
   });
 
-  app.get(
-    "/api/users",
-    requireAuth({ allowRoles: ["admin"] }),
-    async (_req, res) => {
+  const requireUser = () => requireAuth({ allowRoles: ["user", "admin"] });
+  const requireAdmin = () => requireAuth({ allowRoles: ["admin"] });
+
+  app.get("/api/users", requireAdmin(), async (_req, res) => {
       try {
         const snapshot = await db.collection("users").limit(50).get();
         res.json(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -223,10 +233,7 @@ function createApp() {
     }
   );
 
-  app.post(
-    "/api/users",
-    requireAuth({ allowRoles: ["admin"] }),
-    async (req, res) => {
+  app.post("/api/users", requireAdmin(), validateBody(userWriteSchema), async (req, res) => {
       try {
         const docRef = await db.collection("users").add(req.body || {});
         res.status(201).json({ id: docRef.id });
@@ -252,21 +259,11 @@ function createApp() {
 
   app.use("/api/translate", translationRoutes);
   app.use("/api/phrasebook", phrasebookRoutes);
-  app.use("/api/saved-phrases", requireAuth(), savedPhraseRoutes);
+  app.use("/api/saved-phrases", requireUser(), savedPhraseRoutes);
   app.use("/api/stays", staysRoutes);
-  app.use("/api/poi", poiRoutes);
-  app.use("/api/itinerary", itineraryRoutes);
-
-  // Unified Culture Intelligence API
+  app.use("/api/poi", requireUser(), poiRoutes);
+  app.use("/api/itinerary", requireUser(), itineraryRoutes);
   app.use("/api/culture", cultureIntelligenceRoutes);
-
-  // Legacy cultural-etiquette endpoint retained as thin wrapper for compatibility
-  app.use("/api/cultural-etiquette", culturalEtiquetteRoutes);
-
-  // Unified Culture Intelligence API
-  app.use("/api/culture", cultureIntelligenceRoutes);
-
-  // Legacy cultural-etiquette endpoint retained as thin wrapper for compatibility
   app.use("/api/cultural-etiquette", culturalEtiquetteRoutes);
 
   app.use((req, res) =>

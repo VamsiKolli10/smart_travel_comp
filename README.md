@@ -61,11 +61,13 @@ cp travel-app-fe/.env.example travel-app-fe/.env
 | Variable (backend)           | Purpose                                              |
 |-----------------------------|------------------------------------------------------|
 | `APP_PORT`                  | Express port for local dev (default `8000`)          |
-| `FIREBASE_ADMIN_CREDENTIALS`| Service account JSON or base64 string injected via secrets manager (preferred) |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Absolute path to the credential file if you mount it on disk (defaults to `travel-app-be/serviceAccountKey.json`) |
+| `FIREBASE_ADMIN_CREDENTIALS`| **Required.** Base64-encoded Firebase service-account JSON injected via your secrets manager. No file fallback. |
 | `GOOGLE_PLACES_API_KEY`     | Enables stays search/photo proxy                     |
-| `OPENROUTER_API_KEY`        | Token for phrasebook generation                      |
+| `OPENROUTER_API_KEY`        | Token for phrasebook & itinerary generation          |
 | `OPENROUTER_MODEL`          | Optional default model                               |
+| `REQUEST_SIGNING_SECRET`    | HMAC secret required for all non-authenticated API clients |
+| `REQUEST_BODY_LIMIT`        | Override JSON payload size (default `256kb`)         |
+| `STAYS_PER_USER_PER_HOUR` / `POI_PER_USER_PER_HOUR` / `PHRASEBOOK_MAX_REQUESTS_PER_HOUR` / `ITINERARY_MAX_REQUESTS_PER_HOUR` | Per-user quota knobs for external API usage |
 | `FBAPP_*`                   | Firebase JS SDK config (if using client SDK server-side) |
 
 | Variable (frontend)         | Purpose                                              |
@@ -73,9 +75,7 @@ cp travel-app-fe/.env.example travel-app-fe/.env
 | `VITE_API_URL`              | Base API URL, include `/api` (e.g., `http://localhost:8000/api`) |
 | `VITE_FIREBASE_*`           | Firebase Web App configuration                       |
 
-`travel-app-be/serviceAccountKey.json` ships with placeholder values—replace them with your actual service account before running locally. In production, prefer secrets managers over committing real keys.
-
-> 🔐 **Secret storage**: The backend still prefers `FIREBASE_ADMIN_CREDENTIALS`, allowing you to inject the entire service-account JSON (or a base64-encoded blob) from your secrets manager. Falling back to `GOOGLE_APPLICATION_CREDENTIALS` (which now defaults to the local file) is supported.
+> 🔐 **Secret storage**: The backend now _only_ reads credentials from `FIREBASE_ADMIN_CREDENTIALS`. Encode the raw service-account JSON (or paste the JSON directly) into the env var provided by your hosting platform or local `.env`. The legacy `serviceAccountKey.json` file has been removed to avoid accidental leaks.
 
 ---
 
@@ -152,15 +152,24 @@ A dedicated Redux slice (`travel-app-fe/src/store/slices/travelContextSlice.js`)
 
 ## Deployment Notes
 
-- **Backend**: Deploy the Express app to your preferred host (Render, Fly.io, Firebase Cloud Run, etc.). Make sure secrets are configured and `serviceAccountKey.json` is supplied via environment variables or a secret manager. Enforce HTTPS, add production CORS origins, and consider containerizing the service.
+- **Backend**: Deploy the Express app to your preferred host (Render, Fly.io, Firebase Cloud Run, etc.). Inject the base64-encoded service-account JSON via the `FIREBASE_ADMIN_CREDENTIALS` env var—never ship credential files with the image. Enforce HTTPS, add production CORS origins, and consider containerizing the service.
 - **Front-end**: `npm run build` produces a static bundle in `travel-app-fe/dist`. Deploy to Firebase Hosting, Vercel, Netlify, or S3/CloudFront.
 - **Scheduled warmups**: The translation pipeline uses on-demand `@xenova/transformers` models. Consider provisioning a background job (cron) to hit `/api/translate/warmup` to keep models cached.
 
 ---
 
+## Testing
+
+- **Backend** (`travel-app-be`): `npm test` runs Jest + Supertest integration coverage for request signing, auth gates, and critical API flows.
+- **Frontend** (`travel-app-fe`): `npm run test` runs Vitest + Testing Library suites for auth services, feature-flag gating, and future UI hooks.
+
+Both commands automatically provision mocked Firebase/OpenRouter/Google dependencies so they can run locally or in CI without external keys.
+
+---
+
 ## Observability & Quality Checklist
 
-- Add unit/integration tests (Jest/React Testing Library for the UI, Vitest for hooks, supertest for APIs).
+- Keep unit/integration tests (Jest/Supertest for APIs, Vitest + Testing Library for UI/services) green in CI.
 - Configure linting (`eslint`, `prettier`) and type checking (TypeScript or JSDoc) as pre-commit checks.
 - Introduce structured logging (pino/winston) plus request IDs in the backend.
 - Provision error monitoring (Sentry, Firebase Crashlytics) and performance tracing (OpenTelemetry) for end-to-end visibility.
@@ -173,7 +182,7 @@ A dedicated Redux slice (`travel-app-fe/src/store/slices/travelContextSlice.js`)
 
 1. **Security & Auth**
    - Enforce HTTPS everywhere and manage Firebase tokens via secure storage.
-   - Ensure *all* API routes that read/write user data require authentication (e.g., stays search currently public).
+   - Ensure *all* API routes that read/write user data require authentication. Stays/POI/itinerary/phrasebook endpoints now enforce Firebase auth + quotas—mirror the same pattern for future routes.
    - Rotate API keys regularly and store them in a secrets manager (Vault, SSM, Secrets Manager).
 2. **Data & Storage**
    - Define Firestore security rules for per-user data.
