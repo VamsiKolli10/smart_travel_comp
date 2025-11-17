@@ -5,10 +5,11 @@ let cachedCredentials;
 function loadServiceAccount() {
   if (cachedCredentials) return cachedCredentials;
 
-  const inline = process.env.FIREBASE_ADMIN_CREDENTIALS;
+  const inline =
+    process.env.FB_ADMIN_CREDENTIALS || process.env.FIREBASE_ADMIN_CREDENTIALS;
   if (!inline) {
     throw new Error(
-      "Missing FIREBASE_ADMIN_CREDENTIALS. Provide a base64 encoded service account JSON via environment variables."
+      "Missing FB_ADMIN_CREDENTIALS (formerly FIREBASE_ADMIN_CREDENTIALS). Provide a base64 encoded service account JSON via environment variables."
     );
   }
 
@@ -25,7 +26,7 @@ function loadServiceAccount() {
     return cachedCredentials;
   } catch (err) {
     throw new Error(
-      `Unable to parse FIREBASE_ADMIN_CREDENTIALS: ${err.message}`
+      `Unable to parse FB_ADMIN_CREDENTIALS: ${err.message}`
     );
   }
 }

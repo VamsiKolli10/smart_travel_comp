@@ -77,12 +77,30 @@ export async function handleEmailVerification(actionCode) {
   }
 }
 
-export async function resendEmailVerification(user) {
+export async function resendEmailVerification({ user, email, password } = {}) {
   try {
-    await sendEmailVerification(user);
+    let targetUser = user;
+    let signedInForResend = false;
+
+    if (!targetUser) {
+      if (!email || !password) {
+        throw new Error("Email and password are required to resend verification emails");
+      }
+
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      targetUser = credential.user;
+      signedInForResend = true;
+    }
+
+    await sendEmailVerification(targetUser);
+
+    if (signedInForResend) {
+      await signOut(auth);
+    }
+
     return true;
   } catch (error) {
     console.error("Resend email verification error:", error);
-    return false;
+    throw error;
   }
 }

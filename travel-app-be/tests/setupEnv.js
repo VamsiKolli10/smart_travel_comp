@@ -6,7 +6,8 @@ const fakeServiceAccount = {
 
 process.env.REQUEST_SIGNING_SECRET =
   process.env.REQUEST_SIGNING_SECRET || "test-signing-secret";
-process.env.FIREBASE_ADMIN_CREDENTIALS =
+process.env.FB_ADMIN_CREDENTIALS =
+  process.env.FB_ADMIN_CREDENTIALS ||
   process.env.FIREBASE_ADMIN_CREDENTIALS ||
   Buffer.from(JSON.stringify(fakeServiceAccount)).toString("base64");
 process.env.CORS_ALLOWED_ORIGINS =

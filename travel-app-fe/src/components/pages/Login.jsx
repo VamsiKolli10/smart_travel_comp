@@ -166,33 +166,27 @@ export default function Login() {
   const handleResendVerification = async () => {
     if (!verificationEmail) return;
 
+    if (!formData.password) {
+      showNotification(
+        "Enter your password before requesting another verification email.",
+        "warning"
+      );
+      return;
+    }
+
     setResendingVerification(true);
     try {
-      // Get the current user
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        const success = await resendEmailVerification(currentUser);
-        if (success) {
-          showNotification(
-            "Verification email sent! Please check your inbox.",
-            "success"
-          );
-        } else {
-          showNotification(
-            "Failed to resend verification email. Please try again.",
-            "error"
-          );
-        }
-      } else {
-        // Create a new user instance to send verification
-        await resendEmailVerification({
-          email: verificationEmail,
-        });
-        showNotification(
-          "Verification email sent! Please check your inbox.",
-          "success"
-        );
-      }
+      await resendEmailVerification({
+        user: auth.currentUser ?? undefined,
+        email: verificationEmail,
+        password: formData.password,
+      });
+
+      showNotification(
+        "Verification email sent! Please check your inbox.",
+        "success"
+      );
+      setInfoMessage(`We sent another verification link to ${verificationEmail}.`);
     } catch (error) {
       console.error("Resend verification error:", error);
       showNotification(

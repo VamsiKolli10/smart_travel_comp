@@ -61,7 +61,7 @@ cp travel-app-fe/.env.example travel-app-fe/.env
 | Variable (backend)           | Purpose                                              |
 |-----------------------------|------------------------------------------------------|
 | `APP_PORT`                  | Express port for local dev (default `8000`)          |
-| `FIREBASE_ADMIN_CREDENTIALS`| **Required.** Base64-encoded Firebase service-account JSON injected via your secrets manager. No file fallback. |
+| `FB_ADMIN_CREDENTIALS`| **Required.** Base64-encoded Firebase service-account JSON injected via your secrets manager. No file fallback. |
 | `GOOGLE_PLACES_API_KEY`     | Enables stays search/photo proxy                     |
 | `OPENROUTER_API_KEY`        | Token for phrasebook & itinerary generation          |
 | `OPENROUTER_MODEL`          | Optional default model                               |
@@ -75,7 +75,7 @@ cp travel-app-fe/.env.example travel-app-fe/.env
 | `VITE_API_URL`              | Base API URL, include `/api` (e.g., `http://localhost:8000/api`) |
 | `VITE_FIREBASE_*`           | Firebase Web App configuration                       |
 
-> 🔐 **Secret storage**: The backend now _only_ reads credentials from `FIREBASE_ADMIN_CREDENTIALS`. Encode the raw service-account JSON (or paste the JSON directly) into the env var provided by your hosting platform or local `.env`. The legacy `serviceAccountKey.json` file has been removed to avoid accidental leaks.
+> 🔐 **Secret storage**: The backend now _only_ reads credentials from `FB_ADMIN_CREDENTIALS` (formerly `FIREBASE_ADMIN_CREDENTIALS`). Encode the raw service-account JSON (or paste the JSON directly) into the env var provided by your hosting platform or local `.env`. The legacy `serviceAccountKey.json` file has been removed to avoid accidental leaks.
 
 ---
 
@@ -152,9 +152,28 @@ A dedicated Redux slice (`travel-app-fe/src/store/slices/travelContextSlice.js`)
 
 ## Deployment Notes
 
-- **Backend**: Deploy the Express app to your preferred host (Render, Fly.io, Firebase Cloud Run, etc.). Inject the base64-encoded service-account JSON via the `FIREBASE_ADMIN_CREDENTIALS` env var—never ship credential files with the image. Enforce HTTPS, add production CORS origins, and consider containerizing the service.
+- **Backend**: Deploy the Express app to your preferred host (Render, Fly.io, Firebase Cloud Run, etc.). Inject the base64-encoded service-account JSON via the `FB_ADMIN_CREDENTIALS` env var—never ship credential files with the image. Enforce HTTPS, add production CORS origins, and consider containerizing the service.
 - **Front-end**: `npm run build` produces a static bundle in `travel-app-fe/dist`. Deploy to Firebase Hosting, Vercel, Netlify, or S3/CloudFront.
 - **Scheduled warmups**: The translation pipeline uses on-demand `@xenova/transformers` models. Consider provisioning a background job (cron) to hit `/api/translate/warmup` to keep models cached.
+
+### Firebase Hosting + Functions Automation
+
+Use `scripts/firebase-deploy.sh` to build the React frontend, copy the output into `travel-app-be/public`, and deploy both Hosting + backend Functions with a single command:
+
+```bash
+./scripts/firebase-deploy.sh --project your-firebase-project
+```
+
+Prerequisites:
+
+1. Install the Firebase CLI (`npm install -g firebase-tools`) and run `firebase login` once.
+2. Configure `.firebaserc` or supply `--project` / `FIREBASE_DEPLOY_PROJECT` to point at the right Firebase project.
+3. Ensure your backend secrets are set via `.env` or the `travel-app-be/scripts/set-firebase-secrets.sh` helper.
+
+Flags:
+
+- `--skip-frontend` &mdash; reuses the last `travel-app-fe/dist` build.
+- `--project` &mdash; overrides the Firebase project passed to `firebase deploy` (falls back to `.firebaserc` otherwise).
 
 ---
 

@@ -31,9 +31,9 @@ Environment variables are crucial for configuring the Smart Travel Companion app
 
 | Variable                     | Description                                              | Format                | Required |
 | ---------------------------- | -------------------------------------------------------- | --------------------- | -------- |
-| `FIREBASE_ADMIN_CREDENTIALS` | Base64-encoded (or raw JSON) Firebase service account    | JSON string or base64 | Yes      |
+| `FB_ADMIN_CREDENTIALS` | Base64-encoded (or raw JSON) Firebase service account (formerly `FIREBASE_ADMIN_CREDENTIALS`)   | JSON string or base64 | Yes      |
 
-> :warning: The backend no longer loads credentials from disk. Always inject the service account via `FIREBASE_ADMIN_CREDENTIALS`.
+> :warning: The backend no longer loads credentials from disk. Always inject the service account via `FB_ADMIN_CREDENTIALS` (renamed from `FIREBASE_ADMIN_CREDENTIALS`).
 
 #### Client Configuration (Frontend Integration)
 
@@ -130,7 +130,7 @@ OPENROUTER_API_KEY=your_key_here
 REQUEST_SIGNING_SECRET=your_secret_here
 CORS_ALLOWED_ORIGINS=https://yourdomain.com
 # Firebase
-FIREBASE_ADMIN_CREDENTIALS=$(cat serviceAccount.json | base64)
+FB_ADMIN_CREDENTIALS=$(cat serviceAccount.json | base64)
 ```
 
 ### Frontend Required Variables
@@ -251,7 +251,7 @@ NODE_ENV=production
 FIRESTORE_PREFER_REST=true
 
 # Firebase
-FIREBASE_ADMIN_CREDENTIALS=your_service_account_json_here
+FB_ADMIN_CREDENTIALS=your_service_account_json_here
 FBAPP_API_KEY=your_firebase_web_api_key
 FBAPP_AUTH_DOMAIN=your-project.firebaseapp.com
 FBAPP_PROJECT_ID=your-project-id
@@ -306,7 +306,7 @@ VITE_ENABLE_PERFORMANCE_MONITORING=false
 
 ```bash
 # Backend (if using Vercel Functions)
-vercel env add FIREBASE_ADMIN_CREDENTIALS
+vercel env add FB_ADMIN_CREDENTIALS
 vercel env add GOOGLE_PLACES_API_KEY
 # ... add all required variables
 
@@ -320,7 +320,7 @@ vercel env add VITE_API_URL
 
 ```bash
 # Backend
-netlify env:set FIREBASE_ADMIN_CREDENTIALS "your_value"
+netlify env:set FB_ADMIN_CREDENTIALS "your_value"
 netlify env:set GOOGLE_PLACES_API_KEY "your_value"
 
 # Frontend

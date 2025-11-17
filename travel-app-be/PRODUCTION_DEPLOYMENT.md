@@ -59,7 +59,7 @@ NODE_ENV=production
 FIRESTORE_PREFER_REST=true
 
 # Firebase Configuration
-FIREBASE_ADMIN_CREDENTIALS=<your-firebase-admin-credentials-json>
+FB_ADMIN_CREDENTIALS=<your-firebase-admin-credentials-json>
 FBAPP_API_KEY=<your-firebase-web-api-key>
 FBAPP_AUTH_DOMAIN=<your-project>.firebaseapp.com
 FBAPP_PROJECT_ID=<your-project-id>
@@ -91,7 +91,7 @@ REQUEST_BODY_LIMIT=256kb
 MAX_TRANSLATION_CHARS=500
 ```
 
-> **Credential handling:** generate a Firebase service-account JSON and base64-encode it (`cat serviceAccount.json | base64`) before assigning it to `FIREBASE_ADMIN_CREDENTIALS`. The backend no longer reads credential files from disk, which prevents accidental leaks in containers and repos.
+> **Credential handling:** generate a Firebase service-account JSON and base64-encode it (`cat serviceAccount.json | base64`) before assigning it to `FB_ADMIN_CREDENTIALS` (formerly `FIREBASE_ADMIN_CREDENTIALS`). The backend no longer reads credential files from disk, which prevents accidental leaks in containers and repos.
 
 ### Frontend Environment Variables
 
@@ -286,6 +286,16 @@ npm run build
 
 # Deploy build folder to Netlify
 ```
+
+### Combined Firebase Hosting + Backend Functions Deploy
+
+Run the repository-level helper to automate the React build, asset sync, and Firebase deploy:
+
+```bash
+./scripts/firebase-deploy.sh --project your-firebase-project
+```
+
+The script expects `firebase-tools` to be installed and authenticated, reuses `.firebaserc` when `--project` is omitted, and will fail fast if the frontend build artifacts are missing.
 
 ## Monitoring & Logging
 
