@@ -127,15 +127,39 @@ export default function StaysSearchPage() {
     });
   }, [contextDestination, destinationLat, destinationLng]);
 
-  const syncUrl = (extra = {}) => {
+  const normalizeSearchQuery = (base = {}) => {
+    const dest = typeof base.dest === "string" ? base.dest.trim() : "";
+    const distance = Number.isFinite(base.distance)
+      ? base.distance
+      : Number.isFinite(query.distance)
+      ? query.distance
+      : 3;
+    const normalized = {
+      dest,
+      distance,
+      lat: base.lat,
+      lng: base.lng,
+    };
+    if (dest) {
+      normalized.lat = undefined;
+      normalized.lng = undefined;
+    }
+    return normalized;
+  };
+
+  const syncUrl = (
+    currentQuery = query,
+    currentFilters = filters,
+    extra = {}
+  ) => {
     const merged = {
-      dest: query.dest || undefined,
-      distance: query.distance ?? undefined,
-      lat: query.lat ?? undefined,
-      lng: query.lng ?? undefined,
-      type: filters.type?.join(",") || undefined,
-      amenities: filters.amenities?.join(",") || undefined,
-      rating: filters.rating ?? undefined,
+      dest: currentQuery.dest || undefined,
+      distance: currentQuery.distance ?? undefined,
+      lat: currentQuery.lat ?? undefined,
+      lng: currentQuery.lng ?? undefined,
+      type: currentFilters.type?.join(",") || undefined,
+      amenities: currentFilters.amenities?.join(",") || undefined,
+      rating: currentFilters.rating ?? undefined,
       view,
       page,
       ...extra,
@@ -154,6 +178,7 @@ export default function StaysSearchPage() {
     searchFilters = filters,
     pageOverride = page
   ) => {
+    const normalizedQuery = normalizeSearchQuery(searchQuery);
     setLoading(true);
     setError("");
     try {
@@ -163,7 +188,7 @@ export default function StaysSearchPage() {
           : pageOverride;
       // Build search params - only include non-empty values
       const searchParams = {
-        ...searchQuery,
+        ...normalizedQuery,
         page: effectivePage,
       };
 
@@ -191,7 +216,6 @@ export default function StaysSearchPage() {
       if (typeof data.page === "number") {
         setPage(data.page);
       }
-      syncUrl({ page: effectivePage });
       const destinationLabel =
         data.resolvedDestination?.display ||
         data.resolvedDestination?.city ||
@@ -252,6 +276,11 @@ export default function StaysSearchPage() {
         results: (data.total ?? data.items?.length) || 0,
         success: true,
       });
+      setQuery((prev) => ({
+        ...prev,
+        ...normalizedQuery,
+      }));
+      syncUrl(normalizedQuery, searchFilters, { page: effectivePage });
     } catch (e) {
       const apiMsg = e?.response?.data?.error?.message;
       setError(apiMsg || e?.message || "Failed to fetch stays");
@@ -274,8 +303,10 @@ export default function StaysSearchPage() {
     // Only search if we have a destination or coordinates
     if (query.dest || (query.lat && query.lng)) {
       const resetPage = 1;
+      const normalized = normalizeSearchQuery(query);
+      setQuery((prev) => ({ ...prev, ...normalized }));
       setPage(resetPage);
-      performSearch(query, filters, resetPage);
+      performSearch(normalized, filters, resetPage);
     } else {
       // No query params, show empty state
       setItems([]);

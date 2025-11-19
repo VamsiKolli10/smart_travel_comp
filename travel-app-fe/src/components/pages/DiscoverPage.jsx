@@ -120,6 +120,23 @@ export default function DiscoverPage() {
     return `${cleanBase}${maybeRelative}`;
   };
 
+  const normalizeDiscoverQuery = (base = {}) => {
+    const dest =
+      typeof base.dest === "string" && base.dest.trim()
+        ? base.dest.trim()
+        : "";
+    const normalized = {
+      dest,
+      lat: base.lat,
+      lng: base.lng,
+    };
+    if (dest) {
+      normalized.lat = undefined;
+      normalized.lng = undefined;
+    }
+    return normalized;
+  };
+
   const queryParams = useMemo(() => {
     const entries = Object.entries({
       dest: query.dest,
@@ -176,39 +193,49 @@ export default function DiscoverPage() {
 
   // Helper so we can search with fresh local state right after a click
   const performSearch = async (localQuery = query, localFilters = filters) => {
+    const normalizedQuery = normalizeDiscoverQuery(localQuery);
+    setQuery((prev) => ({ ...prev, ...normalizedQuery }));
     setHasSearched(true);
     setLoading(true);
     setError("");
     try {
       const { items } = await searchPOIs({
-        dest: localQuery.dest,
-        lat: localQuery.lat,
-        lng: localQuery.lng,
+        dest: normalizedQuery.dest,
+        lat: normalizedQuery.lat,
+        lng: normalizedQuery.lng,
         category: localFilters.category.join(","),
         kidFriendly: localFilters.kidFriendly,
         accessibility: localFilters.accessibility,
       });
       setResults(items || []);
-      if ((localQuery.dest && localQuery.dest.trim()) || (localQuery.lat && localQuery.lng)) {
+      if (
+        (normalizedQuery.dest && normalizedQuery.dest.trim()) ||
+        (normalizedQuery.lat && normalizedQuery.lng)
+      ) {
         const label =
-          localQuery.dest?.trim() ||
-          (localQuery.lat && localQuery.lng
-            ? `Lat ${localQuery.lat.toFixed(2)}, Lng ${localQuery.lng.toFixed(2)}`
+          normalizedQuery.dest?.trim() ||
+          (normalizedQuery.lat && normalizedQuery.lng
+            ? `Lat ${normalizedQuery.lat.toFixed(2)}, Lng ${normalizedQuery.lng.toFixed(
+                2
+              )}`
             : "");
         if (label) {
           setDestinationContext(
             label,
             {
               display: label,
-              city: localQuery.dest?.trim() || "",
-              lat: localQuery.lat,
-              lng: localQuery.lng,
+              city: normalizedQuery.dest?.trim() || "",
+              lat: normalizedQuery.lat,
+              lng: normalizedQuery.lng,
             },
             { source: "discover-search" }
           );
         }
       }
-      track?.("discover_search", { ...localQuery, ...localFilters });
+      track?.("discover_search", {
+        ...normalizedQuery,
+        ...localFilters,
+      });
     } catch (e) {
       console.error("Discover search error", e);
       const apiMsg = e?.response?.data?.error?.message || e?.message || "";
@@ -223,17 +250,14 @@ export default function DiscoverPage() {
   };
 
   const runSearch = () => {
-    const hasDest = query.dest && query.dest.trim();
-    const hasCoords = query.lat && query.lng;
+    const normalized = normalizeDiscoverQuery(query);
+    const hasDest = normalized.dest;
+    const hasCoords = normalized.lat && normalized.lng;
     if (!hasDest && !hasCoords) {
       // Do not call API without a valid location
       return;
     }
-    // If a destination is provided, prefer it over stale coordinates
-    const localQuery = hasDest
-      ? { ...query, lat: undefined, lng: undefined }
-      : query;
-    performSearch(localQuery, filters);
+    performSearch(normalized, filters);
   };
 
   useEffect(() => {

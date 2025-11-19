@@ -99,10 +99,20 @@ const itineraryQuerySchema = z
         z.number().int().min(1).max(200)
       )
       .optional(),
+    days: z
+      .preprocess(
+        (value) => (value === undefined ? undefined : Number(value)),
+        z.number().int().min(1, "days must be >= 1").max(30, "days must be <= 30")
+      )
+      .optional(),
     budget: limitedString("budget", 32).optional(),
     pace: limitedString("pace", 32).optional(),
     season: limitedString("season", 32).optional(),
-    interests: limitedString("interests", 256).optional(),
+    interests: z.preprocess((value) => {
+        if (value === undefined || value === null) return undefined;
+        const trimmed = String(value).trim();
+        return trimmed.length ? trimmed : undefined;
+      }, limitedString("interests", 256).optional()),
     checkInDate: limitedString("checkInDate", 40).optional(),
     checkOutDate: limitedString("checkOutDate", 40).optional(),
     amenities: limitedString("amenities", 200).optional(),

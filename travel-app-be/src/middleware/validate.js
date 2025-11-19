@@ -5,8 +5,20 @@ const {
 } = require("../utils/errorHandler");
 
 function formatZodErrors(error) {
-  return error.errors.map((issue) => {
-    const path = issue.path.join(".");
+  const issues = Array.isArray(error.issues)
+    ? error.issues
+    : Array.isArray(error.errors)
+    ? error.errors
+    : [];
+
+  if (!issues.length) {
+    return [error.message || "Invalid request payload"];
+  }
+
+  return issues.map((issue) => {
+    const path = Array.isArray(issue.path)
+      ? issue.path.join(".")
+      : String(issue.path || "");
     return path ? `${path}: ${issue.message}` : issue.message;
   });
 }
