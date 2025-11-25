@@ -1,0 +1,57 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import CulturalEtiquette from "../CulturalEtiquette.jsx";
+import { getCultureBrief, askCultureQuestion } from "../../../services/culturalEtiquette";
+
+vi.mock("../../../services/culturalEtiquette", () => ({
+  getCultureBrief: vi.fn(),
+  askCultureQuestion: vi.fn(),
+}));
+
+vi.mock("../../../hooks/useTravelContext", () => ({
+  __esModule: true,
+  default: () => ({
+    destination: "",
+    culture: "",
+    language: "en",
+    updateTravelContext: vi.fn(),
+    setDestinationContext: vi.fn(),
+  }),
+}));
+
+describe("CulturalEtiquette", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCultureBrief.mockResolvedValue({
+      destination: "Paris",
+      categories: { greetings: ["Bonjour"] },
+      generatedAt: new Date().toISOString(),
+    });
+  });
+
+  it("loads brief and displays categories", async () => {
+    render(<CulturalEtiquette destination="Paris" />);
+    await waitFor(() => expect(screen.getByText(/Bonjour/i)).toBeInTheDocument());
+  });
+
+  it("asks a question and shows answer", async () => {
+    askCultureQuestion.mockResolvedValue({
+      answer: "Say bonjour",
+      highlights: ["Be polite"],
+    });
+    render(<CulturalEtiquette destination="Paris" />);
+    await waitFor(() => screen.getByText(/Bonjour/i));
+
+    fireEvent.change(
+      screen.getByLabelText(/ask a question about local etiquette/i),
+      {
+        target: { value: "How to greet?" },
+      }
+    );
+    fireEvent.click(screen.getByRole("button", { name: /ask/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Say bonjour/i)).toBeInTheDocument();
+    });
+  });
+});

@@ -1,0 +1,93 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import Login from "../Login.jsx";
+import { loginWithEmail, resendEmailVerification } from "../../../services/auth";
+
+vi.mock("../../../services/auth", () => ({
+  loginWithEmail: vi.fn(),
+  resendEmailVerification: vi.fn(),
+}));
+
+vi.mock("../../../hooks/useNotification", () => ({
+  __esModule: true,
+  default: () => ({
+    showNotification: vi.fn(),
+  }),
+}));
+
+vi.mock("../../../contexts/AuthContext", () => ({
+  useAuth: () => ({ user: null }),
+}));
+
+describe("Login page", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("validates empty fields", async () => {
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    expect(
+      screen.getByText(/please fill in all fields/i)
+    ).toBeInTheDocument();
+  });
+
+  it("submits credentials", async () => {
+    loginWithEmail.mockResolvedValue({});
+
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: "user@test.dev" },
+    });
+    fireEvent.change(screen.getByLabelText(/^password/i), {
+      target: { value: "secret" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await waitFor(() =>
+      expect(loginWithEmail).toHaveBeenCalledWith("user@test.dev", "secret")
+    );
+  });
+
+  it("resends verification on auth error", async () => {
+    loginWithEmail.mockRejectedValue({
+      code: "auth/email-not-verified",
+      email: "user@test.dev",
+    });
+    resendEmailVerification.mockResolvedValue({});
+
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: "user@test.dev" },
+    });
+    fireEvent.change(screen.getByLabelText(/^password/i), {
+      target: { value: "secret" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/please verify your email/i)).toBeInTheDocument()
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /resend verification email/i })
+    );
+    await waitFor(() => expect(resendEmailVerification).toHaveBeenCalled());
+  });
+});

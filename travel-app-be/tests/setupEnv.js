@@ -1,7 +1,8 @@
 const fakeServiceAccount = {
   project_id: "demo-project",
   client_email: "demo@demo.iam.gserviceaccount.com",
-  private_key: "-----BEGIN PRIVATE KEY-----\\nFAKEKEY\\n-----END PRIVATE KEY-----\\n",
+  private_key:
+    "-----BEGIN PRIVATE KEY-----\\nFAKEKEY\\n-----END PRIVATE KEY-----\\n",
 };
 
 process.env.REQUEST_SIGNING_SECRET =
@@ -39,8 +40,42 @@ const mockAuth = {
 
 const mockSavedPhrasesCollection = {
   orderBy: jest.fn().mockReturnThis(),
-  get: jest.fn().mockResolvedValue({ docs: [] }),
-  add: jest.fn().mockResolvedValue({ id: "saved-1" }),
+  where: jest.fn().mockReturnThis(),
+  limit: jest.fn().mockReturnThis(),
+  get: jest.fn().mockResolvedValue({
+    docs: [
+      {
+        id: "saved-1",
+        data: () => ({
+          original: "hello",
+          translation: "hola",
+          langPair: "en-es",
+        }),
+      },
+    ],
+  }),
+  add: jest.fn().mockImplementation(async (data) => {
+    if (data.original === "error") {
+      const error = new Error("Firestore write failed");
+      error.code = "firestore/write-failed";
+      throw error;
+    }
+    return { id: "saved-1" };
+  }),
+  doc: jest.fn((id) => ({
+    id,
+    get: jest.fn().mockResolvedValue({
+      exists: id === "valid-id",
+      data: () =>
+        id === "valid-id"
+          ? {
+              original: "test",
+              translation: "prueba",
+            }
+          : null,
+    }),
+    delete: jest.fn().mockResolvedValue(),
+  })),
 };
 
 const mockUserDoc = {
@@ -57,7 +92,11 @@ const mockUsersCollection = {
 };
 
 const mockFirestore = jest.fn(() => ({
-  collection: jest.fn(() => mockUsersCollection),
+  collection: jest.fn((name) => {
+    if (name === "users") return mockUsersCollection;
+    if (name === "saved_phrases") return mockSavedPhrasesCollection;
+    throw new Error(`Unmocked collection: ${name}`);
+  }),
 }));
 mockFirestore.FieldValue = {
   serverTimestamp: jest.fn(() => new Date()),
@@ -72,3 +111,12 @@ jest.mock("firebase-admin", () => ({
   firestore: mockFirestore,
   auth: () => mockAuth,
 }));
+
+// Quiet noisy console output during test runs unless explicitly enabled
+const quietLogs =
+  process.env.NODE_ENV === "test" && process.env.VERBOSE_TEST_LOGS !== "true";
+if (quietLogs) {
+  jest.spyOn(console, "error").mockImplementation(() => {});
+  jest.spyOn(console, "warn").mockImplementation(() => {});
+  jest.spyOn(console, "log").mockImplementation(() => {});
+}

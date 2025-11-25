@@ -1,5 +1,14 @@
 const request = require("supertest");
 
+jest.mock("../src/lib/openrouterClient", () => ({
+  chatComplete: jest.fn().mockResolvedValue(
+    JSON.stringify({
+      destination: "Paris",
+      days: [{ title: "Day 1", items: [] }],
+    })
+  ),
+}));
+
 jest.mock("../src/stays/providers/googlePlaces", () => {
   const toResultItem = jest.fn((place) => ({
     id: place.id || "stay-1",
@@ -45,7 +54,9 @@ beforeAll(() => {
 
 describe("Security and validation guardrails", () => {
   test("rejects unsigned stay search requests", async () => {
-    const res = await request(app).get("/api/stays/search?lat=1&lng=2");
+    const res = await request(app)
+      .get("/api/stays/search?lat=1&lng=2")
+      .set("user-agent", "jest");
     expect(res.statusCode).toBe(401);
     expect(res.body.error.code).toBe("UNAUTHORIZED");
   });
@@ -53,6 +64,7 @@ describe("Security and validation guardrails", () => {
   test("allows authenticated stay searches", async () => {
     const res = await request(app)
       .get("/api/stays/search?lat=1&lng=2")
+      .set("user-agent", "jest")
       .set("Authorization", "Bearer valid-user-token");
 
     expect(res.statusCode).toBe(200);
@@ -63,6 +75,7 @@ describe("Security and validation guardrails", () => {
   test("enforces schema when creating users", async () => {
     const res = await request(app)
       .post("/api/users")
+      .set("user-agent", "jest")
       .set("Authorization", "Bearer valid-admin-token")
       .send({ name: "" });
 
@@ -71,13 +84,16 @@ describe("Security and validation guardrails", () => {
   });
 
   test("blocks itinerary generation without auth", async () => {
-    const res = await request(app).get("/api/itinerary/generate?dest=Paris");
+    const res = await request(app)
+      .get("/api/itinerary/generate?dest=Paris")
+      .set("user-agent", "jest");
     expect(res.statusCode).toBe(401);
   });
 
   test("returns itinerary sample when authenticated", async () => {
     const res = await request(app)
       .get("/api/itinerary/generate?dest=Paris")
+      .set("user-agent", "jest")
       .set("Authorization", "Bearer valid-user-token");
 
     expect(res.statusCode).toBe(200);

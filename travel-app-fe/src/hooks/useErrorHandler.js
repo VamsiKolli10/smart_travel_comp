@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNotification } from "./useNotification";
+import useNotification from "./useNotification";
 
 export const useErrorHandler = () => {
   const [error, setError] = useState(null);
@@ -20,3 +20,5 @@ export const useErrorHandler = () => {
 
   return { error, handleError, clearError };
 };
+
+export default useErrorHandler;
