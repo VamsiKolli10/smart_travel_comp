@@ -1,5 +1,6 @@
 const DEFAULT_TEXT_MAX = Number(process.env.MAX_TRANSLATION_CHARS || 500);
-const LANGUAGE_CODE_PATTERN = /^[a-z]{2}(?:-[A-Z]{2})?$/;
+// Accept ISO-639-1 code with optional region, case-insensitive, allowing "-" or "_"
+const LANGUAGE_CODE_PATTERN = /^[A-Za-z]{2}(?:[-_][A-Za-z]{2,3})?$/;
 
 function sanitizeString(value, { maxLength = 250, label = "value", allowEmpty = false } = {}) {
   if (value === undefined || value === null) {
@@ -47,9 +48,8 @@ function validateLangCode(code, { label = "language" } = {}) {
   if (!code) return { error: `${label} is required` };
   const normalized = String(code).trim();
   if (!LANGUAGE_CODE_PATTERN.test(normalized)) {
-    return {
-      error: `${label} must match pattern xx or xx-XX`,
-    };
+    // Allow names; caller may normalize later
+    return { error: `${label} must match pattern xx or xx-XX` };
   }
   return { value: normalized };
 }

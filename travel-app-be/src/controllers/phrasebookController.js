@@ -27,8 +27,8 @@ async function generatePhrases(req, res) {
     const topic = sanitizeStr(req.body?.topic);
     const sourceLang = sanitizeStr(req.body?.sourceLang);
     const targetLang = sanitizeStr(req.body?.targetLang);
-    const n = 3;
-    // const n = clamp(req.body?.count, 3, 25);
+    // const n = 3;
+    const n = clamp(req.body?.count, 5, 25);
 
     if (!topic || !sourceLang || !targetLang) {
       return res

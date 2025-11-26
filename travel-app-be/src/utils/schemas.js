@@ -6,7 +6,7 @@ const langCodeSchema = z
     required_error: "Language is required",
   })
   .regex(LANGUAGE_CODE_PATTERN, {
-    message: "Language must match pattern xx or xx-XX",
+    message: "Language must match pattern xx or xx-XX (dash/underscore, any case)",
   });
 
 const limitedString = (label, max = 120) =>
@@ -36,8 +36,8 @@ const translationSchema = z.object({
 const phrasebookSchema = z
   .object({
     topic: limitedString("topic", 160),
-    sourceLang: langCodeSchema,
-    targetLang: langCodeSchema,
+    sourceLang: z.union([langCodeSchema, limitedString("sourceLang", 64)]),
+    targetLang: z.union([langCodeSchema, limitedString("targetLang", 64)]),
     count: z.number().int().min(1).max(25).optional(),
   })
   .refine(

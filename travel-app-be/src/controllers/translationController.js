@@ -7,21 +7,25 @@ const {
 
 const SUPPORTED_PAIRS = new Set([
   "en-es",
-  "es-en",
   "en-fr",
-  "fr-en",
   "en-de",
-  "de-en",
+  "es-en",
   "es-fr",
-  "fr-es",
   "es-de",
-  "de-es",
+  "fr-en",
+  "fr-es",
   "fr-de",
+  "de-en",
+  "de-es",
   "de-fr",
 ]);
 
 const translatorCache = new Map();
 const MAX_TEXT_LENGTH = Number(process.env.MAX_TRANSLATION_CHARS || 500);
+const DEFAULT_WARM_PAIRS = (process.env.TRANSLATION_WARM_PAIRS || "")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
 
 async function getTranslator(langPair) {
   if (!SUPPORTED_PAIRS.has(langPair)) {
@@ -36,6 +40,19 @@ async function getTranslator(langPair) {
   }
   return translatorCache.get(langPair);
 }
+
+// Best-effort warmup for configured pairs on startup
+async function warmDefaultPairs() {
+  if (!DEFAULT_WARM_PAIRS.length) return;
+  await Promise.allSettled(
+    DEFAULT_WARM_PAIRS.map((pair) =>
+      SUPPORTED_PAIRS.has(pair) ? getTranslator(pair) : null
+    )
+  );
+}
+warmDefaultPairs().catch((e) =>
+  logError(e, { endpoint: "translation:warmup:init" })
+);
 
 exports.translateText = async (req, res) => {
   try {

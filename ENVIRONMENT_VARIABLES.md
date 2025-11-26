@@ -24,6 +24,8 @@ Environment variables are crucial for configuring the Smart Travel Companion app
 | `FIRESTORE_PREFER_REST` | Use REST API over gRPC              | `true`        | No       |
 | `REQUEST_BODY_LIMIT`    | Maximum request body size           | `256kb`       | No       |
 | `MAX_TRANSLATION_CHARS` | Maximum text length for translation | `500`         | No       |
+| `TRANSLATION_WARM_PAIRS` | Comma-separated lang pairs to pre-warm (e.g., `en-es,es-en`) | _none_ | No |
+| `TRANSFORMERS_CACHE`     | Persistent cache path for @xenova/transformers models | `./.cache/transformers` | No |
 
 ### Firebase Configuration
 
