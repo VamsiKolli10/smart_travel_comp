@@ -206,12 +206,9 @@ function applySmartFilters(items, { kidFriendly, accessibility, openNow, timeNee
       if (wanted.includes("food") && (t.has("restaurant") || t.has("cafe"))) return true;
       // hike: require park
       if (wanted.includes("hike") && t.has("park")) return true;
-      // viewpoint: heuristic on text
+      // viewpoint: allow broader scenic categories
       if (wanted.includes("viewpoint")) {
-        const txt = `${item.name || ""} ${item.blurb || ""}`.toLowerCase();
-        if (t.has("tourist_attraction") && (
-          txt.includes("view") || txt.includes("lookout") || txt.includes("observation") || txt.includes("scenic") || txt.includes("skyline")
-        )) return true;
+        if (t.has("tourist_attraction") || t.has("park") || t.has("natural_feature")) return true;
       }
       return false;
     };

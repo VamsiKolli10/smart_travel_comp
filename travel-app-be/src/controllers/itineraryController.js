@@ -8,6 +8,11 @@ const {
   fetchById: fetchPlaceById,
   geocodeCity,
 } = require("../stays/providers/googlePlaces");
+const {
+  searchNearbyPoi,
+  mapPlaceToPoiCard,
+  applySmartFilters,
+} = require("../poi/providers/googlePlacesPoi");
 const { enforceQuota } = require("../utils/quota");
 const { trackExternalCall } = require("../utils/monitoring");
 
@@ -27,12 +32,16 @@ function toInt(v, d = 1) {
   return Number.isFinite(n) && n > 0 ? n : d;
 }
 
+function parseInterests(value) {
+  return String(value || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 function sampleItinerary({ destination, days, budget, pace, season, interests }) {
   const blocksPerDay = pace === "packed" ? 5 : pace === "relaxed" ? 3 : 4;
-  const interestsList = interests
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const interestsList = parseInterests(interests);
 
   const mkBlock = (idx) => ({
     title: `Activity ${idx + 1}`,
@@ -59,6 +68,200 @@ function sampleItinerary({ destination, days, budget, pace, season, interests })
       "Group nearby activities to reduce transit time",
       "Book popular attractions in advance",
       "Plan meals near POIs to save time",
+    ],
+  };
+}
+
+async function poiBackedItinerary({
+  destination,
+  days,
+  budget,
+  pace,
+  season,
+  interests,
+  lang,
+}) {
+  const blocksPerDay = pace === "packed" ? 5 : pace === "relaxed" ? 3 : 4;
+  const centerLat = destination?.location?.lat;
+  const centerLng = destination?.location?.lng;
+  if (!Number.isFinite(centerLat) || !Number.isFinite(centerLng)) {
+    return sampleItinerary({ destination, days, budget, pace, season, interests });
+  }
+
+  const categoriesWanted = parseInterests(interests);
+  let items = [];
+  try {
+    const raw = await searchNearbyPoi({
+      lat: centerLat,
+      lng: centerLng,
+      radiusMeters: 12000,
+      language: lang,
+      categories: categoriesWanted,
+    });
+    const mapped = raw.map((p) =>
+      mapPlaceToPoiCard(p, { lat: centerLat, lng: centerLng }, lang)
+    );
+    // Deduplicate by id to improve variety across days
+    const seen = new Set();
+    items = mapped.filter((p) => {
+      if (!p.id || seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+    items = applySmartFilters(items, { categoriesWanted });
+  } catch (e) {
+    logError(e, { endpoint: "/api/itinerary/generate", note: "poi fallback fetch failed" });
+  }
+
+  if (!items.length) {
+    return sampleItinerary({ destination, days, budget, pace, season, interests });
+  }
+
+  // Shuffle once to avoid same ordering on every day
+  items = items
+    .map((p) => ({ p, r: Math.random() }))
+    .sort((a, b) => a.r - b.r)
+    .map(({ p }) => p);
+
+  const slots = ["Morning", "Midday", "Afternoon", "Evening", "Night"];
+  const categoryOrder =
+    categoriesWanted.length > 0
+      ? categoriesWanted
+      : ["museum", "viewpoint", "hike", "food"];
+
+  // Bucket items by primary category for better variety
+  const hasCategory = (poi, c) => {
+    const cats = (poi.categories || []).map((x) => x.toLowerCase());
+    if (c === "food") return cats.includes("restaurant") || cats.includes("cafe");
+    if (c === "museum") return cats.includes("museum") || cats.includes("art_gallery");
+    if (c === "hike") return cats.includes("park") || cats.includes("natural_feature");
+    if (c === "viewpoint") return cats.includes("tourist_attraction") || cats.includes("park") || cats.includes("natural_feature");
+    return false;
+  };
+
+  const buckets = new Map();
+  const pointers = new Map();
+  categoryOrder.forEach((c) => buckets.set(c, []));
+  buckets.set("other", []);
+  items.forEach((poi) => {
+    const bucketKey = categoryOrder.find((c) => hasCategory(poi, c)) || "other";
+    buckets.get(bucketKey).push(poi);
+  });
+  buckets.forEach((arr, key) => pointers.set(key, 0));
+
+  // Helper to rotate through a preferred bucket; if not available, fall back to any bucket.
+  const takePoi = (preferredCat, dayUsedIds) => {
+    const tryFromBucket = (cat) => {
+      const arr = buckets.get(cat) || [];
+      if (!arr.length) return null;
+      let ptr = pointers.get(cat) || 0;
+      const len = arr.length;
+      for (let i = 0; i < len; i++) {
+        const idx = (ptr + i) % len;
+        const candidate = arr[idx];
+        if (!candidate?.id || !dayUsedIds.has(candidate.id)) {
+          pointers.set(cat, (idx + 1) % len);
+          return candidate;
+        }
+      }
+      return null;
+    };
+
+    let picked = tryFromBucket(preferredCat);
+    if (picked) return picked;
+    for (const cat of categoryOrder) {
+      picked = tryFromBucket(cat);
+      if (picked) return picked;
+    }
+    picked = tryFromBucket("other");
+    return picked || items[0];
+  };
+
+  const step = Math.max(1, Math.floor(items.length / days) || 1);
+  const dayPlans = Array.from({ length: days }).map((_, d) => {
+    const dayUsedIds = new Set();
+    const nonFoodCats = categoryOrder.filter((c) => c !== "food");
+    const hasFood = categoryOrder.includes("food");
+    const maxFoodPerDay =
+      !hasFood || !nonFoodCats.length
+        ? blocksPerDay
+        : Math.max(1, Math.floor(blocksPerDay / 2));
+
+    // Build a per-day preferred category sequence:
+    // - If food + others: breakfast food, then rotate non-food, sprinkle food every 3rd slot up to maxFoodPerDay.
+    // - If only one category: repeat it.
+    // - Else: simple rotation of categoriesWanted.
+    const preferredCats = [];
+    if (hasFood && nonFoodCats.length) {
+      let foodCount = 0;
+      let nfIdx = d % nonFoodCats.length;
+      for (let i = 0; i < blocksPerDay; i++) {
+        if (i === 0 && foodCount < maxFoodPerDay) {
+          preferredCats.push("food");
+          foodCount++;
+          continue;
+        }
+        // Prefer non-food rotation
+        const cat = nonFoodCats[nfIdx % nonFoodCats.length];
+        preferredCats.push(cat);
+        nfIdx++;
+        // Every 3rd slot, add a food slot if we still have room and space left
+        if (
+          preferredCats.length < blocksPerDay &&
+          preferredCats.length % 3 === 0 &&
+          foodCount < maxFoodPerDay
+        ) {
+          preferredCats.push("food");
+          foodCount++;
+        }
+      }
+      // If we still have capacity for food and not enough slots, replace last slot with food
+      if (preferredCats.length === blocksPerDay && foodCount < maxFoodPerDay) {
+        preferredCats[preferredCats.length - 1] = "food";
+      }
+    } else {
+      for (let i = 0; i < blocksPerDay; i++) {
+        preferredCats.push(categoryOrder[i % categoryOrder.length]);
+      }
+    }
+
+    return {
+      day: d + 1,
+      blocks: Array.from({ length: blocksPerDay }).map((__, i) => {
+        // Rotate categories across slots and days to improve diversity
+        const cat = preferredCats[i] || categoryOrder[(d * blocksPerDay + i) % categoryOrder.length];
+        const poi =
+          takePoi(cat, dayUsedIds) ||
+          takePoi(categoryOrder[(d + i) % categoryOrder.length], dayUsedIds) ||
+          items[(d * step + i) % items.length];
+        if (poi?.id) dayUsedIds.add(poi.id);
+        const tags = (poi.categories || [])
+          .slice(0, 3)
+          .map((t) => t.replace(/_/g, " "))
+          .map((t) => t.charAt(0).toUpperCase() + t.slice(1));
+        return {
+          title: poi.name,
+          description:
+            poi.blurb ||
+            `Explore ${poi.name} for ${categoriesWanted[0] || "local highlights"}.`,
+          area: poi.location?.address || destination?.name || "Nearby",
+          time: slots[i % slots.length],
+          cost: budget,
+          tags,
+          poiIds: poi.id ? [poi.id] : [],
+        };
+      }),
+    };
+  });
+
+  return {
+    destination,
+    params: { days, budget, pace, season, interests },
+    days: dayPlans,
+    tips: [
+      "Prioritize nearby spots to cut down travel time",
+      "Check opening hours before heading out",
+      "Book popular attractions in advance",
     ],
   };
 }
@@ -117,7 +320,15 @@ async function generateItinerary(req, res) {
 
     if (!hasOpenRouter) {
       // Fallback local sample for environments without AI key
-      const payload = sampleItinerary({ destination, days, budget, pace, season, interests });
+      const payload = await poiBackedItinerary({
+        destination,
+        days,
+        budget,
+        pace,
+        season,
+        interests,
+        lang,
+      });
       return res.json(payload);
     }
 
@@ -202,17 +413,56 @@ async function generateItinerary(req, res) {
         );
     }
 
-    const raw = await chatComplete({
-      system,
-      user,
-      temperature: 0.4,
-      response_format: "json_object",
-    });
-    trackExternalCall({
-      service: "openrouter-itinerary",
-      userId: req.user?.uid || req.ip,
-      metadata: { destination: destination?.name },
-    });
+    let raw;
+    try {
+      raw = await chatComplete({
+        system,
+        user,
+        temperature: 0.4,
+        response_format: "json_object",
+      });
+      trackExternalCall({
+        service: "openrouter-itinerary",
+        userId: req.user?.uid || req.ip,
+        metadata: { destination: destination?.name },
+      });
+    } catch (aiErr) {
+      // Gracefully degrade when the AI provider is unavailable (e.g., 401/402/429/5xx)
+      const status = aiErr?.response?.status;
+      const shouldFallback =
+        status === 401 ||
+        status === 402 ||
+        status === 403 ||
+        status === 429 ||
+        (status != null && status >= 500) ||
+        aiErr.code === "ETIMEDOUT";
+
+      logError(aiErr, {
+        endpoint: "/api/itinerary/generate",
+        query: req.query,
+        status,
+      });
+
+      if (shouldFallback) {
+        const sample = await poiBackedItinerary({
+          destination,
+          days,
+          budget,
+          pace,
+          season,
+          interests,
+          lang,
+        });
+        return res.json({
+          ...sample,
+          fallback: true,
+          notice:
+            "AI itinerary temporarily unavailable. Showing nearby places instead.",
+        });
+      }
+
+      throw aiErr;
+    }
 
     let payload;
     try {
