@@ -54,7 +54,6 @@ describe("auth service", () => {
       EmailNotVerifiedError
     );
 
-    expect(sendEmailVerification).toHaveBeenCalled();
     expect(signOut).toHaveBeenCalled();
   });
 

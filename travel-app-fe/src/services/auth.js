@@ -28,7 +28,6 @@ export async function loginWithEmail(email, password) {
   await credential.user.reload();
 
   if (!credential.user.emailVerified) {
-    await sendEmailVerification(credential.user);
     await signOut(auth);
     throw new EmailNotVerifiedError(credential.user.email);
   }
