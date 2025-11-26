@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const { sanitizeTextInput, normalizeLangPair } = require("../utils/validation");
 const {
   createErrorResponse,
@@ -26,6 +28,23 @@ const DEFAULT_WARM_PAIRS = (process.env.TRANSLATION_WARM_PAIRS || "")
   .split(",")
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
+const DEFAULT_MODEL_CACHE =
+  process.env.TRANSFORMERS_CACHE ||
+  process.env.HF_HOME ||
+  path.join(process.env.TMPDIR || "/tmp", "transformers");
+
+function ensureModelCacheDir() {
+  try {
+    fs.mkdirSync(DEFAULT_MODEL_CACHE, { recursive: true });
+    process.env.TRANSFORMERS_CACHE = DEFAULT_MODEL_CACHE;
+    process.env.HF_HOME = DEFAULT_MODEL_CACHE;
+    process.env.HF_HUB_CACHE = path.join(DEFAULT_MODEL_CACHE, "hub");
+  } catch (err) {
+    // If we can't create the cache directory, future downloads will fail; log for diagnostics
+    logError(err, { endpoint: "translation:cache:init", cache: DEFAULT_MODEL_CACHE });
+  }
+}
+ensureModelCacheDir();
 
 async function getTranslator(langPair) {
   if (!SUPPORTED_PAIRS.has(langPair)) {
