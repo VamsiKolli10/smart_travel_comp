@@ -216,7 +216,11 @@ export default function Emergency() {
 
     setSearchedEntry(match);
     // Use canonical country label from emergency dataset so the select matches an option
-    setSelectedCountry(match.country);
+    const canonicalCountry =
+      match.country?.trim() ||
+      (resolvedCountry && resolvedCountry.trim()) ||
+      "";
+    setSelectedCountry(canonicalCountry);
     setSearchError("");
     const displayLabel = resolved?.display || trimmedValue || match.country;
     const derivedCity =
@@ -233,7 +237,7 @@ export default function Emergency() {
           display: displayLabel,
           city: derivedCity || "",
           state: resolved?.state || "",
-          country: resolvedCountry || match.country,
+          country: canonicalCountry,
           lat: typeof resolved?.lat === "number" ? resolved.lat : undefined,
           lng: typeof resolved?.lng === "number" ? resolved.lng : undefined,
         },
