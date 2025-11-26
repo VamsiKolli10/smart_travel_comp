@@ -17,6 +17,64 @@ const itineraryLimit = Number(
 const itineraryWindow = Number(
   process.env.ITINERARY_WINDOW_MS || 60 * 60 * 1000
 );
+const itineraryCacheTtlMs = Number(
+  process.env.ITINERARY_CACHE_TTL_MS || 5 * 60 * 1000
+);
+const itineraryCacheMax = Number(process.env.ITINERARY_CACHE_MAX || 200);
+
+// Simple in-memory LRU-ish cache to avoid repeated upstream calls for identical requests
+const itineraryCache = new Map(); // key -> { value, expiresAt }
+
+const makeCacheKey = ({
+  placeId,
+  dest,
+  lat,
+  lng,
+  days,
+  budget,
+  pace,
+  season,
+  interests,
+  lang,
+}) =>
+  JSON.stringify({
+    placeId: placeId || null,
+    dest: dest || null,
+    lat: Number.isFinite(lat) ? Number(lat.toFixed(4)) : null,
+    lng: Number.isFinite(lng) ? Number(lng.toFixed(4)) : null,
+    days,
+    budget,
+    pace,
+    season,
+    interests,
+    lang,
+  });
+
+const getCachedItinerary = (key) => {
+  if (!key) return null;
+  const entry = itineraryCache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt < Date.now()) {
+    itineraryCache.delete(key);
+    return null;
+  }
+  // Refresh recency for simple LRU behaviour
+  itineraryCache.delete(key);
+  itineraryCache.set(key, entry);
+  return entry.value;
+};
+
+const setCachedItinerary = (key, value) => {
+  if (!key || !value) return;
+  while (itineraryCache.size >= itineraryCacheMax) {
+    const firstKey = itineraryCache.keys().next().value;
+    itineraryCache.delete(firstKey);
+  }
+  itineraryCache.set(key, {
+    value,
+    expiresAt: Date.now() + itineraryCacheTtlMs,
+  });
+};
 
 function sanitizeStr(v, d = "") {
   return typeof v === "string" ? v.trim() : d;
@@ -113,11 +171,29 @@ async function generateItinerary(req, res) {
       };
     }
 
+    const cacheKey = makeCacheKey({
+      placeId,
+      dest,
+      lat: latQ,
+      lng: lngQ,
+      days,
+      budget,
+      pace,
+      season,
+      interests,
+      lang,
+    });
+    const cached = getCachedItinerary(cacheKey);
+    if (cached) {
+      return res.json({ ...cached, cached: true });
+    }
+
     const hasOpenRouter = Boolean(process.env.OPENROUTER_API_KEY);
 
     if (!hasOpenRouter) {
       // Fallback local sample for environments without AI key
       const payload = sampleItinerary({ destination, days, budget, pace, season, interests });
+      setCachedItinerary(cacheKey, payload);
       return res.json(payload);
     }
 
@@ -225,11 +301,37 @@ async function generateItinerary(req, res) {
     if (!payload || !Array.isArray(payload.days)) {
       // Soft-fallback to sample on unexpected format
       const sample = sampleItinerary({ destination, days, budget, pace, season, interests });
+      setCachedItinerary(cacheKey, sample);
       return res.json(sample);
     }
 
+    setCachedItinerary(cacheKey, payload);
     return res.json(payload);
   } catch (e) {
+    // Gracefully handle OpenRouter billing errors by falling back to a sample
+    if (e?.response?.status === 402) {
+      const sample = sampleItinerary({ destination, days, budget, pace, season, interests });
+      logError(e, { endpoint: "/api/itinerary/generate", code: 402 });
+      const payload = {
+        ...sample,
+        fallback: true,
+        warning: "Itinerary generation requires OpenRouter credits. Showing a sample plan instead.",
+      };
+      const cacheKey = makeCacheKey({
+        placeId,
+        dest,
+        lat: latQ,
+        lng: lngQ,
+        days,
+        budget,
+        pace,
+        season,
+        interests,
+        lang,
+      });
+      setCachedItinerary(cacheKey, payload);
+      return res.status(200).json(payload);
+    }
     logError(e, { endpoint: "/api/itinerary/generate", query: req.query });
     return res
       .status(500)

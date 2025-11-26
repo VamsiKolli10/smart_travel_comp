@@ -29,22 +29,22 @@ Environment variables are crucial for configuring the Smart Travel Companion app
 
 #### Admin Credentials (Backend)
 
-| Variable                     | Description                                              | Format                | Required |
-| ---------------------------- | -------------------------------------------------------- | --------------------- | -------- |
-| `FB_ADMIN_CREDENTIALS` | Base64-encoded (or raw JSON) Firebase service account (formerly `FIREBASE_ADMIN_CREDENTIALS`)   | JSON string or base64 | Yes      |
+| Variable               | Description                                                                                   | Format                | Required |
+| ---------------------- | --------------------------------------------------------------------------------------------- | --------------------- | -------- |
+| `FB_ADMIN_CREDENTIALS` | Base64-encoded (or raw JSON) Firebase service account (formerly `FIREBASE_ADMIN_CREDENTIALS`) | JSON string or base64 | Yes      |
 
 > :warning: The backend no longer loads credentials from disk. Always inject the service account via `FB_ADMIN_CREDENTIALS` (renamed from `FIREBASE_ADMIN_CREDENTIALS`).
 
 #### Client Configuration (Frontend Integration)
 
-| Variable                       | Description          | Example                   | Required |
-| ------------------------------ | -------------------- | ------------------------- | -------- |
-| `FBAPP_API_KEY`                | Firebase web API key | `AIzaSy...`               | Yes      |
-| `FBAPP_AUTH_DOMAIN`            | Firebase auth domain | `project.firebaseapp.com` | Yes      |
-| `FBAPP_PROJECT_ID`             | Firebase project ID  | `my-project`              | Yes      |
-| `FBAPP_STORAGE_BUCKET`         | Storage bucket URL   | `project.appspot.com`     | Yes      |
-| `FBAPP_MESSAGING_SENDER_ID`    | Messaging sender ID  | `123456789`               | Yes      |
-| `FBAPP_APP_ID`                 | Firebase app ID      | `1:123456:web:abc`        | Yes      |
+| Variable                    | Description          | Example                   | Required |
+| --------------------------- | -------------------- | ------------------------- | -------- |
+| `FBAPP_API_KEY`             | Firebase web API key | `AIzaSy...`               | Yes      |
+| `FBAPP_AUTH_DOMAIN`         | Firebase auth domain | `project.firebaseapp.com` | Yes      |
+| `FBAPP_PROJECT_ID`          | Firebase project ID  | `my-project`              | Yes      |
+| `FBAPP_STORAGE_BUCKET`      | Storage bucket URL   | `project.appspot.com`     | Yes      |
+| `FBAPP_MESSAGING_SENDER_ID` | Messaging sender ID  | `123456789`               | Yes      |
+| `FBAPP_APP_ID`              | Firebase app ID      | `1:123456:web:abc`        | Yes      |
 
 ### External API Keys
 
@@ -67,14 +67,14 @@ Environment variables are crucial for configuring the Smart Travel Companion app
 
 ### Quotas & Monitoring
 
-| Variable                         | Description                                             | Default |
-| -------------------------------- | ------------------------------------------------------- | ------- |
-| `STAYS_PER_USER_PER_HOUR`        | Per-user stay search operations per hour                | `60`    |
-| `STAYS_SEARCH_MAX_PER_IP`        | Stay search requests per minute per IP                  | `15`    |
-| `POI_PER_USER_PER_HOUR`          | Per-user POI search quota                               | `120`   |
-| `PHRASEBOOK_MAX_REQUESTS_PER_HOUR` | Phrasebook generations per user per hour              | `25`    |
-| `ITINERARY_MAX_REQUESTS_PER_HOUR`  | Itinerary generations per user per hour               | `20`    |
-| `USAGE_ALERT_FALLBACK`           | Default threshold before emitting external usage alerts | `500`   |
+| Variable                           | Description                                             | Default |
+| ---------------------------------- | ------------------------------------------------------- | ------- |
+| `STAYS_PER_USER_PER_HOUR`          | Per-user stay search operations per hour                | `60`    |
+| `STAYS_SEARCH_MAX_PER_IP`          | Stay search requests per minute per IP                  | `15`    |
+| `POI_PER_USER_PER_HOUR`            | Per-user POI search quota                               | `120`   |
+| `PHRASEBOOK_MAX_REQUESTS_PER_HOUR` | Phrasebook generations per user per hour                | `25`    |
+| `ITINERARY_MAX_REQUESTS_PER_HOUR`  | Itinerary generations per user per hour                 | `20`    |
+| `USAGE_ALERT_FALLBACK`             | Default threshold before emitting external usage alerts | `500`   |
 
 ### Advanced Configuration
 
@@ -262,7 +262,7 @@ FBAPP_APP_ID=1:123456:web:abc
 # External APIs
 GOOGLE_PLACES_API_KEY=your_google_places_api_key
 OPENROUTER_API_KEY=your_openrouter_api_key
-OPENROUTER_MODEL=gpt-4o-mini
+OPENROUTER_MODEL=x-ai/grok-4.1-fast
 
 # Security
 REQUEST_SIGNING_SECRET=your_random_secret_string_here

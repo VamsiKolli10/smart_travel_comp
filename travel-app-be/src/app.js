@@ -13,6 +13,7 @@ const poiRoutes = require("./routes/poiRoutes");
 const itineraryRoutes = require("./routes/itineraryRoutes");
 const culturalEtiquetteRoutes = require("./routes/culturalEtiquetteRoutes");
 const cultureIntelligenceRoutes = require("./routes/cultureIntelligenceRoutes");
+const locationRoutes = require("./routes/locationRoutes");
 const { db } = require("./config/firebaseAdmin");
 const { requireAuth, attachUserContext } = require("./middleware/authenticate");
 const {
@@ -93,6 +94,10 @@ const endpointLimits = {
   "/api/itinerary/generate": {
     windowMs: 60000,
     max: 12, // keep lower to control AI costs
+  },
+  "/api/location/resolve": {
+    windowMs: 60000,
+    max: 60,
   },
 };
 
@@ -265,6 +270,7 @@ function createApp() {
   app.use("/api/itinerary", requireUser(), itineraryRoutes);
   app.use("/api/culture", cultureIntelligenceRoutes);
   app.use("/api/cultural-etiquette", culturalEtiquetteRoutes);
+  app.use("/api/location", locationRoutes);
 
   app.use((req, res) =>
     res.status(404).json(

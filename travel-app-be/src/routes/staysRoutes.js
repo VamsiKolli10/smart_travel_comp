@@ -16,6 +16,7 @@ const {
   ERROR_CODES,
   logError,
 } = require("../utils/errorHandler");
+const { getCached, setCached } = require("../utils/cache");
 const { requireAuth } = require("../middleware/authenticate");
 const { createCustomLimiter } = require("../utils/rateLimiter");
 const { enforceQuota } = require("../utils/quota");
@@ -36,6 +37,12 @@ const detailLimiter = createCustomLimiter({
 const userQuotaLimit = Number(process.env.STAYS_PER_USER_PER_HOUR || 60);
 const userQuotaWindow = Number(
   process.env.STAYS_PER_USER_WINDOW_MS || 60 * 60 * 1000
+);
+const searchCacheTtl = Number(
+  process.env.STAYS_SEARCH_CACHE_TTL_MS || 2 * 60 * 1000
+);
+const detailCacheTtl = Number(
+  process.env.STAY_DETAIL_CACHE_TTL_MS || 15 * 60 * 1000
 );
 
 const encodePlacePath = (name) =>
@@ -141,6 +148,49 @@ router.get(
       } = req.query;
 
     const pageNumber = Math.max(1, parseInt(page, 10) || 1);
+    const normalizeNumber = (v) =>
+      Number.isFinite(Number(v)) ? Number(Number(v).toFixed(4)) : null;
+    const normalizeList = (v) =>
+      String(v || "")
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean)
+        .sort();
+    const cacheKey = JSON.stringify({
+      dest: dest?.trim().toLowerCase() || null,
+      lat: normalizeNumber(lat),
+      lng: normalizeNumber(lng),
+      distance: Number(distance) || 5,
+      type: normalizeList(type),
+      amenities: normalizeList(amenities),
+      rating: rating ? Number(rating) : null,
+      page: pageNumber,
+      lang,
+    });
+
+    const quotaResult = enforceQuota({
+      identifier: req.user?.uid || req.userId || req.ip,
+      key: "stays:search",
+      limit: userQuotaLimit,
+      windowMs: userQuotaWindow,
+    });
+    if (!quotaResult.allowed) {
+      return res
+        .status(429)
+        .json(
+          createErrorResponse(
+            429,
+            ERROR_CODES.RATE_LIMIT_EXCEEDED,
+            "Stay search quota exceeded",
+            { resetAt: quotaResult.resetAt }
+          )
+        );
+    }
+
+    const cached = getCached("stays:search", cacheKey);
+    if (cached) {
+      return res.json({ ...cached, cached: true });
+    }
 
     let center;
     let resolvedDestination = null;
@@ -172,24 +222,6 @@ router.get(
     }
 
     const radius = Math.round((Number(distance) || 5) * 1000); // km -> meters
-    const quotaResult = enforceQuota({
-      identifier: req.user?.uid || req.userId || req.ip,
-      key: "stays:search",
-      limit: userQuotaLimit,
-      windowMs: userQuotaWindow,
-    });
-    if (!quotaResult.allowed) {
-      return res
-        .status(429)
-        .json(
-          createErrorResponse(
-            429,
-            ERROR_CODES.RATE_LIMIT_EXCEEDED,
-            "Stay search quota exceeded",
-            { resetAt: quotaResult.resetAt }
-          )
-        );
-    }
 
     const raw = await nearbyLodging({
       lat: center.lat,
@@ -263,14 +295,16 @@ router.get(
     const start = (currentPage - 1) * pageSize;
     const slice = items.slice(start, start + pageSize);
 
-    res.json({
+    const payload = {
       items: slice,
       page: currentPage,
       pageSize,
       total: totalResults,
       totalPages,
       resolvedDestination,
-    });
+    };
+    setCached("stays:search", cacheKey, payload, searchCacheTtl);
+    res.json(payload);
   } catch (e) {
     logError(e, { endpoint: "/api/stays/search", query: req.query });
     const status = e.response?.status || e.status || 500;
@@ -310,6 +344,15 @@ router.get(
           );
       }
 
+      const cacheKey = JSON.stringify({
+        id: req.params.id,
+        lang: req.query.lang || "en",
+      });
+      const cached = getCached("stays:detail", cacheKey);
+      if (cached) {
+        return res.json({ ...cached, cached: true });
+      }
+
       const stay = await fetchById(req.params.id, req.query.lang || "en");
       trackExternalCall({
         service: "google-places-stays",
@@ -322,6 +365,7 @@ router.get(
           .json(
             createErrorResponse(404, ERROR_CODES.NOT_FOUND, "Stay not found")
           );
+      setCached("stays:detail", cacheKey, stay, detailCacheTtl);
       res.json(stay);
     } catch (e) {
       logError(e, { endpoint: "/api/stays/:id", id: req.params.id });

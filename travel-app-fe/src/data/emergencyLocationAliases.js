@@ -149698,6 +149698,14 @@ const emergencyLocationAliases = [
   {
     "name": "Harare Western Suburbs",
     "country": "Zimbabwe"
+  },
+  {
+    "name": "Grand Canyon",
+    "country": "United States"
+  },
+  {
+    "name": "Grand Canyon National Park",
+    "country": "United States"
   }
 ]
 
