@@ -33,8 +33,14 @@ async function getTranslator(langPair) {
   }
   if (!translatorCache.has(langPair)) {
     const loader = (async () => {
-      const { pipeline } = await import("@xenova/transformers");
-      return pipeline("translation", `Xenova/opus-mt-${langPair}`);
+      try {
+        const { pipeline } = await import("@xenova/transformers");
+        return pipeline("translation", `Xenova/opus-mt-${langPair}`);
+      } catch (error) {
+        // Remove the cached promise so a transient failure does not brick the route
+        translatorCache.delete(langPair);
+        throw error;
+      }
     })();
     translatorCache.set(langPair, loader);
   }
@@ -84,11 +90,19 @@ exports.translateText = async (req, res) => {
             ERROR_CODES.VALIDATION_ERROR,
             normalizedPair.error
           )
-        );
+      );
     }
 
-    const translator = await getTranslator(normalizedPair.value);
-    const result = await (await translator)(cleanText.value);
+    const translatorLoader = await getTranslator(normalizedPair.value);
+    let translator;
+    try {
+      translator = await translatorLoader;
+    } catch (err) {
+      translatorCache.delete(normalizedPair.value);
+      throw err;
+    }
+
+    const result = await translator(cleanText.value);
     res.json({ translation: result[0]?.translation_text || "" });
   } catch (err) {
     logError(err, { endpoint: "/api/translate" });

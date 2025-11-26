@@ -149,10 +149,10 @@ export default function Login() {
       if (err?.code === "auth/email-not-verified") {
         const email = err?.email || formData.email;
         setError("Please verify your email before continuing.");
-        setVerificationEmail(email);
-        setInfoMessage(
-          `We just re-sent a verification email to ${email}. Check your inbox or spam folder, then sign in.`
-        );
+        // setVerificationEmail(email);
+        // setInfoMessage(
+        //   `We just re-sent a verification email to ${email}. Check your inbox or spam folder, then sign in.`
+        // );
         showNotification("Verify your email to continue.", "warning");
       } else {
         setError("Login failed. Please check your credentials and try again.");
@@ -186,7 +186,9 @@ export default function Login() {
         "Verification email sent! Please check your inbox.",
         "success"
       );
-      setInfoMessage(`We sent another verification link to ${verificationEmail}.`);
+      setInfoMessage(
+        `We sent another verification link to ${verificationEmail}.`
+      );
     } catch (error) {
       console.error("Resend verification error:", error);
       showNotification(
