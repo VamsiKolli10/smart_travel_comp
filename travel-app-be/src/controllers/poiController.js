@@ -13,12 +13,19 @@ const {
   ERROR_CODES,
   logError,
 } = require("../utils/errorHandler");
+const { getCached, setCached } = require("../utils/cache");
 const { enforceQuota } = require("../utils/quota");
 const { trackExternalCall } = require("../utils/monitoring");
 
 const poiSearchLimit = Number(process.env.POI_PER_USER_PER_HOUR || 120);
 const poiWindow = Number(process.env.POI_PER_USER_WINDOW_MS || 60 * 60 * 1000);
 const poiDetailLimit = Math.max(40, Math.floor(poiSearchLimit / 2));
+const poiSearchCacheTtl = Number(
+  process.env.POI_SEARCH_CACHE_TTL_MS || 2 * 60 * 1000
+);
+const poiDetailCacheTtl = Number(
+  process.env.POI_DETAIL_CACHE_TTL_MS || 15 * 60 * 1000
+);
 
 async function wikiSummary(title, lang = "en") {
   try {
@@ -49,6 +56,28 @@ async function search(req, res) {
     } = req.query;
 
     const pageNumber = Math.max(1, parseInt(page, 10) || 1);
+    const normalizeNumber = (v) =>
+      Number.isFinite(Number(v)) ? Number(Number(v).toFixed(4)) : null;
+    const normalizeList = (v) =>
+      String(v || "")
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean)
+        .sort();
+    const cacheKey = JSON.stringify({
+      dest: dest?.trim().toLowerCase() || null,
+      lat: normalizeNumber(lat),
+      lng: normalizeNumber(lng),
+      distance: Number(distance) || 5,
+      category: normalizeList(category),
+      kidFriendly: kidFriendly === "true",
+      accessibility: accessibility === "true",
+      openNow: openNow === "true",
+      timeNeeded: timeNeeded ? String(timeNeeded) : null,
+      cost: cost ? String(cost) : null,
+      lang,
+      page: pageNumber,
+    });
 
     let center;
     let resolvedDestination = null;
@@ -99,6 +128,10 @@ async function search(req, res) {
           )
         );
     }
+    const cached = getCached("poi:search", cacheKey);
+    if (cached) {
+      return res.json({ ...cached, cached: true });
+    }
     const raw = await searchNearbyPoi({
       lat: center.lat,
       lng: center.lng,
@@ -131,14 +164,16 @@ async function search(req, res) {
     const start = (currentPage - 1) * pageSize;
     const slice = items.slice(start, start + pageSize);
 
-    return res.json({
+    const payload = {
       items: slice,
       total: totalResults,
       page: currentPage,
       pageSize,
       totalPages,
       resolvedDestination,
-    });
+    };
+    setCached("poi:search", cacheKey, payload, poiSearchCacheTtl);
+    return res.json(payload);
   } catch (e) {
     logError(e, { endpoint: "/api/poi/search", query: req.query });
     const status = e.response?.status || e.status || 500;
@@ -175,6 +210,12 @@ async function details(req, res) {
         );
     }
 
+    const cacheKey = JSON.stringify({ id, lang });
+    const cached = getCached("poi:detail", cacheKey);
+    if (cached) {
+      return res.json({ ...cached, cached: true });
+    }
+
     const place = await fetchPlaceById(id, lang);
     trackExternalCall({
       service: "google-places-poi",
@@ -199,6 +240,7 @@ async function details(req, res) {
       ...place,
       description,
     };
+    setCached("poi:detail", cacheKey, payload, poiDetailCacheTtl);
     return res.json(payload);
   } catch (e) {
     logError(e, { endpoint: "/api/poi/:id", id });

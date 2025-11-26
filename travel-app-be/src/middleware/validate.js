@@ -1,8 +1,5 @@
 const { ZodError } = require("zod");
-const {
-  createErrorResponse,
-  ERROR_CODES,
-} = require("../utils/errorHandler");
+const { createErrorResponse, ERROR_CODES } = require("../utils/errorHandler");
 
 function formatZodErrors(error) {
   const issues = Array.isArray(error.issues)
@@ -27,7 +24,11 @@ function buildValidator(schema, target = "body") {
   return (req, res, next) => {
     try {
       const payload =
-        target === "query" ? req.query : target === "params" ? req.params : req.body;
+        target === "query"
+          ? req.query
+          : target === "params"
+          ? req.params
+          : req.body;
       const parsed = schema.parse(payload ?? {});
 
       if (target === "query") {

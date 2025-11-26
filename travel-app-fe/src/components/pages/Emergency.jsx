@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -9,6 +9,7 @@ import {
   Grid,
   IconButton,
   MenuItem,
+  CircularProgress,
   Stack,
   TextField,
   Tooltip,
@@ -24,6 +25,7 @@ import Button from "../common/Button";
 import emergencyNumbersByCountry from "../../data/emergencyNumbersByCountry";
 import emergencyLocationAliases from "../../data/emergencyLocationAliases";
 import useTravelContext from "../../hooks/useTravelContext";
+import { resolveLocation } from "../../services/location";
 
 const emergencyTips = [
   {
@@ -61,6 +63,8 @@ export default function Emergency() {
   const [searchedEntry, setSearchedEntry] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState("");
   const [isManualEditing, setIsManualEditing] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const locationCacheRef = useRef(new Map());
   const fallbackNumber = "911";
   const {
     destination,
@@ -71,7 +75,8 @@ export default function Emergency() {
   } = useTravelContext();
   const contextLocation = useMemo(
     () =>
-      (destinationCity ||
+      (
+        destinationCity ||
         destinationDisplayName ||
         destination ||
         destinationCountry ||
@@ -119,6 +124,26 @@ export default function Emergency() {
     return map;
   }, []);
 
+  const getCachedLocation = (q) => {
+    const key = q.trim().toLowerCase();
+    const entry = locationCacheRef.current.get(key);
+    if (!entry) return null;
+    if (entry.expiresAt < Date.now()) {
+      locationCacheRef.current.delete(key);
+      return null;
+    }
+    return entry.value;
+  };
+
+  const setCachedLocation = (q, value) => {
+    const key = q.trim().toLowerCase();
+    const ttlMs = 5 * 60 * 1000; // 5 minutes
+    locationCacheRef.current.set(key, {
+      value,
+      expiresAt: Date.now() + ttlMs,
+    });
+  };
+
   const findCountryEntry = (value) => {
     const normalized = value.trim().toLowerCase();
     if (!normalized) return null;
@@ -143,7 +168,7 @@ export default function Emergency() {
     );
   };
 
-  const runCountrySearch = (rawValue = countryQuery, options = {}) => {
+  const runCountrySearch = async (rawValue = countryQuery, options = {}) => {
     if (!rawValue.trim()) {
       setSearchedEntry(null);
       setSearchError("Enter a country name to search.");
@@ -151,48 +176,71 @@ export default function Emergency() {
       if (!options.skipManualReset) setIsManualEditing(false);
       return;
     }
-    const match = findCountryEntry(rawValue);
-    if (match) {
-      setSearchedEntry(match);
-      setSelectedCountry(match.country);
-      setSearchError("");
-      const trimmedValue = rawValue.trim();
-      const displayLabel = trimmedValue || match.country;
-      const aliasEntry =
-        emergencyLocationAliases.find(
-          (alias) =>
-            alias.name.toLowerCase() === trimmedValue.toLowerCase()
-        ) ||
-        emergencyLocationAliases.find((alias) =>
-          alias.name.toLowerCase().includes(trimmedValue.toLowerCase())
-        );
-      const derivedCity =
-        aliasEntry &&
-        aliasEntry.country.toLowerCase() === match.country.toLowerCase() &&
-        aliasEntry.name.toLowerCase() !== match.country.toLowerCase()
-          ? aliasEntry.name
-          : trimmedValue &&
-            trimmedValue.toLowerCase() !== match.country.toLowerCase()
-          ? trimmedValue
-          : "";
-      if (setDestinationContext) {
-        setDestinationContext(
-          displayLabel,
-          {
-            display: displayLabel,
-            city: derivedCity || "",
-            country: match.country,
-          },
-          { source: "emergency" }
-        );
+    const trimmedValue = rawValue.trim();
+    setSearchError("");
+
+    // Try geocoding first (cached)
+    setLocationLoading(true);
+    let resolved = null;
+    try {
+      const cached = getCachedLocation(trimmedValue);
+      if (cached !== null) {
+        resolved = cached;
+      } else {
+        resolved = await resolveLocation(trimmedValue);
+        setCachedLocation(trimmedValue, resolved);
       }
-      if (!options.skipManualReset) setIsManualEditing(false);
-    } else {
+    } catch (e) {
+      console.error("Location resolve failed", e);
+      setCachedLocation(trimmedValue, null);
+    } finally {
+      setLocationLoading(false);
+    }
+
+    const resolvedCountry =
+      resolved?.country && resolved.country.trim()
+        ? resolved.country.trim()
+        : null;
+
+    const match =
+      (resolvedCountry && findCountryEntry(resolvedCountry)) ||
+      findCountryEntry(trimmedValue);
+
+    if (!match) {
       setSearchedEntry(null);
       setSelectedCountry("");
       setSearchError(`No emergency data found for "${rawValue}".`);
       if (!options.skipManualReset) setIsManualEditing(false);
+      return;
     }
+
+    setSearchedEntry(match);
+    // Use canonical country label from emergency dataset so the select matches an option
+    setSelectedCountry(match.country);
+    setSearchError("");
+    const displayLabel = resolved?.display || trimmedValue || match.country;
+    const derivedCity =
+      resolved?.city ||
+      resolved?.state ||
+      (trimmedValue.toLowerCase() !== match.country.toLowerCase()
+        ? trimmedValue
+        : "");
+
+    if (setDestinationContext) {
+      setDestinationContext(
+        displayLabel,
+        {
+          display: displayLabel,
+          city: derivedCity || "",
+          state: resolved?.state || "",
+          country: resolvedCountry || match.country,
+          lat: typeof resolved?.lat === "number" ? resolved.lat : undefined,
+          lng: typeof resolved?.lng === "number" ? resolved.lng : undefined,
+        },
+        { source: "emergency" }
+      );
+    }
+    if (!options.skipManualReset) setIsManualEditing(false);
   };
 
   useEffect(() => {
@@ -227,10 +275,12 @@ export default function Emergency() {
     setCountryQuery(value);
     setSelectedCountry(value);
     if (value) {
+      // Trigger search immediately when country is selected from dropdown
       runCountrySearch(value);
     } else {
       setSearchedEntry(null);
       setSearchError("");
+      setSelectedCountry("");
     }
   };
 
@@ -278,7 +328,8 @@ export default function Emergency() {
           }}
         >
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            ⚠️ If you or someone near you is in immediate danger, call {alertNumber} right away.
+            ⚠️ If you or someone near you is in immediate danger, call{" "}
+            {alertNumber} right away.
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Share your location and stay on the line until help arrives.
@@ -302,12 +353,25 @@ export default function Emergency() {
                     }}
                   >
                     <CardContent
-                      sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1.5,
+                      }}
                     >
-                      <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                        <Box sx={{ fontSize: 28, lineHeight: 1 }}>{tip.icon}</Box>
+                      <Stack
+                        direction="row"
+                        spacing={1.5}
+                        alignItems="flex-start"
+                      >
+                        <Box sx={{ fontSize: 28, lineHeight: 1 }}>
+                          {tip.icon}
+                        </Box>
                         <Box>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                          <Typography
+                            variant="subtitle1"
+                            sx={{ fontWeight: 600 }}
+                          >
                             {tip.title}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
@@ -324,7 +388,9 @@ export default function Emergency() {
         </Card>
 
         <Card>
-          <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <CardContent
+            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+          >
             <Stack
               direction={{ xs: "column", lg: "row" }}
               spacing={1.5}
@@ -356,11 +422,24 @@ export default function Emergency() {
               <TextField
                 select
                 label="Or pick a country"
-                value={selectedCountry}
+                value={selectedCountry || ""}
                 onChange={(e) => handleCountrySelect(e.target.value)}
                 sx={{ minWidth: { xs: "100%", lg: 240 } }}
+                SelectProps={{
+                  displayEmpty: true,
+                  renderValue: (selected) => {
+                    if (!selected) {
+                      return (
+                        <span style={{ color: "#999" }}>Select a country</span>
+                      );
+                    }
+                    return selected;
+                  },
+                }}
               >
-                <MenuItem value="">None</MenuItem>
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
                 {countryOptions.map((country) => (
                   <MenuItem key={country} value={country}>
                     {country}
@@ -369,23 +448,35 @@ export default function Emergency() {
               </TextField>
               <Button
                 variant="contained"
-                startIcon={<SearchIcon />}
+                startIcon={
+                  locationLoading ? (
+                    <CircularProgress color="inherit" size={18} />
+                  ) : (
+                    <SearchIcon />
+                  )
+                }
                 onClick={() => {
                   setIsManualEditing(false);
                   runCountrySearch();
                 }}
+                disabled={locationLoading}
                 sx={{ alignSelf: { xs: "stretch", md: "center" } }}
               >
-                Search
+                {locationLoading ? "Searching…" : "Search"}
               </Button>
             </Stack>
             <Typography variant="caption" color="text.secondary">
-              Tip: type any capital or state/province name (e.g., &quot;Ontario&quot;, &quot;Seoul&quot;) or pick a country to see its emergency numbers.
+              Tip: type any capital or state/province name (e.g.,
+              &quot;Ontario&quot;, &quot;Seoul&quot;) or pick a country to see
+              its emergency numbers.
             </Typography>
             {searchError && (
               <Alert
                 severity="info"
-                sx={{ borderRadius: 3, border: "1px solid rgba(33,128,141,0.2)" }}
+                sx={{
+                  borderRadius: 3,
+                  border: "1px solid rgba(33,128,141,0.2)",
+                }}
               >
                 {searchError}
               </Alert>
@@ -407,7 +498,9 @@ export default function Emergency() {
                 </Typography>
               </Box>
               <Chip
-                label={searchedEntry ? searchedEntry.country : "No country selected"}
+                label={
+                  searchedEntry ? searchedEntry.country : "No country selected"
+                }
                 color={searchedEntry ? "secondary" : "default"}
                 variant={searchedEntry ? "filled" : "outlined"}
               />
@@ -429,8 +522,18 @@ export default function Emergency() {
                               : "rgba(94,82,64,0.12)",
                         }}
                       >
-                        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                          <Stack direction="row" spacing={2} alignItems="center">
+                        <CardContent
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 2,
+                          }}
+                        >
+                          <Stack
+                            direction="row"
+                            spacing={2}
+                            alignItems="center"
+                          >
                             <Box
                               sx={{
                                 width: 48,
@@ -446,10 +549,16 @@ export default function Emergency() {
                               {contact.icon}
                             </Box>
                             <Box sx={{ flex: 1 }}>
-                              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                              <Typography
+                                variant="subtitle1"
+                                sx={{ fontWeight: 600 }}
+                              >
                                 {contact.name}
                               </Typography>
-                              <Typography variant="body2" color="text.secondary">
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
                                 {contact.description}
                               </Typography>
                             </Box>
@@ -503,7 +612,6 @@ export default function Emergency() {
             )}
           </CardContent>
         </Card>
-
       </Stack>
     </PageContainer>
   );

@@ -127,13 +127,9 @@ export default function DiscoverPage() {
         : "";
     const normalized = {
       dest,
-      lat: base.lat,
-      lng: base.lng,
+      lat: Number.isFinite(base.lat) ? base.lat : undefined,
+      lng: Number.isFinite(base.lng) ? base.lng : undefined,
     };
-    if (dest) {
-      normalized.lat = undefined;
-      normalized.lng = undefined;
-    }
     return normalized;
   };
 
