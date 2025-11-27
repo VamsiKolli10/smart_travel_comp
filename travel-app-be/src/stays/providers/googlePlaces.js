@@ -227,6 +227,43 @@ function buildPhotoProxy(name, { maxWidth, maxHeight } = {}) {
   return `${PHOTO_PROXY_PATH}?${params.toString()}`;
 }
 
+function parseAddressComponents(components = [], fallbackCity = "") {
+  if (!Array.isArray(components) || !components.length) {
+    return null;
+  }
+
+  const findType = (types = [], target) =>
+    Array.isArray(types) && types.some((t) => t.toLowerCase() === target);
+
+  const countryComponent = components.find((c) =>
+    findType(c.types, "country")
+  );
+  const stateComponent =
+    components.find((c) =>
+      findType(c.types, "administrative_area_level_1")
+    ) ||
+    components.find((c) =>
+      findType(c.types, "administrative_area_level_2")
+    );
+  const cityComponent =
+    components.find((c) => findType(c.types, "locality")) ||
+    components.find((c) => findType(c.types, "postal_town")) ||
+    components.find((c) =>
+      findType(c.types, "administrative_area_level_3")
+    );
+
+  const city =
+    (cityComponent?.longText || cityComponent?.shortText || "").trim() ||
+    fallbackCity.trim();
+  const state =
+    (stateComponent?.longText || stateComponent?.shortText || "").trim();
+  const country =
+    (countryComponent?.longText || countryComponent?.shortText || "").trim();
+
+  if (!city && !country) return null;
+  return { city, state, country };
+}
+
 function parseCityStateCountry(address, fallbackCity = "") {
   if (!address || typeof address !== "string") {
     const label = (fallbackCity || "").trim();
@@ -257,7 +294,27 @@ function parseCityStateCountry(address, fallbackCity = "") {
     city = fallbackCity.trim();
   }
 
-  return { city: city.trim(), state: state.trim(), country: country.trim() };
+  const normalizedCity = city.trim();
+  const normalizedCountry = country.trim();
+
+  // If we only have a single segment (no commas) or the country matches the city/query,
+  // treat it as a city-only match and leave country empty to avoid mislabeling (e.g., "Mount Rainier").
+  const singleSegment = parts.length === 0; // because we popped the only element into country
+  const countryEqualsCity =
+    normalizedCountry &&
+    normalizedCity &&
+    normalizedCountry.toLowerCase() === normalizedCity.toLowerCase();
+  const countryEqualsFallback =
+    normalizedCountry &&
+    fallbackCity &&
+    normalizedCountry.toLowerCase() === fallbackCity.trim().toLowerCase();
+
+  const safeCountry =
+    singleSegment || countryEqualsCity || countryEqualsFallback
+      ? ""
+      : normalizedCountry;
+
+  return { city: normalizedCity, state: state.trim(), country: safeCountry };
 }
 
 function mapPlaceToResult(place, center, language = "en") {
@@ -400,7 +457,7 @@ function mapPlaceToDetail(place, language = "en") {
 async function geocodeCity(cityQuery, language = "en") {
   ensureKey();
   const FIELD_MASK =
-    "places.id,places.displayName,places.shortFormattedAddress,places.formattedAddress,places.location";
+    "places.id,places.displayName,places.shortFormattedAddress,places.formattedAddress,places.location,places.addressComponents";
   try {
     const { data } = await axios.post(
       `${PLACES_BASE_URL}/places:searchText`,
@@ -433,10 +490,15 @@ async function geocodeCity(cityQuery, language = "en") {
       place.formattedAddress ||
       place.displayName?.text ||
       cityQuery;
-    const { city, state, country } = parseCityStateCountry(
-      formattedAddress,
-      place.displayName?.text || cityQuery
-    );
+    const parsedFromComponents =
+      parseAddressComponents(place.addressComponents, cityQuery) || {};
+    const { city, state, country } =
+      parsedFromComponents.city || parsedFromComponents.country
+        ? parsedFromComponents
+        : parseCityStateCountry(
+            formattedAddress,
+            place.displayName?.text || cityQuery
+          );
 
     return {
       lat,

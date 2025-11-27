@@ -213,17 +213,20 @@ export default function StaysSearchPage() {
         setPage(data.page);
       }
       const destinationLabel =
+        data.resolvedDestination?.city?.trim() ||
         data.resolvedDestination?.display ||
-        data.resolvedDestination?.city ||
         searchQuery.dest ||
         (searchQuery.lat && searchQuery.lng ? "Current location" : "Nearby");
 
       const destinationPayload = data.resolvedDestination
         ? {
-            display: data.resolvedDestination.display || destinationLabel,
-            city: data.resolvedDestination.city,
-            state: data.resolvedDestination.state,
-            country: data.resolvedDestination.country,
+            display:
+              data.resolvedDestination.city?.trim() ||
+              data.resolvedDestination.display ||
+              destinationLabel,
+            city: data.resolvedDestination.city || "",
+            state: data.resolvedDestination.state || "",
+            country: data.resolvedDestination.country || "",
             lat: data.resolvedDestination.lat,
             lng: data.resolvedDestination.lng,
           }

@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Box,
   Typography,
@@ -24,6 +30,10 @@ import {
 } from "../../services/culturalEtiquette";
 import RefreshIcon from "@mui/icons-material/RefreshRounded";
 import useTravelContext from "../../hooks/useTravelContext";
+
+// Simple in-memory cache to avoid duplicate brief requests across mounts/tab switches
+const briefCache = new Map();
+const BRIEF_CACHE_TTL_MS = 60 * 1000; // 1 minute
 
 /**
  * Culture Intelligence UI widget.
@@ -51,6 +61,8 @@ const CulturalEtiquette = ({
   const [question, setQuestion] = useState("");
   const [qaLoading, setQaLoading] = useState(false);
   const [qaResult, setQaResult] = useState(null);
+  const lastFetchKeyRef = useRef("");
+  const fetchingRef = useRef(false);
 
   const {
     destination: contextDestination,
@@ -63,14 +75,10 @@ const CulturalEtiquette = ({
   const resolvedDestination = destinationProp || contextDestination;
   const resolvedCulture =
     cultureProp !== undefined ? cultureProp : contextCulture;
-  const resolvedLanguage =
-    languageProp || contextLanguage || "en";
+  const resolvedLanguage = languageProp || contextLanguage || "en";
 
   useEffect(() => {
-    if (
-      destinationProp &&
-      destinationProp !== contextDestination
-    ) {
+    if (destinationProp && destinationProp !== contextDestination) {
       setDestinationContext(
         destinationProp,
         { display: destinationProp },
@@ -78,8 +86,7 @@ const CulturalEtiquette = ({
       );
       updateTravelContext(
         {
-          culture:
-            cultureProp !== undefined ? cultureProp : contextCulture,
+          culture: cultureProp !== undefined ? cultureProp : contextCulture,
           language: resolvedLanguage,
         },
         { source: "cultural-etiquette" }
@@ -99,6 +106,30 @@ const CulturalEtiquette = ({
     async ({ refresh = false } = {}) => {
       if (!resolvedDestination) return;
 
+      const requestKey = `${resolvedDestination}::${resolvedCulture || ""}::${
+        resolvedLanguage || ""
+      }::${refresh ? "refresh" : "cold"}`;
+      if (
+        !refresh &&
+        lastFetchKeyRef.current === requestKey &&
+        (fetchingRef.current || loadingBrief || refreshingBrief)
+      ) {
+        return;
+      }
+
+      const cacheKey = `${resolvedDestination}::${resolvedCulture || ""}::${resolvedLanguage || ""}`;
+      const cached = briefCache.get(cacheKey);
+      if (
+        !refresh &&
+        cached &&
+        cached.expiresAt > Date.now() &&
+        cached.data
+      ) {
+        setBrief(cached.data);
+        lastFetchKeyRef.current = requestKey;
+        return;
+      }
+
       setBriefError("");
       setQaResult(null);
 
@@ -109,6 +140,8 @@ const CulturalEtiquette = ({
       }
 
       try {
+        fetchingRef.current = true;
+        lastFetchKeyRef.current = requestKey;
         const data = await getCultureBrief({
           destination: resolvedDestination,
           culture: resolvedCulture,
@@ -116,10 +149,15 @@ const CulturalEtiquette = ({
           refresh,
         });
         setBrief(data);
+        briefCache.set(cacheKey, {
+          data,
+          expiresAt: Date.now() + BRIEF_CACHE_TTL_MS,
+        });
       } catch (err) {
         console.error("Failed to load culture brief", err);
         setBriefError("Failed to load cultural guidance for this destination.");
       } finally {
+        fetchingRef.current = false;
         if (refresh) {
           setRefreshingBrief(false);
         } else {
@@ -139,7 +177,7 @@ const CulturalEtiquette = ({
     setQaLoading(true);
     setQaResult(null);
     try {
-        const data = await askCultureQuestion({
+      const data = await askCultureQuestion({
         destination: resolvedDestination,
         culture: resolvedCulture,
         language: resolvedLanguage,
@@ -194,8 +232,16 @@ const CulturalEtiquette = ({
 
       {loadingBrief && (
         <Box sx={{ mb: 2 }}>
-          <Skeleton variant="rectangular" height={80} sx={{ borderRadius: 2 }} />
-          <Skeleton variant="rectangular" height={160} sx={{ borderRadius: 2, mt: 2 }} />
+          <Skeleton
+            variant="rectangular"
+            height={80}
+            sx={{ borderRadius: 2 }}
+          />
+          <Skeleton
+            variant="rectangular"
+            height={160}
+            sx={{ borderRadius: 2, mt: 2 }}
+          />
         </Box>
       )}
 
@@ -205,88 +251,95 @@ const CulturalEtiquette = ({
         </Alert>
       )}
 
-      {!loadingBrief && !briefError && brief && Object.keys(categories).length > 0 && (
-        <Stack spacing={2}>
-          <Paper sx={{ p: 2 }}>
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              justifyContent="space-between"
-              spacing={2}
-              alignItems={{ xs: "flex-start", sm: "center" }}
-            >
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Destination
-                </Typography>
-                <Typography variant="h6">{brief.destination}</Typography>
-                {brief.culture && brief.culture !== brief.destination && (
-                  <Typography variant="body2" color="text.secondary">
-                    Focus: {brief.culture}
-                  </Typography>
-                )}
-                <Typography variant="body2" color="text.secondary">
-                  Language: {brief.language?.toUpperCase()}
-                </Typography>
-                {generatedAtLabel && (
-                  <Typography variant="caption" color="text.secondary">
-                    Generated {generatedAtLabel}
-                  </Typography>
-                )}
-              </Box>
-              <Button
-                variant="outlined"
-                startIcon={
-                  refreshingBrief ? (
-                    <CircularProgress size={16} />
-                  ) : (
-                    <RefreshIcon fontSize="small" />
-                  )
-                }
-                onClick={() => fetchBrief({ refresh: true })}
-                disabled={refreshingBrief}
+      {!loadingBrief &&
+        !briefError &&
+        brief &&
+        Object.keys(categories).length > 0 && (
+          <Stack spacing={2}>
+            <Paper sx={{ p: 2 }}>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                justifyContent="space-between"
+                spacing={2}
+                alignItems={{ xs: "flex-start", sm: "center" }}
               >
-                Refresh insights
-              </Button>
-            </Stack>
-            <Divider sx={{ my: 2 }} />
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {orderedCategories.map((key) => (
-                <Chip
-                  key={key}
-                  label={`${key.replace(/_/g, " ")} (${categories[key].length})`}
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                  sx={{ textTransform: "capitalize" }}
-                />
-              ))}
-            </Stack>
-          </Paper>
-
-          {orderedCategories.map((category) => {
-            const tips = categories[category];
-            if (!Array.isArray(tips) || tips.length === 0) return null;
-            return (
-              <Accordion key={category} sx={{ mb: 1, borderRadius: 2 }}>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography sx={{ textTransform: "capitalize", fontWeight: 600 }}>
-                    {category.replace(/_/g, " ")}
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Destination
                   </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <List dense>
-                    {tips.map((tip, index) => (
-                      <ListItem key={index} sx={{ pl: 2 }}>
-                        <Typography variant="body2">{tip}</Typography>
-                      </ListItem>
-                    ))}
-                  </List>
-                </AccordionDetails>
-              </Accordion>
-            );
-          })}
-        </Stack>
-      )}
+                  <Typography variant="h6">{brief.destination}</Typography>
+                  {brief.culture && brief.culture !== brief.destination && (
+                    <Typography variant="body2" color="text.secondary">
+                      Focus: {brief.culture}
+                    </Typography>
+                  )}
+                  <Typography variant="body2" color="text.secondary">
+                    Language: {brief.language?.toUpperCase()}
+                  </Typography>
+                  {generatedAtLabel && (
+                    <Typography variant="caption" color="text.secondary">
+                      Generated {generatedAtLabel}
+                    </Typography>
+                  )}
+                </Box>
+                <Button
+                  variant="outlined"
+                  startIcon={
+                    refreshingBrief ? (
+                      <CircularProgress size={16} />
+                    ) : (
+                      <RefreshIcon fontSize="small" />
+                    )
+                  }
+                  onClick={() => fetchBrief({ refresh: true })}
+                  disabled={refreshingBrief}
+                >
+                  Refresh insights
+                </Button>
+              </Stack>
+              <Divider sx={{ my: 2 }} />
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {orderedCategories.map((key) => (
+                  <Chip
+                    key={key}
+                    label={`${key.replace(/_/g, " ")} (${
+                      categories[key].length
+                    })`}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    sx={{ textTransform: "capitalize" }}
+                  />
+                ))}
+              </Stack>
+            </Paper>
+
+            {orderedCategories.map((category) => {
+              const tips = categories[category];
+              if (!Array.isArray(tips) || tips.length === 0) return null;
+              return (
+                <Accordion key={category} sx={{ mb: 1, borderRadius: 2 }}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography
+                      sx={{ textTransform: "capitalize", fontWeight: 600 }}
+                    >
+                      {category.replace(/_/g, " ")}
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <List dense>
+                      {tips.map((tip, index) => (
+                        <ListItem key={index} sx={{ pl: 2 }}>
+                          <Typography variant="body2">{tip}</Typography>
+                        </ListItem>
+                      ))}
+                    </List>
+                  </AccordionDetails>
+                </Accordion>
+              );
+            })}
+          </Stack>
+        )}
 
       {/* Inline Culture Q&A (Culture Coach) */}
       {resolvedDestination && (
@@ -317,15 +370,16 @@ const CulturalEtiquette = ({
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
                 {qaResult.answer}
               </Typography>
-              {Array.isArray(qaResult.highlights) && qaResult.highlights.length > 0 && (
-                <List dense sx={{ mt: 0.5 }}>
-                  {qaResult.highlights.map((h, idx) => (
-                    <ListItem key={idx} sx={{ pl: 2 }}>
-                      <Typography variant="caption">• {h}</Typography>
-                    </ListItem>
-                  ))}
-                </List>
-              )}
+              {Array.isArray(qaResult.highlights) &&
+                qaResult.highlights.length > 0 && (
+                  <List dense sx={{ mt: 0.5 }}>
+                    {qaResult.highlights.map((h, idx) => (
+                      <ListItem key={idx} sx={{ pl: 2 }}>
+                        <Typography variant="caption">• {h}</Typography>
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
             </Box>
           )}
         </Paper>

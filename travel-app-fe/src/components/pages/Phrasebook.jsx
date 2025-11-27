@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
-  Autocomplete,
   Box,
   Card,
   CardContent,
@@ -9,6 +8,7 @@ import {
   CircularProgress,
   Grid,
   IconButton,
+  MenuItem,
   Slider,
   Stack,
   TextField,
@@ -43,9 +43,9 @@ import {
   readSavedPhrases,
 } from "../../services/offlineCache";
 import {
-  COMMON_LANGUAGE_LABELS,
   getLanguageLabel,
   resolveLanguageCode,
+  TRANSLATION_LANGUAGES,
 } from "../../constants/languages";
 import { logRecentActivity } from "../../utils/recentActivity";
 
@@ -91,10 +91,8 @@ export default function Phrasebook() {
     setLanguagePair,
   } = useTravelContext();
 
-  const defaultSourceLanguage =
-    sourceLanguageName || getLanguageLabel(sourceLanguageCode || "") || "";
-  const defaultTargetLanguage =
-    targetLanguageName || getLanguageLabel(targetLanguageCode || "") || "";
+  const defaultSourceLanguage = sourceLanguageCode || "en";
+  const defaultTargetLanguage = targetLanguageCode || "es";
 
   const [topic, setTopic] = useState("");
   const [sourceLang, setSourceLang] = useState(defaultSourceLanguage);
@@ -116,7 +114,7 @@ export default function Phrasebook() {
 
   useEffect(() => {
     const nextSource =
-      sourceLanguageName || getLanguageLabel(sourceLanguageCode || "") || "";
+      sourceLanguageCode || resolveLanguageCode(sourceLanguageName) || "";
     if (nextSource && nextSource !== sourceLang) {
       setSourceLang(nextSource);
     }
@@ -124,7 +122,7 @@ export default function Phrasebook() {
 
   useEffect(() => {
     const nextTarget =
-      targetLanguageName || getLanguageLabel(targetLanguageCode || "") || "";
+      targetLanguageCode || resolveLanguageCode(targetLanguageName) || "";
     if (nextTarget && nextTarget !== targetLang) {
       setTargetLang(nextTarget);
     }
@@ -142,8 +140,8 @@ export default function Phrasebook() {
       if (!setLanguagePair) return;
       setLanguagePair(
         {
-          sourceLanguageName: next,
-          sourceLanguageCode: resolveLanguageCode(next),
+          sourceLanguageName: getLanguageLabel(next),
+          sourceLanguageCode: next,
         },
         { source: "phrasebook-source" }
       );
@@ -158,8 +156,8 @@ export default function Phrasebook() {
       if (!setLanguagePair) return;
       setLanguagePair(
         {
-          targetLanguageName: next,
-          targetLanguageCode: resolveLanguageCode(next),
+          targetLanguageName: getLanguageLabel(next),
+          targetLanguageCode: next,
         },
         { source: "phrasebook-target" }
       );
@@ -238,27 +236,33 @@ export default function Phrasebook() {
     targetLang.trim() &&
     sourceLang.trim().toLowerCase() !== targetLang.trim().toLowerCase();
 
-  const savedKeys = useMemo(
-    () =>
-      new Set(
-        saved.map((item) => {
-          const normalizedLang =
-            normalizeLanguageForApi(item.targetLang) ||
-            (item.targetLang || "").trim().toLowerCase();
-          return `${item.phrase?.toLowerCase()}::${normalizedLang}`;
-        })
-      ),
-    [saved]
-  );
+  const savedKeys = useMemo(() => {
+    return new Set(
+      saved.map((item) => {
+        const normalizedTarget =
+          normalizeLanguageForApi(item.targetLang) ||
+          (item.targetLang || "").trim().toLowerCase();
+        const normalizedSource =
+          normalizeLanguageForApi(item.sourceLang) ||
+          (item.sourceLang || "").trim().toLowerCase();
+        return `${item.phrase?.toLowerCase()}::${normalizedSource}::${normalizedTarget}`;
+      })
+    );
+  }, [saved]);
 
   const currentTargetLang = (result && result.targetLang) || targetLang;
 
   const isSaved = (item) => {
     if (!item?.phrase || !currentTargetLang) return false;
-    const normalizedLang =
+    const normalizedTarget =
       normalizeLanguageForApi(item.targetLang || currentTargetLang) ||
       (item.targetLang || currentTargetLang || "").toLowerCase();
-    return savedKeys.has(`${item.phrase.toLowerCase()}::${normalizedLang}`);
+    const normalizedSource =
+      normalizeLanguageForApi(result?.sourceLang || sourceLang) ||
+      (result?.sourceLang || sourceLang || "").toLowerCase();
+    return savedKeys.has(
+      `${item.phrase.toLowerCase()}::${normalizedSource}::${normalizedTarget}`
+    );
   };
 
   const handleGenerate = async (e) => {
@@ -282,7 +286,9 @@ export default function Phrasebook() {
           0,
           48
         )} · ${(data?.sourceLang || sourceLang || "Source").toUpperCase()} → ${(
-          data?.targetLang || targetLang || "Target"
+          data?.targetLang ||
+          targetLang ||
+          "Target"
         ).toUpperCase()}`,
         meta: { count: data?.phrases?.length || Number(count) || 10 },
       });
@@ -319,11 +325,15 @@ export default function Phrasebook() {
       return;
     }
 
-    const existing = saved.find(
-      (entry) =>
+    const existing = saved.find((entry) => {
+      const entryTarget = normalizeLanguageForApi(entry.targetLang);
+      const entrySource = normalizeLanguageForApi(entry.sourceLang);
+      return (
         entry.phrase?.toLowerCase() === item.phrase.toLowerCase() &&
-        normalizeLanguageForApi(entry.targetLang) === normalizedTargetLang
-    );
+        entryTarget === normalizedTargetLang &&
+        entrySource === normalizedSourceLang
+      );
+    });
 
     if (existing) {
       try {
@@ -351,19 +361,28 @@ export default function Phrasebook() {
         targetLang: normalizedTargetLang,
       });
       setSaved((prev) => {
-        const next = [
-          {
-            id,
-            phrase: item.phrase,
-            transliteration: item.transliteration || "",
-            meaning: item.meaning,
-            usageExample: item.usageExample,
-            topic: result?.topic || topic,
-            sourceLang: normalizedSourceLang,
-            targetLang: normalizedTargetLang,
-          },
-          ...prev,
-        ];
+        // Deduplicate on phrase+source+target
+        const nextCandidate = {
+          id,
+          phrase: item.phrase,
+          transliteration: item.transliteration || "",
+          meaning: item.meaning,
+          usageExample: item.usageExample,
+          topic: result?.topic || topic,
+          sourceLang: normalizedSourceLang,
+          targetLang: normalizedTargetLang,
+        };
+        const filtered = prev.filter(
+          (entry) =>
+            !(
+              entry.phrase?.toLowerCase() ===
+                nextCandidate.phrase.toLowerCase() &&
+              normalizeLanguageForApi(entry.targetLang) ===
+                normalizedTargetLang &&
+              normalizeLanguageForApi(entry.sourceLang) === normalizedSourceLang
+            )
+        );
+        const next = [nextCandidate, ...filtered];
         persistSaved(next);
         return next;
       });
@@ -460,81 +479,75 @@ export default function Phrasebook() {
                   }}
                 />
 
-                <Autocomplete
-                  freeSolo
-                  options={COMMON_LANGUAGE_LABELS}
+                <TextField
+                  select
+                  label="From language"
                   value={sourceLang}
-                  onChange={(_, value) => updateSourceLanguage(value || "")}
-                  onInputChange={(_, value) => updateSourceLanguage(value || "")}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="From language"
-                      fullWidth
-                      sx={{
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: 2,
-                          transition: "all 0.3s ease",
-                          "& fieldset": {
-                            borderColor: alpha(theme.palette.divider, 0.5),
-                          },
-                          "&:hover fieldset": {
-                            borderColor: alpha(
-                              theme.palette.primary.main,
-                              0.5
-                            ),
-                          },
-                          "&.Mui-focused fieldset": {
-                            borderColor: theme.palette.primary.main,
-                            borderWidth: 2,
-                            boxShadow: `0 0 0 3px ${alpha(
-                              theme.palette.primary.main,
-                              0.1
-                            )}`,
-                          },
-                        },
-                      }}
-                    />
-                  )}
-                />
+                  onChange={(e) => updateSourceLanguage(e.target.value)}
+                  fullWidth
+                  SelectProps={{ native: false }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                      transition: "all 0.3s ease",
+                      "& fieldset": {
+                        borderColor: alpha(theme.palette.divider, 0.5),
+                      },
+                      "&:hover fieldset": {
+                        borderColor: alpha(theme.palette.primary.main, 0.5),
+                      },
+                      "&.Mui-focused fieldset": {
+                        borderColor: theme.palette.primary.main,
+                        borderWidth: 2,
+                        boxShadow: `0 0 0 3px ${alpha(
+                          theme.palette.primary.main,
+                          0.1
+                        )}`,
+                      },
+                    },
+                  }}
+                >
+                  {TRANSLATION_LANGUAGES.map((lang) => (
+                    <MenuItem key={lang.code} value={lang.code}>
+                      {lang.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
 
-                <Autocomplete
-                  freeSolo
-                  options={COMMON_LANGUAGE_LABELS}
+                <TextField
+                  select
+                  label="To language"
                   value={targetLang}
-                  onChange={(_, value) => updateTargetLanguage(value || "")}
-                  onInputChange={(_, value) => updateTargetLanguage(value || "")}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="To language"
-                      fullWidth
-                      sx={{
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: 2,
-                          transition: "all 0.3s ease",
-                          "& fieldset": {
-                            borderColor: alpha(theme.palette.divider, 0.5),
-                          },
-                          "&:hover fieldset": {
-                            borderColor: alpha(
-                              theme.palette.primary.main,
-                              0.5
-                            ),
-                          },
-                          "&.Mui-focused fieldset": {
-                            borderColor: theme.palette.primary.main,
-                            borderWidth: 2,
-                            boxShadow: `0 0 0 3px ${alpha(
-                              theme.palette.primary.main,
-                              0.1
-                            )}`,
-                          },
-                        },
-                      }}
-                    />
-                  )}
-                />
+                  onChange={(e) => updateTargetLanguage(e.target.value)}
+                  fullWidth
+                  SelectProps={{ native: false }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                      transition: "all 0.3s ease",
+                      "& fieldset": {
+                        borderColor: alpha(theme.palette.divider, 0.5),
+                      },
+                      "&:hover fieldset": {
+                        borderColor: alpha(theme.palette.primary.main, 0.5),
+                      },
+                      "&.Mui-focused fieldset": {
+                        borderColor: theme.palette.primary.main,
+                        borderWidth: 2,
+                        boxShadow: `0 0 0 3px ${alpha(
+                          theme.palette.primary.main,
+                          0.1
+                        )}`,
+                      },
+                    },
+                  }}
+                >
+                  {TRANSLATION_LANGUAGES.map((lang) => (
+                    <MenuItem key={lang.code} value={lang.code}>
+                      {lang.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
 
                 <Stack spacing={1}>
                   <Typography variant="caption" color="text.secondary">
@@ -709,8 +722,17 @@ export default function Phrasebook() {
             </Stack>
 
             <AnimatedGrid
-              container
-              spacing={2}
+              component={Box}
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "repeat(2, minmax(0, 1fr))",
+                  lg: "repeat(3, minmax(0, 1fr))",
+                },
+                gap: { xs: 2, md: 3 },
+                alignItems: "stretch",
+              }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1, duration: 0.4, staggerChildren: 0.05 }}
@@ -718,13 +740,16 @@ export default function Phrasebook() {
               {result.phrases.map((item, index) => {
                 const savedAlready = isSaved(item);
                 return (
-                  <Grid item xs={12} md={6} key={`${item.phrase}-${index}`}>
+                  <Box key={`${item.phrase}-${index}`} sx={{ display: "flex" }}>
                     <AnimatedCard
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.05 * index, duration: 0.3 }}
                       sx={{
                         height: "100%",
+                        flexGrow: 1,
+                        display: "flex",
+                        flexDirection: "column",
                         borderRadius: 3,
                         borderColor: savedAlready
                           ? "rgba(33,128,141,0.4)"
@@ -741,6 +766,7 @@ export default function Phrasebook() {
                           display: "flex",
                           flexDirection: "column",
                           gap: 1.5,
+                          flex: 1,
                         }}
                       >
                         <Stack
@@ -808,7 +834,7 @@ export default function Phrasebook() {
                         )}
                       </CardContent>
                     </AnimatedCard>
-                  </Grid>
+                  </Box>
                 );
               })}
             </AnimatedGrid>
@@ -918,8 +944,17 @@ export default function Phrasebook() {
               </Box>
             ) : filteredSaved.length ? (
               <AnimatedGrid
-                container
-                spacing={2}
+                component={Box}
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                    lg: "repeat(3, minmax(0, 1fr))",
+                  },
+                  gap: { xs: 2, md: 3 },
+                  alignItems: "stretch",
+                }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{
@@ -929,7 +964,7 @@ export default function Phrasebook() {
                 }}
               >
                 {filteredSaved.map((item, index) => (
-                  <Grid item xs={12} md={6} key={item.id}>
+                  <Box key={item.id} sx={{ display: "flex" }}>
                     <AnimatedCard
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -938,6 +973,10 @@ export default function Phrasebook() {
                       sx={{
                         borderRadius: 3,
                         height: "100%",
+                        display: "flex",
+                        flexGrow: "1",
+                        flexDirection: "column",
+                        borderColor: "rgba(94,82,64,0.12)",
                         transition: "all 0.3s ease",
                         "&:hover": {
                           transform: "translateY(-4px)",
@@ -950,6 +989,7 @@ export default function Phrasebook() {
                           display: "flex",
                           flexDirection: "column",
                           gap: 1.5,
+                          flex: 1,
                         }}
                       >
                         <Stack
@@ -957,23 +997,32 @@ export default function Phrasebook() {
                           justifyContent="space-between"
                           alignItems="flex-start"
                         >
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            {item.phrase}
-                          </Typography>
-                          <Tooltip title="Remove saved phrase" arrow>
+                          <Stack spacing={0.5}>
+                            <Typography
+                              variant="subtitle2"
+                              color="text.secondary"
+                              sx={{ fontWeight: 600 }}
+                            >
+                              #{index + 1}
+                            </Typography>
+                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                              {item.phrase}
+                            </Typography>
+                          </Stack>
+                          <Tooltip title="Remove from saved" arrow>
                             <IconButton
-                              aria-label="Remove saved phrase"
+                              aria-label="Remove from saved"
                               onClick={() => removeSaved(item.id)}
                               size="small"
+                              color="primary"
                               sx={{
                                 transition: "all 0.3s ease",
                                 "&:hover": {
-                                  color: theme.palette.error.main,
                                   transform: "scale(1.1)",
                                 },
                               }}
                             >
-                              <DeleteIcon fontSize="small" />
+                              <BookmarkFilledIcon />
                             </IconButton>
                           </Tooltip>
                         </Stack>
@@ -992,7 +1041,7 @@ export default function Phrasebook() {
                             “{item.usageExample}”
                           </Typography>
                         )}
-                        <Stack direction="row" spacing={1}>
+                        <Stack direction="row" spacing={1} flexWrap="wrap">
                           {item.topic && (
                             <Chip label={item.topic} size="small" />
                           )}
@@ -1005,7 +1054,7 @@ export default function Phrasebook() {
                         </Stack>
                       </CardContent>
                     </AnimatedCard>
-                  </Grid>
+                  </Box>
                 ))}
               </AnimatedGrid>
             ) : (

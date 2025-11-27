@@ -422,7 +422,7 @@ export default function Translation() {
       eyebrow="Live translator"
       title="Translation"
       subtitle="Bridge languages in real time with voice input, speech playback, and smart controls."
-      maxWidth="xl"
+      maxWidth="lg"
       gap={4}
       actions={supportChips}
     >

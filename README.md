@@ -143,6 +143,7 @@ Key UX modules:
 
 A dedicated Redux slice (`travel-app-fe/src/store/slices/travelContextSlice.js`) keeps destination metadata, coordinates, and language pairs synchronized across surfaces through the `useTravelContext` hook. Any screen can call `setDestinationContext`, `setLanguagePair`, or `resetTravelContext` to participate in the global travel state without duplicating logic.
 
+- **State persistence**: The travel context is persisted with `redux-persist` (whitelisting the `travelContext` slice), so language/destination choices survive page refreshes. Wrapped in `PersistGate` in `src/main.jsx`.
 - **Discover, Destinations, and Destination Details** push geocoded payloads from `/api/poi/search` or POI cards into the context so `StaysSearchPage` automatically pre-fills the search box, query params, and map viewport when you navigate back.
 - **Stays search** writes every `resolvedDestination` returned by `/api/stays/search` (display label + lat/lng) into the context and analytics log so Emergency, Discover, and Cultural flows reuse the canonical location even when the traveler typed free-form text.
 - **Emergency.jsx** consumes the context to auto-select contacts and, when the traveler manually searches a country/alias (backed by `travel-app-fe/src/data/emergencyLocationAliases.js`), feeds normalized city/country data back through `setDestinationContext` to keep Stays/Destinations aligned.
@@ -183,6 +184,15 @@ Flags:
 - **Frontend** (`travel-app-fe`): `npm run test` runs Vitest + Testing Library suites for auth services, feature-flag gating, and future UI hooks.
 
 Both commands automatically provision mocked Firebase/OpenRouter/Google dependencies so they can run locally or in CI without external keys.
+
+## CI/CD (GitHub Actions)
+
+- **CI checks**: `.github/workflows/ci.yml` runs on PRs and pushes to `main` using Node 20. It installs deps, runs frontend tests + build, backend tests, and Cloud Functions lint. Dummy keys are injected so tests/builds run without external secrets.
+- **Deploy**: `.github/workflows/deploy.yml` runs on `main` pushes (or manual dispatch) and calls `scripts/firebase-deploy.sh` to build the Vite frontend, sync it into `travel-app-be/public`, and deploy Firebase Hosting + the `backend` Functions codebase.
+- **Required GitHub secrets for deploy**:
+  - `FIREBASE_SERVICE_ACCOUNT`: JSON for a service account with Firebase Hosting + Functions deploy perms.
+  - `FIREBASE_PROJECT_ID`
+  - Frontend build vars: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`, `VITE_API_URL`.
 
 ---
 

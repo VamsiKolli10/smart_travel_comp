@@ -297,6 +297,15 @@ Run the repository-level helper to automate the React build, asset sync, and Fir
 
 The script expects `firebase-tools` to be installed and authenticated, reuses `.firebaserc` when `--project` is omitted, and will fail fast if the frontend build artifacts are missing.
 
+### CI/CD (GitHub Actions)
+
+- **Workflows** live in `.github/workflows/ci.yml` (PR/main tests + build) and `.github/workflows/deploy.yml` (deploy on `main` or manual dispatch). The deploy workflow calls `scripts/firebase-deploy.sh`.
+- **Required GitHub secrets for deploy**:
+  - `FIREBASE_SERVICE_ACCOUNT`: full JSON for a service account that can deploy Hosting and the `backend` Functions codebase. Grant the minimal Firebase Hosting/Functions roles.
+  - `FIREBASE_PROJECT_ID`
+  - Frontend build vars: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`, `VITE_API_URL`.
+- **CI defaults**: The CI workflow injects dummy keys so Jest/Vitest can run offline; provide env overrides in repository or environment secrets if you need integration tests against real services.
+
 ## Monitoring & Logging
 
 ### Application Monitoring

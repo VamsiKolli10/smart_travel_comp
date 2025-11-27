@@ -65,6 +65,7 @@ export default function Emergency() {
   const [isManualEditing, setIsManualEditing] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const locationCacheRef = useRef(new Map());
+  const inflightResolveRef = useRef(new Set());
   const fallbackNumber = "911";
   const {
     destination,
@@ -73,6 +74,10 @@ export default function Emergency() {
     destinationCountry,
     setDestinationContext,
   } = useTravelContext();
+  const contextCity = useMemo(
+    () => (destinationCity || "").trim(),
+    [destinationCity]
+  );
   const contextLocation = useMemo(
     () =>
       (
@@ -108,9 +113,12 @@ export default function Emergency() {
   }, []);
 
   const countryOptions = useMemo(() => {
-    return emergencyNumbersByCountry
-      .map((entry) => entry.country)
-      .sort((a, b) => a.localeCompare(b));
+    const unique = new Set(
+      emergencyNumbersByCountry
+        .map((entry) => (entry.country || "").trim())
+        .filter(Boolean)
+    );
+    return Array.from(unique).sort((a, b) => a.localeCompare(b));
   }, []);
 
   const aliasLookup = useMemo(() => {
@@ -148,27 +156,44 @@ export default function Emergency() {
     const normalized = value.trim().toLowerCase();
     if (!normalized) return null;
 
+    const resolveCountry = (candidate = "") => {
+      const key = candidate.trim().toLowerCase();
+      if (!key) return null;
+      // Direct match
+      if (countryLookup.has(key)) {
+        return countryLookup.get(key);
+      }
+      // Partial match both directions to avoid hardcoded aliases
+      const direct = Array.from(countryLookup.keys()).find(
+        (k) => k.includes(key) || key.includes(k)
+      );
+      return direct ? countryLookup.get(direct) : null;
+    };
+
     const aliasCountry = aliasLookup.get(normalized);
     if (aliasCountry) {
-      return countryLookup.get(aliasCountry.toLowerCase());
+      const found = resolveCountry(aliasCountry);
+      if (found) return found;
     }
 
     const partialAlias = emergencyLocationAliases.find((alias) =>
       alias.name.toLowerCase().includes(normalized)
     );
     if (partialAlias) {
-      return countryLookup.get(partialAlias.country.toLowerCase());
+      const found = resolveCountry(partialAlias.country);
+      if (found) return found;
     }
 
-    if (countryLookup.has(normalized)) {
-      return countryLookup.get(normalized);
-    }
-    return emergencyNumbersByCountry.find((entry) =>
-      entry.country.toLowerCase().includes(normalized)
-    );
+    const direct = resolveCountry(value);
+    if (direct) return direct;
+
+    return null;
   };
 
-  const runCountrySearch = async (rawValue = countryQuery, options = {}) => {
+  const runCountrySearch = async (
+    rawValue = countryQuery,
+    options = { existingCity: "", existingDisplay: "" }
+  ) => {
     if (!rawValue.trim()) {
       setSearchedEntry(null);
       setSearchError("Enter a country name to search.");
@@ -179,10 +204,43 @@ export default function Emergency() {
     const trimmedValue = rawValue.trim();
     setSearchError("");
 
+    // If the input directly matches a country/alias, prefer that and skip geocoding to avoid noisy street hits
+    const directMatch = findCountryEntry(trimmedValue);
+    if (directMatch) {
+      setSearchedEntry(directMatch);
+      const canonical = directMatch.country?.trim() || trimmedValue;
+      setSelectedCountry(canonical);
+      setSearchError("");
+      const displayLabel =
+        options.existingDisplay?.trim() ||
+        trimmedValue ||
+        canonical;
+      if (setDestinationContext) {
+        setDestinationContext(
+          displayLabel,
+          {
+            display: displayLabel,
+            city: options.existingCity || "",
+            state: "",
+            country: canonical,
+          },
+          { source: "emergency" }
+        );
+      }
+      if (!options.skipManualReset) setIsManualEditing(false);
+      return;
+    }
+
     // Try geocoding first (cached)
     setLocationLoading(true);
     let resolved = null;
     try {
+      const inflightKey = trimmedValue.toLowerCase();
+      if (inflightResolveRef.current.has(inflightKey)) {
+        setLocationLoading(false);
+        return;
+      }
+      inflightResolveRef.current.add(inflightKey);
       const cached = getCachedLocation(trimmedValue);
       if (cached !== null) {
         resolved = cached;
@@ -194,13 +252,21 @@ export default function Emergency() {
       console.error("Location resolve failed", e);
       setCachedLocation(trimmedValue, null);
     } finally {
+      inflightResolveRef.current.delete(trimmedValue.toLowerCase());
       setLocationLoading(false);
     }
 
-    const resolvedCountry =
+    let resolvedCountry =
       resolved?.country && resolved.country.trim()
         ? resolved.country.trim()
         : null;
+    // If geocoding returns an unknown country, discard it to avoid mislabeling (e.g., wrong continent)
+    if (
+      resolvedCountry &&
+      !countryLookup.has(resolvedCountry.toLowerCase())
+    ) {
+      resolvedCountry = null;
+    }
 
     const match =
       (resolvedCountry && findCountryEntry(resolvedCountry)) ||
@@ -215,19 +281,36 @@ export default function Emergency() {
     }
 
     setSearchedEntry(match);
-    // Use canonical country label from emergency dataset so the select matches an option
     const canonicalCountry =
       match.country?.trim() ||
       (resolvedCountry && resolvedCountry.trim()) ||
       "";
     setSelectedCountry(canonicalCountry);
     setSearchError("");
-    const displayLabel = resolved?.display || trimmedValue || match.country;
+
+    const resolvedCountryLower = (resolvedCountry || "").toLowerCase();
+    const canonicalCountryLower = canonicalCountry.toLowerCase();
+    const resolvedMatchesCountry =
+      resolvedCountryLower &&
+      (resolvedCountryLower === canonicalCountryLower ||
+        resolvedCountryLower.includes(canonicalCountryLower) ||
+        canonicalCountryLower.includes(resolvedCountryLower));
+
+    const displayLabel =
+      options.existingDisplay?.trim() ||
+      (resolved?.city?.trim() || resolved?.state?.trim() || "") ||
+      trimmedValue ||
+      canonicalCountry ||
+      resolved?.display ||
+      match.country;
     const derivedCity =
-      resolved?.city ||
-      resolved?.state ||
-      (trimmedValue.toLowerCase() !== match.country.toLowerCase()
-        ? trimmedValue
+      options.existingCity ||
+      (resolvedMatchesCountry
+        ? resolved?.city ||
+          resolved?.state ||
+          (trimmedValue.toLowerCase() !== canonicalCountryLower
+            ? trimmedValue
+            : "")
         : "");
 
     if (setDestinationContext) {
@@ -238,8 +321,14 @@ export default function Emergency() {
           city: derivedCity || "",
           state: resolved?.state || "",
           country: canonicalCountry,
-          lat: typeof resolved?.lat === "number" ? resolved.lat : undefined,
-          lng: typeof resolved?.lng === "number" ? resolved.lng : undefined,
+          lat:
+            resolvedMatchesCountry && typeof resolved?.lat === "number"
+              ? resolved.lat
+              : undefined,
+          lng:
+            resolvedMatchesCountry && typeof resolved?.lng === "number"
+              ? resolved.lng
+              : undefined,
         },
         { source: "emergency" }
       );
@@ -248,17 +337,47 @@ export default function Emergency() {
   };
 
   useEffect(() => {
-    if (!contextLocation) return;
     if (isManualEditing) return;
-    if (
-      contextLocation.toLowerCase() === countryQuery.trim().toLowerCase() ||
-      contextLocation.toLowerCase() === selectedCountry.toLowerCase()
-    ) {
+
+    const primaryLocation = contextLocation;
+    const fallbackCountry = contextCountry;
+
+    if (primaryLocation) {
+      if (
+        primaryLocation.toLowerCase() === countryQuery.trim().toLowerCase() &&
+        primaryLocation.toLowerCase() === selectedCountry.toLowerCase()
+      ) {
+        return;
+      }
+      setCountryQuery(primaryLocation);
+      runCountrySearch(primaryLocation, {
+        skipManualReset: true,
+        existingCity: contextCity || primaryLocation,
+        existingDisplay: primaryLocation,
+      });
       return;
     }
-    setCountryQuery(contextLocation);
-    runCountrySearch(contextLocation, { skipManualReset: true });
-  }, [contextLocation, countryQuery, selectedCountry, isManualEditing]);
+
+    if (fallbackCountry) {
+      if (fallbackCountry.toLowerCase() !== selectedCountry.toLowerCase()) {
+        setSelectedCountry(fallbackCountry);
+      }
+      if (fallbackCountry.toLowerCase() !== countryQuery.trim().toLowerCase()) {
+        setCountryQuery(fallbackCountry);
+      }
+      runCountrySearch(fallbackCountry, {
+        skipManualReset: true,
+        existingCity: contextCity || "",
+      });
+    }
+  }, [
+    contextLocation,
+    contextCountry,
+    contextCity,
+    countryQuery,
+    selectedCountry,
+    isManualEditing,
+  ]);
 
   useEffect(() => {
     if (!contextCountry) return;
@@ -275,12 +394,12 @@ export default function Emergency() {
   }, [countryQuery]);
 
   const handleCountrySelect = (value) => {
+    const next = (value || "").trim();
     setIsManualEditing(false);
-    setCountryQuery(value);
-    setSelectedCountry(value);
-    if (value) {
-      // Trigger search immediately when country is selected from dropdown
-      runCountrySearch(value);
+    setCountryQuery(next);
+    setSelectedCountry(next);
+    if (next) {
+      runCountrySearch(next);
     } else {
       setSearchedEntry(null);
       setSearchError("");
@@ -428,9 +547,11 @@ export default function Emergency() {
                 label="Or pick a country"
                 value={selectedCountry || ""}
                 onChange={(e) => handleCountrySelect(e.target.value)}
-                sx={{ minWidth: { xs: "100%", lg: 240 } }}
                 SelectProps={{
                   displayEmpty: true,
+                  MenuProps: {
+                    PaperProps: { style: { maxHeight: 320 } },
+                  },
                   renderValue: (selected) => {
                     if (!selected) {
                       return (
@@ -440,6 +561,7 @@ export default function Emergency() {
                     return selected;
                   },
                 }}
+                sx={{ minWidth: { xs: "100%", lg: 240 } }}
               >
                 <MenuItem value="">
                   <em>None</em>

@@ -183,6 +183,15 @@ VITE_API_URL=https://api.yourdomain.com
 - Server-to-server clients must include `x-timestamp` and `x-request-signature` headers for protected routes.
 - Firebase-authenticated clients are already validated by ID tokens, but background jobs or tooling **must** use signed requests.
 
+## CI/CD Secrets (GitHub Actions)
+
+- CI workflow uses dummy keys for isolated Jest/Vitest runs and does not call external services.
+- Deploy workflow (`.github/workflows/deploy.yml`) requires GitHub secrets:
+  - `FIREBASE_SERVICE_ACCOUNT` (service account JSON for Hosting + Functions deploys)
+  - `FIREBASE_PROJECT_ID`
+  - Frontend build vars: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`, `VITE_API_URL`
+- Use environment- or environment-specific secrets in GitHub to keep staging and production isolated.
+
 ### Environment-Specific Settings
 
 #### Development

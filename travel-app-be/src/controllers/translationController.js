@@ -28,6 +28,13 @@ const DEFAULT_WARM_PAIRS = (process.env.TRANSLATION_WARM_PAIRS || "")
   .split(",")
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
+const TRANSLATION_CACHE_TTL_MS = Number(
+  process.env.TRANSLATION_CACHE_TTL_MS || 10 * 60 * 1000
+);
+const TRANSLATION_CACHE_MAX = Number(
+  process.env.TRANSLATION_CACHE_MAX || 200
+);
+const translationResultCache = new Map();
 const DEFAULT_MODEL_CACHE =
   process.env.TRANSFORMERS_CACHE ||
   process.env.HF_HOME ||
@@ -79,6 +86,34 @@ warmDefaultPairs().catch((e) =>
   logError(e, { endpoint: "translation:warmup:init" })
 );
 
+function getTranslationCacheKey(text, langPair) {
+  return `${langPair}::${text}`;
+}
+
+function getCachedTranslation(key) {
+  const entry = translationResultCache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt < Date.now()) {
+    translationResultCache.delete(key);
+    return null;
+  }
+  return entry.value;
+}
+
+function setCachedTranslation(key, value) {
+  if (!value || TRANSLATION_CACHE_TTL_MS <= 0 || TRANSLATION_CACHE_MAX <= 0) {
+    return;
+  }
+  if (translationResultCache.size >= TRANSLATION_CACHE_MAX) {
+    const oldestKey = translationResultCache.keys().next().value;
+    if (oldestKey) translationResultCache.delete(oldestKey);
+  }
+  translationResultCache.set(key, {
+    value,
+    expiresAt: Date.now() + TRANSLATION_CACHE_TTL_MS,
+  });
+}
+
 exports.translateText = async (req, res) => {
   try {
     const { text, langPair } = req.body || {};
@@ -112,6 +147,15 @@ exports.translateText = async (req, res) => {
       );
     }
 
+    const cacheKey = getTranslationCacheKey(
+      cleanText.value,
+      normalizedPair.value
+    );
+    const cached = getCachedTranslation(cacheKey);
+    if (cached) {
+      return res.json({ translation: cached, provider: "cache" });
+    }
+
     const translatorLoader = await getTranslator(normalizedPair.value);
     let translator;
     try {
@@ -122,7 +166,9 @@ exports.translateText = async (req, res) => {
     }
 
     const result = await translator(cleanText.value);
-    res.json({ translation: result[0]?.translation_text || "" });
+    const translation = result[0]?.translation_text || "";
+    setCachedTranslation(cacheKey, translation);
+    res.json({ translation });
   } catch (err) {
     logError(err, { endpoint: "/api/translate" });
     res
