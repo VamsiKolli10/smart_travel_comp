@@ -1,102 +1,78 @@
 .landing-root {
   min-height: 100vh;
-  background: linear-gradient(
-    180deg,
-    var(--landing-bg, #fcfcf9) 0%,
-    rgba(33, 128, 141, 0.04) 100%
-  );
+  position: relative;
+  background:
+    radial-gradient(circle at 14% 12%, rgba(33, 128, 141, 0.16) 0%, transparent 42%),
+    radial-gradient(circle at 82% 8%, rgba(33, 128, 141, 0.08) 0%, transparent 42%),
+    linear-gradient(180deg, #f6f9fb 0%, #ffffff 42%, #f6f9fb 100%);
 }
 
 @media (min-width: 900px) {
   .landing-root {
     background:
-      radial-gradient(circle at 10% 15%, rgba(33, 128, 141, 0.18) 0%, transparent 55%),
-      radial-gradient(circle at 85% -10%, rgba(94, 82, 64, 0.15) 0%, transparent 55%),
-      var(--landing-bg, #fcfcf9);
+      radial-gradient(circle at 12% 10%, rgba(33, 128, 141, 0.18) 0%, transparent 38%),
+      radial-gradient(circle at 86% 6%, rgba(33, 128, 141, 0.1) 0%, transparent 40%),
+      linear-gradient(180deg, #f5f8fb 0%, #ffffff 36%, #f6f9fb 100%);
   }
+}
+
+.landing-root::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 28% 64%, rgba(33, 128, 141, 0.12), transparent 32%),
+    radial-gradient(circle at 76% 72%, rgba(33, 128, 141, 0.08), transparent 34%);
+  opacity: 0.6;
+  mix-blend-mode: screen;
 }
 
 html[data-theme="dark"] .landing-root {
-  --landing-bg: #0d1f24;
   background:
-    radial-gradient(circle at 10% 15%, rgba(50, 184, 198, 0.18) 0%, transparent 55%),
-    radial-gradient(circle at 85% -10%, rgba(94, 82, 64, 0.2) 0%, transparent 60%),
-    #0d1f24;
+    radial-gradient(circle at 16% 10%, rgba(50, 184, 198, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 84% 8%, rgba(50, 184, 198, 0.12) 0%, transparent 50%),
+    linear-gradient(180deg, #0c171c 0%, #0f1c22 100%);
 }
 
-html[data-theme="dark"] .landing-root .MuiCard-root {
-  background-color: rgba(16, 28, 36, 0.92) !important;
-  border: 1px solid rgba(237, 242, 243, 0.12) !important;
-  box-shadow: 0 28px 70px -45px rgba(2, 8, 18, 0.8) !important;
+html[data-theme="dark"] .landing-root::after {
+  background:
+    radial-gradient(circle at 30% 70%, rgba(50, 184, 198, 0.16), transparent 32%),
+    radial-gradient(circle at 78% 72%, rgba(50, 184, 198, 0.14), transparent 36%);
+  mix-blend-mode: lighten;
+  opacity: 0.55;
 }
 
 .landing-section-surface {
-  background-color: transparent;
+  position: relative;
+  isolation: isolate;
 }
 
-html[data-theme="dark"] .landing-root .landing-section-surface {
-  background-color: rgba(13, 31, 36, 0.78);
-  border-radius: 24px;
+.landing-section-surface::before {
+  content: "";
+  position: absolute;
+  inset: -40px;
+  background:
+    radial-gradient(circle at 10% 30%, rgba(33, 128, 141, 0.1), transparent 45%),
+    radial-gradient(circle at 90% 10%, rgba(33, 128, 141, 0.08), transparent 45%);
+  opacity: 0.45;
+  z-index: -1;
+  pointer-events: none;
 }
 
-html[data-theme="dark"] .landing-root .landing-section-surface .MuiContainer-root,
-html[data-theme="dark"] .landing-root .landing-section-surface .MuiBox-root {
-  background-color: transparent;
-}
-
-.landing-appbar {
-  background-color: rgba(252, 252, 249, 0.85);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(94, 82, 64, 0.08);
-}
-
-html[data-theme="dark"] .landing-appbar {
-  background-color: rgba(16, 32, 39, 0.75);
-  border-bottom: 1px solid rgba(237, 242, 243, 0.12);
-}
-
-.landing-toolbar {
-  min-height: 72px;
-  display: flex;
-  justify-content: space-between;
-  padding: 0 16px;
-  gap: 16px;
-}
-
-@media (min-width: 600px) {
-  .landing-toolbar {
-    padding: 0 32px;
-  }
-}
-
-@media (min-width: 900px) {
-  .landing-toolbar {
-    padding: 0 48px;
-  }
-}
-
-.landing-brand-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #21808d 0%, #32b8c6 100%);
-  color: #fcfcf9;
-}
-
-.landing-brand-title {
-  font-weight: 600;
+html[data-theme="dark"] .landing-section-surface::before {
+  background:
+    radial-gradient(circle at 12% 26%, rgba(50, 184, 198, 0.16), transparent 45%),
+    radial-gradient(circle at 88% 12%, rgba(50, 184, 198, 0.12), transparent 48%);
 }
 
 .landing-toggle-button {
-  border: 1px solid rgba(94, 82, 64, 0.12);
+  border: 1px solid rgba(33, 128, 141, 0.18);
   border-radius: 16px;
-  background-color: rgba(255, 255, 255, 0.75);
+  background-color: rgba(255, 255, 255, 0.85);
 }
 
 html[data-theme="dark"] .landing-toggle-button {
-  border: 1px solid rgba(237, 242, 243, 0.18);
-  background-color: rgba(16, 32, 39, 0.65);
+  border: 1px solid rgba(237, 242, 243, 0.2);
+  background-color: rgba(16, 32, 39, 0.72);
 }

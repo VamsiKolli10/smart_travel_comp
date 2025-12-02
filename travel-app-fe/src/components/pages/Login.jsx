@@ -204,7 +204,7 @@ export default function Login() {
     <AuthShell
       icon="🔐"
       title="Welcome back"
-      subtitle="Sign in to access your Smart Travel Companion dashboard."
+      subtitle="Sign in to access your VoxTrail dashboard."
       backLink={{ to: "/", label: "← Back to home" }}
       footer={
         <Stack spacing={1.5} alignItems="center">

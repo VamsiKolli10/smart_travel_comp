@@ -1,8 +1,8 @@
-# Smart Travel Companion - Agent Guide
+# VoxTrail - Agent Guide
 
 ## Project Overview
 
-Smart Travel Companion is a full-stack web application that provides travel-related services including translation, phrasebooks, and accommodation search. The application is built using a React frontend with a Node.js/Express backend, with Firestore as the primary database.
+VoxTrail is a full-stack web application that provides travel-related services including translation, phrasebooks, and accommodation search. The application is built using a React frontend with a Node.js/Express backend, with Firestore as the primary database.
 
 ## Architecture Overview
 

@@ -49,6 +49,23 @@ function buildPalette(mode = "light") {
   const isDark = mode === "dark";
   return {
     mode,
+    luxury: isDark
+      ? {
+          background: "#0F1C22",
+          backgroundSoft: "#13252E",
+          surface: "#162A33",
+          accent: "#32B8C6",
+          textPrimary: "#E6EEF1",
+          textSecondary: "#B1C1C6",
+        }
+      : {
+          background: "#F6F9FB",
+          backgroundSoft: "#EEF3F6",
+          surface: "#FFFFFF",
+          accent: "#21808D",
+          textPrimary: "#0F1D23",
+          textSecondary: "#627079",
+        },
     primary: {
       main: "#21808D",
       light: "#32B8C6",
@@ -69,7 +86,7 @@ function buildPalette(mode = "light") {
       primary: isDark ? "#EDF2F3" : "#13343B",
       secondary: isDark ? alpha("#EDF2F3", 0.75) : "#626C71",
     },
-    divider: isDark ? alpha("#EDF2F3", 0.12) : "rgba(94,82,64,0.12)",
+    divider: isDark ? alpha("#EDF2F3", 0.16) : alpha("#21808D", 0.18),
     error: {
       main: "#C0152F",
       light: "#FF5459",

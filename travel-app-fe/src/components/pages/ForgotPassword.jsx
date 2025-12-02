@@ -86,7 +86,7 @@ export default function ForgotPassword() {
             {[
               {
                 primary: "Check your inbox",
-                secondary: "Look for an email from Smart Travel Companion.",
+                secondary: "Look for an email from VoxTrail.",
               },
               {
                 primary: "Open the reset link",

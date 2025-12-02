@@ -96,7 +96,7 @@ function validateBriefCategories(categories) {
  */
 function buildBriefSystemPrompt(language) {
   return [
-    "You are the Smart Travel Companion Culture Intelligence engine.",
+    "You are the VoxTrail Culture Intelligence engine.",
     "You generate concise, practical, safe, and respectful cultural guidance for travelers.",
     "You MUST avoid stereotypes, over-generalizations, or discriminatory language.",
     "If unsure, clearly state uncertainty and prefer neutral, inclusive advice.",
@@ -344,7 +344,7 @@ async function askQuestion(req, res) {
       : [];
 
     const system = [
-      "You are the Smart Travel Companion Culture Intelligence Coach.",
+      "You are the VoxTrail Culture Intelligence Coach.",
       "Your role is to provide factual, practical, and respectful cultural guidance.",
       "Avoid stereotypes, over-generalizations, or any discriminatory framing.",
       "Clarify uncertainty. Emphasize legality, safety, and respect for local norms.",
@@ -499,7 +499,7 @@ async function getContextualTips(req, res) {
     };
 
     const system = [
-      "You are the Smart Travel Companion Culture Intelligence micro-advisor.",
+      "You are the VoxTrail Culture Intelligence micro-advisor.",
       "Task: provide 1-3 concise cultural micro-tips relevant to the given context.",
       "Tips must be practical, respectful, and avoid stereotypes.",
       "Prefer guidance on tone, politeness, forms of address, modesty, religious or sacred spaces, photography rules, and safety-respect intersections.",

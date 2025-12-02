@@ -1,4 +1,4 @@
-# Smart Travel Companion
+# VoxTrail
 
 An AI-assisted travel assistant that combines realtime translation, curated phrasebooks, cultural guidance, safety tooling, and accommodation discovery. This repository hosts both the React front-end (`travel-app-fe`) and the Node/Express backend (`travel-app-be`).
 
@@ -47,7 +47,7 @@ smart_travel_comp/
    - Enable Email/Password and Google OAuth providers.
    - Generate a Web App (copy the config for the front-end) and a service account (JSON) for the backend.
 2. **OpenRouter**
-   - Create an API key and optionally pick a default model (e.g., `gpt-4o-mini`).
+   - Create an API key and set `OPENROUTER_MODEL` (templates use `x-ai/grok-4.1-fast`; the backend falls back to `gpt-4o-mini` if unset).
 3. **Google Places API**
    - Enable the Places API (new) and Maps Places API (legacy photo endpoint) and create an API key.
 
@@ -61,19 +61,31 @@ cp travel-app-fe/.env.example travel-app-fe/.env
 | Variable (backend)           | Purpose                                              |
 |-----------------------------|------------------------------------------------------|
 | `APP_PORT`                  | Express port for local dev (default `8000`)          |
+| `FIRESTORE_PREFER_REST`     | Prefer Firestore REST client (set `true` in containers) |
 | `FB_ADMIN_CREDENTIALS`| **Required.** Base64-encoded Firebase service-account JSON injected via your secrets manager. No file fallback. |
 | `GOOGLE_PLACES_API_KEY`     | Enables stays search/photo proxy                     |
 | `OPENROUTER_API_KEY`        | Token for phrasebook & itinerary generation          |
-| `OPENROUTER_MODEL`          | Optional default model                               |
+| `OPENROUTER_MODEL`          | Optional default model (env templates use `x-ai/grok-4.1-fast`; code defaults to `gpt-4o-mini`) |
+| `ITINERARY_MODEL`           | Optional dedicated model just for itinerary generation |
+| `ITINERARY_ENABLE_FALLBACK` | Enable static/sample itinerary fallback (default `true`) |
 | `REQUEST_SIGNING_SECRET`    | HMAC secret required for all non-authenticated API clients |
 | `REQUEST_BODY_LIMIT`        | Override JSON payload size (default `256kb`)         |
+| `MAX_TRANSLATION_CHARS`     | Translation character ceiling (default `500`)        |
+| `TRANSLATION_WARM_PAIRS`    | Comma-separated lang pairs to pre-warm on boot (e.g., `en-es,es-en`) |
+| `TRANSFORMERS_CACHE`        | Cache directory for @xenova/transformers models      |
 | `STAYS_PER_USER_PER_HOUR` / `POI_PER_USER_PER_HOUR` / `PHRASEBOOK_MAX_REQUESTS_PER_HOUR` / `ITINERARY_MAX_REQUESTS_PER_HOUR` | Per-user quota knobs for external API usage |
+| `STAYS_SEARCH_MAX_PER_IP`   | Per-IP throttle for `/api/stays/search`              |
+| `USAGE_ALERT_FALLBACK`      | Default threshold before emitting external usage alerts |
 | `FBAPP_*`                   | Firebase JS SDK config (if using client SDK server-side) |
 
 | Variable (frontend)         | Purpose                                              |
 |-----------------------------|------------------------------------------------------|
 | `VITE_API_URL`              | Base API URL, include `/api` (e.g., `http://localhost:8000/api`) |
+| `VITE_API_TIMEOUT`          | Optional axios timeout (ms)                          |
 | `VITE_FIREBASE_*`           | Firebase Web App configuration                       |
+| `VITE_ENABLE_ITINERARY_PLANNER` | Toggle Discover itinerary planner UI             |
+| `VITE_ENABLE_OFFLINE_MODE`  | Enable optional offline caching helpers              |
+| `VITE_ANALYTICS_WRITE_KEY`  | External analytics key (when analytics is on)        |
 
 > 🔐 **Secret storage**: The backend now _only_ reads credentials from `FB_ADMIN_CREDENTIALS` (formerly `FIREBASE_ADMIN_CREDENTIALS`). Encode the raw service-account JSON (or paste the JSON directly) into the env var provided by your hosting platform or local `.env`. The legacy `serviceAccountKey.json` file has been removed to avoid accidental leaks.
 
@@ -108,6 +120,8 @@ The API will be reachable on `http://localhost:8000`. Core routes (see `API_Docu
 | `POST /api/culture/contextual`             | Micro-tips for translation/POI/stay contexts                   |
 | `GET /api/cultural-etiquette`              | Legacy alias for the culture brief                             |
 | `GET /api/itinerary/generate`              | Generate itineraries (used by Discover Itinerary planner beta) |
+
+Rate limits in dev mirror production defaults: 20 requests/min (anonymous), 60/min (authenticated), and 120/min (admin), plus endpoint quotas driven by `STAYS_PER_USER_PER_HOUR`, `STAYS_SEARCH_MAX_PER_IP`, `POI_PER_USER_PER_HOUR`, `PHRASEBOOK_MAX_REQUESTS_PER_HOUR`, and `ITINERARY_MAX_REQUESTS_PER_HOUR`. Adjust these envs if you hit throttles during local testing.
 
 ### Firestore Rules
 

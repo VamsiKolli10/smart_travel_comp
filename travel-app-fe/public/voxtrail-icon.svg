@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="VoxTrail logo">
+  <defs>
+    <linearGradient id="voxtrail-bg" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#21808D" />
+      <stop offset="1" stop-color="#1D7480" />
+    </linearGradient>
+    <linearGradient id="voxtrail-path" x1="16" y1="16" x2="52" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FCFCF9" />
+      <stop offset="1" stop-color="#D3EEF3" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0F1C22" />
+  <rect width="64" height="64" rx="14" fill="url(#voxtrail-bg)" opacity="0.9" />
+  <path
+    d="M14 46c6.5-9.5 12.5-15.5 20-22l7 15 9-19"
+    fill="none"
+    stroke="url(#voxtrail-path)"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="18" cy="44" r="4" fill="#FCFCF9" opacity="0.9" />
+  <circle cx="50" cy="20" r="7" fill="#32B8C6" stroke="#FCFCF9" stroke-width="3" />
+  <circle cx="50" cy="20" r="2" fill="#0F1C22" />
+</svg>

@@ -1,4 +1,4 @@
-Smart Travel Companion – Detailed Module Flowcharts
+VoxTrail – Detailed Module Flowcharts
 ==================================================
 
 Auth & App Shell

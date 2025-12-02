@@ -1,4 +1,4 @@
-# Smart Travel Companion - API Documentation
+# VoxTrail - API Documentation
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@
 
 Base URL: `https://your-api-domain.com/api`
 
-The Smart Travel Companion API provides travel-related services including translation, phrasebooks, accommodation search, and points of interest discovery.
+The VoxTrail API provides travel-related services including translation, phrasebooks, accommodation search, and points of interest discovery.
 
 ### Production Status
 

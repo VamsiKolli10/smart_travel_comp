@@ -1,4 +1,4 @@
-# Smart Travel Companion - Monitoring & Logging Guide
+# VoxTrail - Monitoring & Logging Guide
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@
 
 ## Overview
 
-The Smart Travel Companion application includes comprehensive logging and monitoring capabilities to ensure reliable operation in production. This guide covers all aspects of monitoring, from application logs to infrastructure metrics.
+The VoxTrail application includes comprehensive logging and monitoring capabilities to ensure reliable operation in production. This guide covers all aspects of monitoring, from application logs to infrastructure metrics.
 
 ## Built-in Logging
 

@@ -1,4 +1,4 @@
-Jira Tasks - Smart Travel Companion
+Jira Tasks - VoxTrail
 
 1. STAYS MODULE
    - Sync Stays search input with global travel context (auto-fill destination, lat/lng).

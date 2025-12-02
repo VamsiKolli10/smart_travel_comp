@@ -8,7 +8,7 @@ usage() {
   cat <<'EOF'
 Usage: scripts/firebase-deploy.sh [options]
 
-Automates the Firebase deployment for the Smart Travel Companion stack by:
+Automates the Firebase deployment for the VoxTrail stack by:
   1. Building the Vite frontend (travel-app-fe)
   2. Copying the build artifacts into travel-app-be/public
   3. Running firebase deploy (hosting + backend functions)

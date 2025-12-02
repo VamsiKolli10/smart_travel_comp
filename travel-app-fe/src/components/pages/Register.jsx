@@ -129,7 +129,7 @@ export default function Register() {
     <AuthShell
       icon="🧭"
       title="Create your account"
-      subtitle="Set up your Smart Travel Companion profile in minutes."
+      subtitle="Set up your VoxTrail profile in minutes."
       backLink={{ to: "/", label: "← Back to home" }}
       footer={
         <Typography variant="body2" color="text.secondary" align="center">

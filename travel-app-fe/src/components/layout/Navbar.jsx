@@ -138,7 +138,7 @@ export default function Navbar() {
       >
         <StyledLink
           to={user ? "/home" : "/"}
-          aria-label="Smart Travel Companion home"
+          aria-label="VoxTrail home"
         >
           <Typography
             variant="h6"
@@ -150,7 +150,7 @@ export default function Navbar() {
               WebkitTextFillColor: "transparent",
             }}
           >
-            Smart Travel Companion
+            VoxTrail
           </Typography>
         </StyledLink>
         {!isMobile && user && (

@@ -1,4 +1,4 @@
-# Smart Travel Companion – Testing Quickstart
+# VoxTrail – Testing Quickstart
 
 Keep it simple: one section for backend (Jest) and one for frontend (Vitest). Both run offline with mocks.
 

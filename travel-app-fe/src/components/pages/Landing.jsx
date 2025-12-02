@@ -1,4 +1,4 @@
-import { Fragment, useMemo } from "react";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Box,
@@ -8,6 +8,7 @@ import {
   Container,
   Divider,
   Grid,
+  IconButton,
   Stack,
   Typography,
   useMediaQuery,
@@ -15,15 +16,23 @@ import {
 } from "@mui/material";
 import {
   AirplanemodeActive as PlaneIcon,
+  Brightness4 as DarkIcon,
+  Brightness7 as LightIcon,
   Explore as ExploreIcon,
   Language as LanguageIcon,
   LocalActivity as ActivityIcon,
+  Map as MapIcon,
   Security as SecurityIcon,
+  TravelExplore as TravelExploreIcon,
+  Hotel as HotelIcon,
+  CheckCircle as CheckIcon,
+  AccessTime as AccessTimeIcon,
+  Groups as GroupsIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import Button from "../common/Button";
 import { ModuleCard, ModuleCardGrid } from "../common/ModuleCard";
-import SharedNavbar from "../layout/SharedNavbar";
+import { useAppearance } from "../../contexts/AppearanceContext.jsx";
 import "./Landing.css";
 
 const heroAnimation = {
@@ -42,16 +51,25 @@ export default function Landing() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
+  const { mode, toggleMode } = useAppearance();
 
   const heroMetrics = useMemo(
     () => [
-      { value: "120K+", label: "Journeys planned", helper: "↑18% this year" },
       {
-        value: "190+",
-        label: "Curated locales",
-        helper: "Across 6 continents",
+        value: "200+",
+        label: "Languages & dialects",
+        helper: "Instant, camera-friendly",
       },
-      { value: "4.9", label: "Average rating", helper: "32K traveler reviews" },
+      {
+        value: "2.1M",
+        label: "POI signals tracked",
+        helper: "Safety + context",
+      },
+      {
+        value: "4.9",
+        label: "Traveler rating",
+        helper: "Built for real trips",
+      },
     ],
     []
   );
@@ -60,31 +78,45 @@ export default function Landing() {
     () => [
       {
         icon: <LanguageIcon color="primary" />,
-        title: "Live Translation",
+        title: "Translate & Phrasebooks",
         description:
-          "Instant voice and text translation with offline phrasebook sync for your entire crew.",
-        badge: "AI powered",
-      },
-      {
-        icon: <ExploreIcon color="primary" />,
-        title: "Curated Guides",
-        description:
-          "Neighbourhood-level insights and etiquette notes prepared with local experts.",
-        badge: "Local insights",
-      },
-      {
-        icon: <SecurityIcon color="primary" />,
-        title: "Safety Pulse",
-        description:
-          "Emergency cards, geo alerts, and quick-share routines to keep everyone aligned.",
-        badge: "Always on",
+          "Voice, text, and camera translation with phrase tiles you can pin, reorder, and hand off quickly.",
+        badge: "Languages",
       },
       {
         icon: <ActivityIcon color="primary" />,
-        title: "Adaptive Itineraries",
+        title: "Phrasebook Studio",
         description:
-          "Drop in flights and preferences—get dynamic itineraries that flex with weather and crowds.",
-        badge: "Dynamic",
+          "Generate etiquette notes and usage examples via `/phrasebook/generate`, then curate and share with your crew.",
+        badge: "Studio",
+      },
+      {
+        icon: <HotelIcon color="primary" />,
+        title: "Stays with Context",
+        description:
+          "Search `/stays/search` with destination or coords; every result ships with neighborhood signals and arrival briefs.",
+        badge: "Stays",
+      },
+      {
+        icon: <TravelExploreIcon color="primary" />,
+        title: "POI & Discover",
+        description:
+          "Map-ready POIs from `/poi/search`, curated guides, and itinerary generation that honors your travel context.",
+        badge: "Discovery",
+      },
+      {
+        icon: <ExploreIcon color="primary" />,
+        title: "Culture Intel",
+        description:
+          "Etiquette and customs from culture endpoints tied to your trip—so greetings, tipping, and faux pas are covered.",
+        badge: "Culture",
+      },
+      {
+        icon: <SecurityIcon color="primary" />,
+        title: "Emergency Ready",
+        description:
+          "Emergency cards, alerts, and SOS sharing that follow your travel context so the crew stays aligned when it matters.",
+        badge: "Safety",
       },
     ],
     []
@@ -93,21 +125,21 @@ export default function Landing() {
   const itineraries = useMemo(
     () => [
       {
-        title: "Kyoto In Bloom",
-        subtitle: "7 days · Japan",
-        points: ["Tea masterclass", "Hidden shrines", "Sunrise hike"],
+        title: "Kyoto Ground Truth",
+        subtitle: "7 stops · Japan",
+        points: ["Train handoffs", "Allergy cards", "Shrine etiquette"],
         accent: theme.palette.primary.light,
       },
       {
         title: "Nordic Nightfall",
-        subtitle: "5 days · Iceland",
-        points: ["Aurora chase", "Glacier trek", "Blue lagoon"],
+        subtitle: "5 stops · Iceland",
+        points: ["Aurora alerts", "Safe stays", "Thermal pools"],
         accent: "#64B5F6",
       },
       {
         title: "Lisbon Slow Tour",
-        subtitle: "6 days · Portugal",
-        points: ["Tile workshop", "Rooftop fado", "Sunset sail"],
+        subtitle: "6 stops · Portugal",
+        points: ["Metro phrases", "Tile workshop", "Sunset sail"],
         accent: "#81C784",
       },
     ],
@@ -118,14 +150,14 @@ export default function Landing() {
     () => [
       {
         quote:
-          "The itinerary builder felt like having a concierge in my pocket. Every recommendation landed perfectly.",
+          "Translations, POIs, and safety nudges all live in one place. I stopped hopping between five apps on day one.",
         name: "Riya Patel",
         role: "Solo explorer",
         flag: "🇸🇬",
       },
       {
         quote:
-          "Emergency alerts kept our family synced across Paris. Offline phrase cards were a lifesaver.",
+          "Our crew shared phrase cards, arrival briefs, and hotel picks. The calm came from knowing everyone was synced.",
         name: "Martin Dupont",
         role: "Family traveler",
         flag: "🇫🇷",
@@ -134,31 +166,197 @@ export default function Landing() {
     []
   );
 
+  const journeySteps = useMemo(
+    () => [
+      {
+        title: "Create your workspace",
+        description:
+          "Sign in, invite your crew, and lean on Firebase auth, role-based access, and standardized responses.",
+        icon: <GroupsIcon fontSize="small" />,
+        accent: "#32B8C6",
+        meta: "Setup",
+      },
+      {
+        title: "Sync travel context",
+        description:
+          "Pick a destination and languages once—translation, stays, POIs, culture, and emergency modules stay in lockstep.",
+        icon: <MapIcon fontSize="small" />,
+        accent: "#7CB342",
+        meta: "Context-aware",
+      },
+      {
+        title: "Translate & build phrasebooks",
+        description:
+          "Use `/translate` and `/phrasebook/generate` to prep etiquette, allergy, and transit cards—then share as tiles.",
+        icon: <LanguageIcon fontSize="small" />,
+        accent: "#F59E0B",
+        meta: "Language",
+      },
+      {
+        title: "Search stays & POIs",
+        description:
+          "Call `/stays/search` and `/poi/search` for vetted results with map-friendly details and safety signals.",
+        icon: <TravelExploreIcon fontSize="small" />,
+        accent: "#64B5F6",
+        meta: "Discovery",
+      },
+      {
+        title: "Share safety & culture",
+        description:
+          "Emergency briefs, culture intel, and check-ins adapt to your context so everyone arrives ready.",
+        icon: <SecurityIcon fontSize="small" />,
+        accent: "#E45A4F",
+        meta: "Safety",
+      },
+    ],
+    []
+  );
+
+  const platformSignals = useMemo(
+    () => [
+      {
+        title: "Multi-layer protection",
+        description:
+          "Role-based rate limits (20/60/120 per min), JWT auth, and security headers keep calls predictable.",
+        icon: <AccessTimeIcon fontSize="small" />,
+      },
+      {
+        title: "Travel context everywhere",
+        description:
+          "Destinations, coords, and languages persist across translation, stays, POIs, culture, and emergency.",
+        icon: <MapIcon fontSize="small" />,
+      },
+      {
+        title: "Context-ready handoffs",
+        description:
+          "Phrase cards stay organized; emergency info and briefs are ready to share when needed.",
+        icon: <TravelExploreIcon fontSize="small" />,
+      },
+      {
+        title: "Production ready",
+        description:
+          "Standardized errors, monitoring, logging, and deployment via Firebase Hosting + Functions.",
+        icon: <SecurityIcon fontSize="small" />,
+      },
+    ],
+    []
+  );
+
   return (
     <Box className="landing-root">
-      {/* <SharedNavbar isLanding={true} /> */}
+      <IconButton
+        aria-label={`Switch to ${mode === "light" ? "dark" : "light"} mode`}
+        onClick={toggleMode}
+        className="landing-toggle-button"
+        sx={{
+          position: "fixed",
+          top: 18,
+          right: 18,
+          zIndex: 2000,
+          backgroundColor:
+            mode === "light" ? "rgba(255,255,255,0.9)" : "rgba(16,28,36,0.85)",
+          border: (t) => `1px solid ${t.palette.divider}`,
+          color: "inherit",
+          "&:hover": {
+            backgroundColor:
+              mode === "light" ? "rgba(255,255,255,1)" : "rgba(18,32,40,0.95)",
+          },
+        }}
+      >
+        {mode === "light" ? <DarkIcon /> : <LightIcon />}
+      </IconButton>
+
       <main>
         <HeroSection
-          metrics={heroMetrics}
           onPrimary={() => navigate("/register")}
           onSecondary={() => navigate("/login")}
           isMdUp={isMdUp}
         />
-        <HighlightsSection cards={highlightCards} />
-        <ItinerarySection
-          itineraries={itineraries}
-          onPrimary={() => navigate("/login")}
-        />
-        <TestimonialsSection testimonials={testimonials} />
-        <FinalCTA />
+
+        <SectionWrapper surface>
+          <HighlightsSection cards={highlightCards} />
+        </SectionWrapper>
+
+        <SectionWrapper background>
+          <ItinerarySection
+            itineraries={itineraries}
+            onPrimary={() => navigate("/login")}
+          />
+        </SectionWrapper>
+
+        <SectionWrapper surface>
+          <TestimonialsSection testimonials={testimonials} />
+        </SectionWrapper>
+
+        <SectionWrapper background>
+          <SignalsSection signals={platformSignals} />
+        </SectionWrapper>
+
+        <Box
+          sx={(theme) => ({
+            background:
+              theme.palette.mode === "light"
+                ? "linear-gradient(160deg, rgba(33,128,141,0.14) 0%, rgba(33,128,141,0.08) 100%)"
+                : "linear-gradient(160deg, rgba(33,128,141,0.28) 0%, rgba(16,28,36,0.92) 100%)",
+            boxShadow:
+              theme.palette.mode === "light"
+                ? "0px 12px 40px rgba(0,0,0,0.08)"
+                : "0px 12px 40px rgba(0,0,0,0.45)",
+            borderRadius: "24px",
+            py: { xs: 6, md: 8 },
+            px: { xs: 3, md: 6 },
+            maxWidth: "900px",
+            mx: "auto",
+            my: { xs: "60px", md: "80px" },
+            border: (t) => `1px solid ${t.palette.divider}`,
+          })}
+        >
+          <FinalCTA />
+        </Box>
       </main>
     </Box>
   );
 }
 
-function HeroSection({ metrics, onPrimary, onSecondary, isMdUp }) {
+function SectionWrapper({ surface = false, background = false, children }) {
   return (
-    <Box sx={{ pt: { xs: 18, md: 22 }, pb: { xs: 10, md: 16 } }}>
+    <Box
+      sx={(theme) => ({
+        backgroundColor: surface
+          ? theme.palette.luxury.surface
+          : background
+          ? theme.palette.luxury.background
+          : "transparent",
+        py: { xs: 6, md: 10 },
+        my: { xs: "50px", md: "70px" },
+        px: { xs: 2, md: 6 },
+        borderRadius: surface || background ? 4 : 0,
+        border:
+          surface || background ? `1px solid ${theme.palette.divider}` : "none",
+      })}
+      className="landing-section-surface"
+    >
+      {children}
+    </Box>
+  );
+}
+
+function HeroSection({ metrics, onPrimary, onSecondary, isMdUp }) {
+  const quickBadges = [
+    { icon: <LanguageIcon fontSize="small" />, label: "Instant translator" },
+    { icon: <MapIcon fontSize="small" />, label: "Travel context sync" },
+    { icon: <SecurityIcon fontSize="small" />, label: "Safety brief ready" },
+    { icon: <AccessTimeIcon fontSize="small" />, label: "Quick updates" },
+  ];
+
+  return (
+    <Box
+      sx={{
+        pt: { xs: 18, md: 22 },
+        pb: { xs: 10, md: 16 },
+        position: "relative",
+      }}
+    >
       <Container maxWidth="lg">
         <Stack
           direction={{ xs: "column", md: "row" }}
@@ -189,7 +387,7 @@ function HeroSection({ metrics, onPrimary, onSecondary, isMdUp }) {
                 letterSpacing: "-0.015em",
               }}
             >
-              Craft immersive journeys with a unified travel workspace.
+              One travel workspace for translation, stays, POIs, and safety.
             </Typography>
             <Typography
               component={motion.p}
@@ -198,9 +396,9 @@ function HeroSection({ metrics, onPrimary, onSecondary, isMdUp }) {
               color="text.secondary"
               sx={{ maxWidth: 520, fontSize: { md: "1.05rem" } }}
             >
-              Bring translations, curated guides, safety briefings, and adaptive
-              itineraries into one intuitive hub built for modern explorers who
-              want freedom with confidence.
+              Translation, phrasebooks, stays, POIs, culture intel, and
+              emergency workflows stay connected through a single travel context
+              you can trust across the app.
             </Typography>
             <Stack
               component={motion.div}
@@ -215,6 +413,39 @@ function HeroSection({ metrics, onPrimary, onSecondary, isMdUp }) {
                 Preview the dashboard
               </Button>
             </Stack>
+
+            <Stack
+              component={motion.div}
+              variants={heroAnimation}
+              direction="row"
+              spacing={1.5}
+              flexWrap="wrap"
+              alignItems="center"
+            >
+              {quickBadges.map((badge) => (
+                <Chip
+                  key={badge.label}
+                  icon={badge.icon}
+                  label={badge.label}
+                  variant="outlined"
+                  sx={(theme) => ({
+                    borderRadius: 99,
+                    fontWeight: 600,
+                    borderColor: theme.palette.divider,
+                    backgroundColor:
+                      theme.palette.mode === "light"
+                        ? "rgba(255,255,255,0.8)"
+                        : "rgba(16,32,39,0.75)",
+                    color:
+                      theme.palette.mode === "light"
+                        ? theme.palette.text.primary
+                        : "#E1E8EA",
+                    "& .MuiChip-icon": { color: "inherit" },
+                    backdropFilter: "blur(6px)",
+                  })}
+                />
+              ))}
+            </Stack>
           </Stack>
           <Card
             component={motion.div}
@@ -223,21 +454,33 @@ function HeroSection({ metrics, onPrimary, onSecondary, isMdUp }) {
             sx={{
               flex: isMdUp ? "0 0 360px" : "1",
               borderRadius: 4,
-              border: "1px solid rgba(255,255,255,0.15)",
-              background:
-                "linear-gradient(160deg, rgba(19,52,59,0.92) 0%, rgba(33,128,141,0.85) 100%)",
+              border: "1px solid rgba(255,255,255,0.24)",
+              background: (theme) =>
+                theme.palette.mode === "light"
+                  ? "linear-gradient(155deg, rgba(42,120,132,0.9) 0%, rgba(78,177,191,0.92) 100%)"
+                  : "linear-gradient(160deg, rgba(7,18,24,0.98) 0%, rgba(26,96,108,0.92) 100%)",
               color: "#FCFCF9",
-              boxShadow: "0 30px 70px -40px rgba(3,9,18,0.8)",
+              boxShadow: "0 30px 90px -40px rgba(3,9,18,0.9)",
               position: "relative",
               overflow: "hidden",
             }}
           >
+            <Box
+              sx={{
+                position: "absolute",
+                inset: 0,
+                background:
+                  "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.12), transparent 40%)",
+                opacity: 0.8,
+              }}
+            />
             <CardContent
               sx={{
                 p: { xs: 3, md: 4 },
                 display: "flex",
                 flexDirection: "column",
                 gap: 3,
+                color: "#EAF4F6",
               }}
             >
               <Stack direction="row" spacing={2} alignItems="center">
@@ -256,56 +499,52 @@ function HeroSection({ metrics, onPrimary, onSecondary, isMdUp }) {
                   <PlaneIcon fontSize="medium" />
                 </Box>
                 <Box>
-                  <Typography variant="subtitle2" sx={{ opacity: 0.7 }}>
+                  <Typography variant="subtitle2" sx={{ opacity: 0.9 }}>
                     Live itinerary pulse
                   </Typography>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    Kyoto in Bloom departs in 3 weeks
+                  <Typography
+                    variant="subtitle1"
+                    sx={{ fontWeight: 700, color: "#FFFFFF" }}
+                  >
+                    Kyoto in Bloom · departs in 3 weeks
                   </Typography>
                 </Box>
               </Stack>
               <Divider sx={{ borderColor: "rgba(255,255,255,0.12)" }} />
-              <Stack spacing={1.5}>
-                <Stack direction="row" spacing={1} flexWrap="wrap">
-                  <Chip
-                    label="Cultural etiquette"
-                    variant="outlined"
-                    sx={{
-                      color: "#FCFCF9",
-                      borderColor: "rgba(255,255,255,0.3)",
-                    }}
+              <Stack spacing={1.75}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <AccessTimeIcon
+                    fontSize="small"
+                    sx={{ opacity: 0.9, color: "#E8F4F6" }}
                   />
-                  <Chip
-                    label="Offline translator"
-                    variant="outlined"
-                    sx={{
-                      color: "#FCFCF9",
-                      borderColor: "rgba(255,255,255,0.3)",
-                    }}
-                  />
-                  <Chip
-                    label="Shared safety brief"
-                    variant="outlined"
-                    sx={{
-                      color: "#FCFCF9",
-                      borderColor: "rgba(255,255,255,0.3)",
-                    }}
-                  />
+                  <Typography variant="body2" sx={{ color: "#EAF4F6" }}>
+                    Next step · Generate itinerary
+                  </Typography>
                 </Stack>
-                <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                  Real-time syncing across your traveling party with cultural
-                  nudges, emergency briefs, and translation shortcuts ready when
-                  you are.
-                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <MapIcon
+                    fontSize="small"
+                    sx={{ opacity: 0.9, color: "#E8F4F6" }}
+                  />
+                  <Typography variant="body2" sx={{ color: "#EAF4F6" }}>
+                    POIs synced from your destination search
+                  </Typography>
+                </Stack>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <LanguageIcon
+                    fontSize="small"
+                    sx={{ opacity: 0.9, color: "#E8F4F6" }}
+                  />
+                  <Typography variant="body2" sx={{ color: "#EAF4F6" }}>
+                    Translation + phrasebook ready to pin
+                  </Typography>
+                </Stack>
               </Stack>
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={onPrimary}
-                sx={{ alignSelf: "flex-start" }}
-              >
-                Build my trip
-              </Button>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                <Button variant="contained" onClick={onPrimary} size="large">
+                  Build my trip
+                </Button>
+              </Stack>
             </CardContent>
           </Card>
         </Stack>
@@ -316,24 +555,36 @@ function HeroSection({ metrics, onPrimary, onSecondary, isMdUp }) {
 
 function HighlightsSection({ cards }) {
   return (
-    <Container
-      maxWidth="lg"
-      sx={{ pb: { xs: 10, md: 14 } }}
-      className="landing-section-surface"
-    >
-      <Stack spacing={2.5} sx={{ maxWidth: 640, mb: 4 }}>
+    <Container maxWidth="lg">
+      <Stack spacing={2.5} sx={{ maxWidth: 720, mb: { xs: 2, md: 3 } }}>
         <Chip
-          label="Powerful on every journey"
+          label="Built for connected travel"
           color="primary"
           variant="outlined"
           sx={{ alignSelf: "flex-start", fontWeight: 600 }}
         />
-        <Typography variant="h4" sx={{ fontWeight: 600 }}>
-          The tools you need before, during, and after takeoff.
+        <Typography
+          sx={(theme) => ({
+            fontSize: { xs: "2.5rem", md: "3.25rem" },
+            fontWeight: 500,
+            letterSpacing: "-0.8px",
+            color: theme.palette.text.primary,
+            mb: 2,
+          })}
+        >
+          Translate, plan stays, discover POIs, and stay safe—one companion.
         </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Keep language, planning, and safety in sync so you can stay immersed
-          in the moments that matter.
+        <Typography
+          sx={(theme) => ({
+            fontSize: "1.125rem",
+            color: theme.palette.text.secondary,
+            fontWeight: 300,
+            lineHeight: 1.6,
+          })}
+        >
+          Modules stay in sync through a shared travel context: languages,
+          destinations, coordinates, culture intel, and emergency data follow
+          wherever you go.
         </Typography>
       </Stack>
       <ModuleCardGrid>
@@ -341,20 +592,13 @@ function HighlightsSection({ cards }) {
           <ModuleCard
             key={card.title}
             sx={{
-              border: (theme) =>
-                `1px solid ${
-                  theme.palette.mode === "dark"
-                    ? "rgba(237,242,243,0.14)"
-                    : "rgba(94,82,64,0.12)"
-                }`,
-              backgroundColor: (theme) =>
-                theme.palette.mode === "dark"
-                  ? "rgba(16,28,36,0.94)"
-                  : "rgba(255,255,255,0.9)",
+              border: (theme) => `1px solid ${theme.palette.divider}`,
+              backgroundColor: (theme) => theme.palette.luxury.surface,
               boxShadow: (theme) =>
                 theme.palette.mode === "dark"
                   ? "0 30px 80px -48px rgba(2,8,18,0.85)"
                   : "0 24px 70px -45px rgba(12,32,44,0.45)",
+              backdropFilter: "blur(8px)",
             }}
           >
             <CardContent
@@ -397,135 +641,151 @@ function HighlightsSection({ cards }) {
 
 function ItinerarySection({ itineraries, onPrimary }) {
   return (
-    <Box
-      sx={{
-        py: { xs: 10, md: 14 },
-        backgroundColor: (theme) =>
-          theme.palette.mode === "dark"
-            ? "rgba(16,32,39,0.85)"
-            : "rgba(252,252,249,0.8)",
-      }}
-      className="landing-section-surface"
-    >
-      <Container maxWidth="lg">
-        <Stack spacing={2.5} sx={{ maxWidth: 640, mb: 4 }}>
-          <Chip
-            label="Curated adventures"
-            color="primary"
-            variant="outlined"
-            sx={{ alignSelf: "flex-start", fontWeight: 600 }}
-          />
-          <Typography variant="h4" sx={{ fontWeight: 600 }}>
-            Ready-made journeys that adapt to you.
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Signature itineraries crafted with local experts stay flexible with
-            live updates, collaborative planning, and safety workflows.
-          </Typography>
-        </Stack>
-        <ModuleCardGrid>
-          {itineraries.map((trip) => (
-            <ModuleCard
-              key={trip.title}
-              interactive
+    <Container maxWidth="lg">
+      <Stack spacing={2.5} sx={{ maxWidth: 640, mb: { xs: 2, md: 3 } }}>
+        <Chip
+          label="Curated adventures"
+          color="primary"
+          variant="outlined"
+          sx={{ alignSelf: "flex-start", fontWeight: 600 }}
+        />
+        <Typography
+          sx={(theme) => ({
+            fontSize: { xs: "2.5rem", md: "3.25rem" },
+            fontWeight: 500,
+            letterSpacing: "-0.8px",
+            color: theme.palette.text.primary,
+            mb: 2,
+          })}
+        >
+          Journeys with translations, POIs, and stays already connected.
+        </Typography>
+        <Typography
+          sx={(theme) => ({
+            fontSize: "1.125rem",
+            color: theme.palette.text.secondary,
+            fontWeight: 300,
+            lineHeight: 1.6,
+          })}
+        >
+          Signature itineraries stay flexible with live language tools, POI
+          context, arrival briefs, and collaborative planning baked in.
+        </Typography>
+      </Stack>
+      <ModuleCardGrid>
+        {itineraries.map((trip) => (
+          <ModuleCard
+            key={trip.title}
+            interactive
+            sx={{
+              border: (theme) => `1px solid ${theme.palette.divider}`,
+              backgroundColor: (theme) => theme.palette.luxury.surface,
+              boxShadow: (theme) =>
+                theme.palette.mode === "dark"
+                  ? "0 32px 90px -46px rgba(2,8,18,0.88)"
+                  : "0 24px 70px -45px rgba(12,32,44,0.45)",
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            <CardContent
               sx={{
-                border: (theme) =>
-                  `1px solid ${
-                    theme.palette.mode === "dark"
-                      ? "rgba(237,242,243,0.14)"
-                      : "rgba(94,82,64,0.12)"
-                  }`,
-                backgroundColor: (theme) =>
-                  theme.palette.mode === "dark"
-                    ? "rgba(12,22,30,0.94)"
-                    : "#FFFFFD",
-                boxShadow: (theme) =>
-                  theme.palette.mode === "dark"
-                    ? "0 32px 90px -46px rgba(2,8,18,0.88)"
-                    : "0 24px 70px -45px rgba(12,32,44,0.45)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 2.5,
+                height: "100%",
               }}
             >
-              <CardContent
-                sx={{
+              <Box
+                sx={(theme) => ({
+                  borderRadius: 3,
+                  height: 160,
+                  background: `linear-gradient(145deg, ${trip.accent} 0%, rgba(250,250,250,0.4) 100%)`,
                   display: "flex",
-                  flexDirection: "column",
-                  gap: 2.5,
-                  height: "100%",
-                }}
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 14,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  color:
+                    theme.palette.mode === "light"
+                      ? "#0B1A1F"
+                      : "rgba(10,18,23,0.8)",
+                  textShadow:
+                    theme.palette.mode === "light"
+                      ? "none"
+                      : "0 1px 8px rgba(0,0,0,0.45)",
+                })}
               >
-                <Box
-                  sx={{
-                    borderRadius: 3,
-                    height: 160,
-                    background: `linear-gradient(145deg, ${trip.accent} 0%, rgba(250,250,250,0.4) 100%)`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 14,
-                    letterSpacing: "0.18em",
-                    textTransform: "uppercase",
-                  }}
+                {trip.subtitle}
+              </Box>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  {trip.title}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 0.5 }}
                 >
-                  {trip.subtitle}
-                </Box>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    {trip.title}
-                  </Typography>
+                  Guided experiences · Flexible itineraries
+                </Typography>
+              </Box>
+              <Stack spacing={1}>
+                {trip.points.map((point) => (
                   <Typography
+                    key={point}
                     variant="body2"
                     color="text.secondary"
-                    sx={{ mt: 0.5 }}
                   >
-                    Guided experiences · Flexible itineraries
+                    • {point}
                   </Typography>
-                </Box>
-                <Stack spacing={1}>
-                  {trip.points.map((point) => (
-                    <Typography
-                      key={point}
-                      variant="body2"
-                      color="text.secondary"
-                    >
-                      • {point}
-                    </Typography>
-                  ))}
-                </Stack>
-                <Button
-                  variant="contained"
-                  onClick={onPrimary}
-                  sx={{ alignSelf: "flex-start", mt: "auto" }}
-                >
-                  View details
-                </Button>
-              </CardContent>
-            </ModuleCard>
-          ))}
-        </ModuleCardGrid>
-      </Container>
-    </Box>
+                ))}
+              </Stack>
+              <Button
+                variant="contained"
+                onClick={onPrimary}
+                sx={{ alignSelf: "flex-start", mt: "auto" }}
+              >
+                View details
+              </Button>
+            </CardContent>
+          </ModuleCard>
+        ))}
+      </ModuleCardGrid>
+    </Container>
   );
 }
 
 function TestimonialsSection({ testimonials }) {
   return (
-    <Container
-      maxWidth="lg"
-      sx={{ py: { xs: 10, md: 14 } }}
-      className="landing-section-surface"
-    >
-      <Stack spacing={2.5} sx={{ maxWidth: 640, mb: 4 }}>
+    <Container maxWidth="lg">
+      <Stack spacing={2.5} sx={{ maxWidth: 640, mb: { xs: 2, md: 3 } }}>
         <Chip
           label="Loved by explorers worldwide"
           color="primary"
           variant="outlined"
           sx={{ alignSelf: "flex-start", fontWeight: 600 }}
         />
-        <Typography variant="h4" sx={{ fontWeight: 600 }}>
+        <Typography
+          sx={(theme) => ({
+            fontSize: { xs: "2.5rem", md: "3.25rem" },
+            fontWeight: 500,
+            letterSpacing: "-0.8px",
+            color: theme.palette.text.primary,
+            mb: 2,
+          })}
+        >
           Designed for planners, dreamers, and spontaneous detours.
         </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Whether you travel solo or with family, Smart Travel Companion keeps
+        <Typography
+          sx={(theme) => ({
+            fontSize: "1.125rem",
+            color: theme.palette.text.secondary,
+            fontWeight: 300,
+            lineHeight: 1.6,
+          })}
+        >
+          Whether you travel solo or with family, VoxTrail keeps
           each traveler informed and inspired.
         </Typography>
       </Stack>
@@ -536,20 +796,13 @@ function TestimonialsSection({ testimonials }) {
               sx={{
                 height: "100%",
                 borderRadius: 3,
-                border: (theme) =>
-                  `1px solid ${
-                    theme.palette.mode === "dark"
-                      ? "rgba(237,242,243,0.12)"
-                      : "rgba(94,82,64,0.12)"
-                  }`,
-                backgroundColor: (theme) =>
-                  theme.palette.mode === "dark"
-                    ? "rgba(15,26,34,0.95)"
-                    : theme.palette.background.paper,
+                border: (theme) => `1px solid ${theme.palette.divider}`,
+                backgroundColor: (theme) => theme.palette.luxury.surface,
                 boxShadow: (theme) =>
                   theme.palette.mode === "dark"
                     ? "0 30px 80px -50px rgba(2,8,18,0.86)"
                     : theme.shadows[2],
+                backdropFilter: "blur(6px)",
               }}
             >
               <CardContent
@@ -576,85 +829,143 @@ function TestimonialsSection({ testimonials }) {
   );
 }
 
+function SignalsSection({ signals }) {
+  return (
+    <Container maxWidth="lg">
+      <Stack spacing={2.5} sx={{ maxWidth: 680, mb: { xs: 2, md: 3 } }}>
+        <Chip
+          label="Built to ship"
+          color="primary"
+          variant="outlined"
+          sx={{ alignSelf: "flex-start", fontWeight: 600 }}
+        />
+        <Typography
+          sx={(theme) => ({
+            fontSize: { xs: "2.35rem", md: "2.8rem" },
+            fontWeight: 600,
+            letterSpacing: "-0.8px",
+            color: theme.palette.text.primary,
+          })}
+        >
+          Production-ready from day one.
+        </Typography>
+        <Typography
+          sx={(theme) => ({
+            fontSize: "1.05rem",
+            color: theme.palette.text.secondary,
+            lineHeight: 1.7,
+          })}
+        >
+          Standardized errors, monitoring, rate limits, and security headers are
+          already wired so you can focus on the trip experience.
+        </Typography>
+      </Stack>
+      <ModuleCardGrid>
+        {signals.map((signal) => (
+          <ModuleCard
+            key={signal.title}
+            sx={(theme) => ({
+              border: `1px solid ${theme.palette.divider}`,
+              backgroundColor: theme.palette.luxury.surface,
+              boxShadow:
+                theme.palette.mode === "light"
+                  ? "0 24px 70px -45px rgba(12,32,44,0.45)"
+                  : "0 30px 80px -48px rgba(2,8,18,0.85)",
+              backdropFilter: "blur(8px)",
+            })}
+          >
+            <CardContent
+              sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
+            >
+              <Box
+                sx={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 2,
+                  backgroundColor: "rgba(33,128,141,0.14)",
+                  display: "grid",
+                  placeItems: "center",
+                  color: "primary.main",
+                }}
+              >
+                {signal.icon}
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                {signal.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {signal.description}
+              </Typography>
+            </CardContent>
+          </ModuleCard>
+        ))}
+      </ModuleCardGrid>
+    </Container>
+  );
+}
+
 function FinalCTA() {
   return (
-    <Box
-      sx={{
-        py: { xs: 10, md: 14 },
-        background:
-          "linear-gradient(160deg, rgba(33,128,141,0.12) 0%, rgba(94,82,64,0.12) 100%)",
-      }}
-      className="landing-section-surface"
-    >
-      <Container maxWidth="md">
-        <Card
+    <Container maxWidth="md">
+      <Card
+        sx={{
+          borderRadius: 4,
+          textAlign: "center",
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+          backgroundColor: (theme) => theme.palette.luxury.surface,
+          boxShadow: (theme) =>
+            theme.palette.mode === "dark"
+              ? "0 34px 90px -55px rgba(2,8,18,0.9)"
+              : "0 30px 90px -55px rgba(12,32,44,0.45)",
+        }}
+      >
+        <CardContent
           sx={{
-            borderRadius: 4,
-            textAlign: "center",
-            border: (theme) =>
-              `1px solid ${
-                theme.palette.mode === "dark"
-                  ? "rgba(237,242,243,0.16)"
-                  : "rgba(94,82,64,0.18)"
-              }`,
-            backgroundColor: (theme) =>
-              theme.palette.mode === "dark"
-                ? "rgba(14,26,33,0.95)"
-                : "rgba(255,255,255,0.9)",
-            boxShadow: (theme) =>
-              theme.palette.mode === "dark"
-                ? "0 34px 90px -55px rgba(2,8,18,0.9)"
-                : "0 30px 90px -55px rgba(12,32,44,0.45)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 3,
+            py: { xs: 5, md: 6 },
           }}
         >
-          <CardContent
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 3,
-              py: { xs: 5, md: 6 },
-            }}
+          <Chip
+            label="Ready when you are"
+            color="primary"
+            variant="outlined"
+            sx={{ alignSelf: "center", fontWeight: 600 }}
+          />
+          <Typography variant="h4" sx={{ fontWeight: 600 }}>
+            Elevate every trip with a unified travel workspace.
+          </Typography>
+          <Typography
+            variant="body1"
+            color="text.secondary"
+            sx={{ maxWidth: 540, mx: "auto" }}
           >
-            <Chip
-              label="Ready when you are"
-              color="primary"
+            Join thousands of travelers who rely on VoxTrail for
+            smarter translation, curated planning, and real-time safety.
+          </Typography>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            justifyContent="center"
+          >
+            <Button
+              size="large"
+              variant="contained"
+              onClick={() => (window.location.href = "/register")}
+            >
+              Create a free account
+            </Button>
+            <Button
+              size="large"
               variant="outlined"
-              sx={{ alignSelf: "center", fontWeight: 600 }}
-            />
-            <Typography variant="h4" sx={{ fontWeight: 600 }}>
-              Elevate every trip with a unified travel workspace.
-            </Typography>
-            <Typography
-              variant="body1"
-              color="text.secondary"
-              sx={{ maxWidth: 540, mx: "auto" }}
+              onClick={() => (window.location.href = "/login")}
             >
-              Join thousands of travelers who rely on Smart Travel Companion for
-              smarter translation, curated planning, and real-time safety.
-            </Typography>
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={2}
-              justifyContent="center"
-            >
-              <Button
-                size="large"
-                variant="contained"
-                onClick={() => (window.location.href = "/register")}
-              >
-                Create a free account
-              </Button>
-              <Button
-                size="large"
-                variant="outlined"
-                onClick={() => (window.location.href = "/login")}
-              >
-                Log in
-              </Button>
-            </Stack>
-          </CardContent>
-        </Card>
-      </Container>
-    </Box>
+              Log in
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
+    </Container>
   );
 }

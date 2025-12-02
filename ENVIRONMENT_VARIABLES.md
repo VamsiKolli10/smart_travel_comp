@@ -11,7 +11,7 @@
 
 ## Overview
 
-Environment variables are crucial for configuring the Smart Travel Companion application. They control everything from API connections to security settings.
+Environment variables are crucial for configuring the VoxTrail application. They control everything from API connections to security settings.
 
 ## Backend Variables
 

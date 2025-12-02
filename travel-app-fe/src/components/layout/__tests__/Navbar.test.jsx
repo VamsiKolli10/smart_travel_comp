@@ -23,7 +23,7 @@ describe("Navbar", () => {
       </Provider>
     );
 
-    expect(screen.getByText(/smart travel companion/i)).toBeInTheDocument();
+    expect(screen.getByText(/voxtrail/i)).toBeInTheDocument();
     const toggle = screen.getByRole("button", { name: /dark/i });
     fireEvent.click(toggle);
     expect(toggle).toBeInTheDocument(); // ensures button remains after toggle

@@ -18,8 +18,8 @@ async function chatComplete({ system, user, temperature = 0.4, response_format =
     Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
     "Content-Type": "application/json",
     // Optional but recommended by OpenRouter:
-    "HTTP-Referer": "https://smart-travel-companion.local",
-    "X-Title": "Smart Travel Companion",
+    "HTTP-Referer": "https://voxtrail.local",
+    "X-Title": "VoxTrail",
   };
 
   // Build request body

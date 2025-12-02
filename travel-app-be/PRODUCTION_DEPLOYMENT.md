@@ -1,4 +1,4 @@
-# Smart Travel Companion - Production Deployment Guide
+# VoxTrail - Production Deployment Guide
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@
 
 ## Overview
 
-The Smart Travel Companion is a full-stack web application providing:
+VoxTrail is a full-stack web application providing:
 
 - Real-time text translation
 - AI-generated travel phrasebooks

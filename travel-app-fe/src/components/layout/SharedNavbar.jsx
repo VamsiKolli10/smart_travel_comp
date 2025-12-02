@@ -142,7 +142,7 @@ export default function SharedNavbar({ isLanding = false }) {
       >
         <StyledLink
           to={user ? "/home" : "/"}
-          aria-label="Smart Travel Companion home"
+          aria-label="VoxTrail home"
         >
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Box
@@ -168,7 +168,7 @@ export default function SharedNavbar({ isLanding = false }) {
                 WebkitTextFillColor: "transparent",
               }}
             >
-              Smart Travel Companion
+              VoxTrail
             </Typography>
           </Stack>
         </StyledLink>
