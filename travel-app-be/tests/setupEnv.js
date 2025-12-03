@@ -78,6 +78,20 @@ const mockSavedPhrasesCollection = {
   })),
 };
 
+const cultureBriefsStore = {};
+const mockCultureBriefsCollection = {
+  doc: jest.fn((id) => ({
+    id,
+    get: jest.fn(async () => {
+      const data = cultureBriefsStore[id];
+      return { exists: !!data, data: () => data };
+    }),
+    set: jest.fn(async (data) => {
+      cultureBriefsStore[id] = data;
+    }),
+  })),
+};
+
 const mockUserDoc = {
   collection: jest.fn(() => mockSavedPhrasesCollection),
   get: jest.fn().mockResolvedValue({ exists: true, data: () => ({}) }),
@@ -95,12 +109,15 @@ const mockFirestore = jest.fn(() => ({
   collection: jest.fn((name) => {
     if (name === "users") return mockUsersCollection;
     if (name === "saved_phrases") return mockSavedPhrasesCollection;
+    if (name === "cultureIntelligenceBriefs")
+      return mockCultureBriefsCollection;
     throw new Error(`Unmocked collection: ${name}`);
   }),
 }));
 mockFirestore.FieldValue = {
   serverTimestamp: jest.fn(() => new Date()),
 };
+mockFirestore.__cultureBriefsStore = cultureBriefsStore;
 
 jest.mock("firebase-admin", () => ({
   apps: [],

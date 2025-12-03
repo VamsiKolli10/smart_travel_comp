@@ -5,6 +5,7 @@ jest.mock("../src/lib/openrouterClient", () => ({
 }));
 
 const { chatComplete } = require("../src/lib/openrouterClient");
+const mockFirestore = require("firebase-admin").firestore;
 
 describe("Culture intelligence routes", () => {
   let app;
@@ -16,6 +17,8 @@ describe("Culture intelligence routes", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    const cacheStore = mockFirestore.__cultureBriefsStore || {};
+    Object.keys(cacheStore).forEach((key) => delete cacheStore[key]);
     // Default model response
     chatComplete.mockResolvedValue(
       JSON.stringify({
@@ -61,6 +64,55 @@ describe("Culture intelligence routes", () => {
 
     expect(res.statusCode).toBe(502);
     expect(res.body.error.code).toBe("EXTERNAL_SERVICE_ERROR");
+  });
+
+  test("returns 502 when culture model call fails and no cache available", async () => {
+    chatComplete.mockRejectedValueOnce(new Error("provider down"));
+
+    const res = await request(app)
+      .get("/api/culture/brief?destination=Paris")
+      .set("user-agent", "jest");
+
+    expect(res.statusCode).toBe(502);
+    expect(res.body.error.code).toBe("EXTERNAL_SERVICE_ERROR");
+  });
+
+  test("serves stale cache when model fails", async () => {
+    const { _internal } = require("../src/controllers/cultureIntelligenceController");
+    const cacheKey = _internal.buildBriefCacheKey("Paris", "Paris", "en");
+    const cacheStore = mockFirestore.__cultureBriefsStore;
+    cacheStore[cacheKey] = {
+      value: {
+        destination: "Paris",
+        culture: "Paris",
+        language: "en",
+        categories: {
+          greetings: ["Hi", "Hello", "Good day"],
+          dining: ["tip", "reserve", "be polite"],
+          dress_code: ["smart casual", "clean shoes", "modest"],
+          gestures: ["handshake", "eye contact", "no pointing"],
+          taboos: ["loud voices", "cutting lines", "politics"],
+          safety_basics: ["watch bags"],
+        },
+        generatedAt: new Date().toISOString(),
+      },
+      timestamp: Date.now() - 48 * 60 * 60 * 1000,
+      destination: "Paris",
+      culture: "Paris",
+      language: "en",
+      cacheVersion: process.env.CULTURE_BRIEF_CACHE_VERSION || "1",
+    };
+
+    chatComplete.mockRejectedValueOnce(new Error("OpenRouter unavailable"));
+
+    const res = await request(app)
+      .get("/api/culture/brief?destination=Paris")
+      .set("user-agent", "jest");
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.cacheStatus).toBe("stale");
+    expect(res.body.destination).toBe("Paris");
+    expect(Array.isArray(res.body.categories?.greetings)).toBe(true);
   });
 
   test("cultural etiquette legacy endpoint proxies brief", async () => {

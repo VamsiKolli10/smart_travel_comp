@@ -17,15 +17,15 @@ Environment variables are crucial for configuring the VoxTrail application. They
 
 ### Server Configuration
 
-| Variable                | Description                         | Default       | Required |
-| ----------------------- | ----------------------------------- | ------------- | -------- |
-| `APP_PORT`              | Server port number (local dev)      | `8000`        | No       |
-| `NODE_ENV`              | Environment mode                    | `development` | No       |
-| `FIRESTORE_PREFER_REST` | Use REST API over gRPC              | `true`        | No       |
-| `REQUEST_BODY_LIMIT`    | Maximum request body size           | `256kb`       | No       |
-| `MAX_TRANSLATION_CHARS` | Maximum text length for translation | `500`         | No       |
-| `TRANSLATION_WARM_PAIRS` | Comma-separated lang pairs to pre-warm (e.g., `en-es,es-en`) | _none_ | No |
-| `TRANSFORMERS_CACHE`     | Persistent cache path for @xenova/transformers models | `./.cache/transformers` | No |
+| Variable                 | Description                                                  | Default                 | Required |
+| ------------------------ | ------------------------------------------------------------ | ----------------------- | -------- |
+| `APP_PORT`               | Server port number (local dev)                               | `8000`                  | No       |
+| `NODE_ENV`               | Environment mode                                             | `development`           | No       |
+| `FIRESTORE_PREFER_REST`  | Use REST API over gRPC                                       | `true`                  | No       |
+| `REQUEST_BODY_LIMIT`     | Maximum request body size                                    | `256kb`                 | No       |
+| `MAX_TRANSLATION_CHARS`  | Maximum text length for translation                          | `500`                   | No       |
+| `TRANSLATION_WARM_PAIRS` | Comma-separated lang pairs to pre-warm (e.g., `en-es,es-en`) | _none_                  | No       |
+| `TRANSFORMERS_CACHE`     | Persistent cache path for @xenova/transformers models        | `./.cache/transformers` | No       |
 
 ### Firebase Configuration
 
@@ -273,7 +273,7 @@ FBAPP_APP_ID=1:123456:web:abc
 # External APIs
 GOOGLE_PLACES_API_KEY=your_google_places_api_key
 OPENROUTER_API_KEY=your_openrouter_api_key
-OPENROUTER_MODEL=x-ai/grok-4.1-fast
+OPENROUTER_MODEL=x-ai/grok-4.1-fast:free
 
 # Security
 REQUEST_SIGNING_SECRET=your_random_secret_string_here

@@ -36,7 +36,7 @@ function buildBriefCacheKey(destination, culture, language) {
   return `v${BRIEF_CACHE_VERSION}-${destKey}-${cultureKey}-${langKey}`;
 }
 
-async function getBriefFromCache(cacheKey) {
+async function getBriefFromCache(cacheKey, { includeStale = false } = {}) {
   try {
     const db = admin.firestore();
     const doc = await db.collection(BRIEF_CACHE_COLLECTION).doc(cacheKey).get();
@@ -45,17 +45,29 @@ async function getBriefFromCache(cacheKey) {
     const data = doc.data();
     if (!data || !data.value || !data.timestamp) return null;
 
-    if (Date.now() - data.timestamp > BRIEF_CACHE_TTL_MS) {
-      return null;
-    }
-    if (
-      data.cacheVersion &&
-      data.cacheVersion !== BRIEF_CACHE_VERSION
-    ) {
+    const ageMs = Date.now() - data.timestamp;
+    const expired = ageMs > BRIEF_CACHE_TTL_MS;
+    const versionMismatch =
+      data.cacheVersion && data.cacheVersion !== BRIEF_CACHE_VERSION;
+
+    const value = data.value;
+
+    if (expired || versionMismatch) {
+      if (includeStale && value) {
+        return {
+          value,
+          stale: true,
+          reason: expired ? "expired" : "version-mismatch",
+        };
+      }
       return null;
     }
 
-    return data.value;
+    if (includeStale) {
+      return { value, stale: false };
+    }
+
+    return value;
   } catch (err) {
     logError(err, { operation: "cultureIntelligence.getBriefFromCache" });
     return null;
@@ -190,11 +202,12 @@ async function getBrief(req, res) {
     );
 
     const cacheKey = buildBriefCacheKey(destination, culture, language);
-    if (!bypassCache) {
-      const cached = await getBriefFromCache(cacheKey);
-      if (cached) {
-        return res.status(200).json(cached);
-      }
+    const cacheResult = await getBriefFromCache(cacheKey, { includeStale: true });
+    const freshCache = cacheResult && cacheResult.stale === false ? cacheResult.value : null;
+    const staleCache = cacheResult && cacheResult.stale === true ? cacheResult.value : null;
+
+    if (!bypassCache && freshCache) {
+      return res.status(200).json(freshCache);
     }
 
     const system = buildBriefSystemPrompt(language);
@@ -213,12 +226,42 @@ async function getBrief(req, res) {
       tipsPerCategory: 5,
     };
 
-    const raw = await chatComplete({
-      system,
-      user: JSON.stringify(userPayload),
-      temperature: 0.35,
-      response_format: "json_object",
-    });
+    let raw;
+    try {
+      raw = await chatComplete({
+        system,
+        user: JSON.stringify(userPayload),
+        temperature: 0.35,
+        response_format: "json_object",
+      });
+    } catch (providerError) {
+      logError(providerError, {
+        endpoint: "/api/culture/brief",
+        destination,
+        culture,
+        language,
+        cacheKey,
+      });
+
+      if (staleCache) {
+        return res.status(200).json({
+          ...staleCache,
+          cacheStatus: "stale",
+          cacheVersion: BRIEF_CACHE_VERSION,
+          fallback: "cache",
+        });
+      }
+
+      return res
+        .status(502)
+        .json(
+          createErrorResponse(
+            502,
+            ERROR_CODES.EXTERNAL_SERVICE_ERROR,
+            "Culture brief service temporarily unavailable"
+          )
+        );
+    }
 
     let parsed;
     try {

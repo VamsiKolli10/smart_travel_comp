@@ -70,7 +70,7 @@ FBAPP_APP_ID=<app-id>
 # External API Keys
 GOOGLE_PLACES_API_KEY=<your-google-places-api-key>
 OPENROUTER_API_KEY=<your-openrouter-api-key>
-OPENROUTER_MODEL=x-ai/grok-4.1-fast
+OPENROUTER_MODEL=x-ai/grok-4.1-fast:free
 
 # Security
 REQUEST_SIGNING_SECRET=<your-random-secret-string>

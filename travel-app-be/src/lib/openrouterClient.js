@@ -1,7 +1,8 @@
 const axios = require("axios");
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = process.env.OPENROUTER_MODEL || "gpt-4o-mini";
+const FALLBACK_MODEL = "gpt-4o-mini";
+const PRIMARY_MODEL = process.env.OPENROUTER_MODEL || FALLBACK_MODEL;
 
 /**
  * chatComplete
@@ -23,8 +24,8 @@ async function chatComplete({ system, user, temperature = 0.4, response_format =
   };
 
   // Build request body
-  const body = {
-    model: DEFAULT_MODEL,
+  const baseBody = {
+    model: PRIMARY_MODEL,
     temperature,
     messages: [
       { role: "system", content: system },
@@ -34,16 +35,35 @@ async function chatComplete({ system, user, temperature = 0.4, response_format =
 
   // ✅ Provider-safe response_format handling
   if (response_format === "json_object") {
-    body.response_format = { type: "json_object" };
+    baseBody.response_format = { type: "json_object" };
   } else if (typeof response_format === "object" && response_format !== null) {
     // Allow passing an object directly if you ever need to
-    body.response_format = response_format;
+    baseBody.response_format = response_format;
   }
   // else: omit response_format entirely
 
-  const { data } = await axios.post(OPENROUTER_API_URL, body, { headers });
-  const text = data?.choices?.[0]?.message?.content || "";
-  return text;
+  try {
+    const { data } = await axios.post(OPENROUTER_API_URL, baseBody, { headers });
+    const text = data?.choices?.[0]?.message?.content || "";
+    return text;
+  } catch (err) {
+    const status = err?.response?.status;
+
+    const shouldRetryWithFallback =
+      status === 404 && baseBody.model !== FALLBACK_MODEL;
+
+    if (!shouldRetryWithFallback) {
+      throw err;
+    }
+
+    // Retry once with the known-good fallback model to avoid hard failures
+    const fallbackBody = { ...baseBody, model: FALLBACK_MODEL };
+    const { data } = await axios.post(OPENROUTER_API_URL, fallbackBody, {
+      headers,
+    });
+    const text = data?.choices?.[0]?.message?.content || "";
+    return text;
+  }
 }
 
 module.exports = { chatComplete };

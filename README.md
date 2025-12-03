@@ -31,12 +31,12 @@ smart_travel_comp/
 
 ## Technology Stack
 
-| Layer      | Technologies                                                                                          |
-|------------|-------------------------------------------------------------------------------------------------------|
-| Front-end  | Vite, React 18, React Router 6, Redux Toolkit, MUI, Tailwind (utility classes), MapLibre GL (maps)    |
-| Back-end   | Node.js 20+, Express 5, Firebase Admin SDK, Axios, OpenRouter API, Google Places API, express-rate-limit |
-| Data/Auth  | Firebase Authentication, Firestore (per-user saved data)                                              |
-| Infra      | Firebase service account for admin access, optional Firebase Functions scaffold                      |
+| Layer     | Technologies                                                                                             |
+| --------- | -------------------------------------------------------------------------------------------------------- |
+| Front-end | Vite, React 18, React Router 6, Redux Toolkit, MUI, Tailwind (utility classes), MapLibre GL (maps)       |
+| Back-end  | Node.js 20+, Express 5, Firebase Admin SDK, Axios, OpenRouter API, Google Places API, express-rate-limit |
+| Data/Auth | Firebase Authentication, Firestore (per-user saved data)                                                 |
+| Infra     | Firebase service account for admin access, optional Firebase Functions scaffold                          |
 
 ---
 
@@ -47,7 +47,7 @@ smart_travel_comp/
    - Enable Email/Password and Google OAuth providers.
    - Generate a Web App (copy the config for the front-end) and a service account (JSON) for the backend.
 2. **OpenRouter**
-   - Create an API key and set `OPENROUTER_MODEL` (templates use `x-ai/grok-4.1-fast`; the backend falls back to `gpt-4o-mini` if unset).
+   - Create an API key and set `OPENROUTER_MODEL` (templates use `x-ai/grok-4.1-fast:free`; the backend falls back to `gpt-4o-mini` if unset).
 3. **Google Places API**
    - Enable the Places API (new) and Maps Places API (legacy photo endpoint) and create an API key.
 
@@ -58,34 +58,34 @@ cp travel-app-be/.env.example travel-app-be/.env
 cp travel-app-fe/.env.example travel-app-fe/.env
 ```
 
-| Variable (backend)           | Purpose                                              |
-|-----------------------------|------------------------------------------------------|
-| `APP_PORT`                  | Express port for local dev (default `8000`)          |
-| `FIRESTORE_PREFER_REST`     | Prefer Firestore REST client (set `true` in containers) |
-| `FB_ADMIN_CREDENTIALS`| **Required.** Base64-encoded Firebase service-account JSON injected via your secrets manager. No file fallback. |
-| `GOOGLE_PLACES_API_KEY`     | Enables stays search/photo proxy                     |
-| `OPENROUTER_API_KEY`        | Token for phrasebook & itinerary generation          |
-| `OPENROUTER_MODEL`          | Optional default model (env templates use `x-ai/grok-4.1-fast`; code defaults to `gpt-4o-mini`) |
-| `ITINERARY_MODEL`           | Optional dedicated model just for itinerary generation |
-| `ITINERARY_ENABLE_FALLBACK` | Enable static/sample itinerary fallback (default `true`) |
-| `REQUEST_SIGNING_SECRET`    | HMAC secret required for all non-authenticated API clients |
-| `REQUEST_BODY_LIMIT`        | Override JSON payload size (default `256kb`)         |
-| `MAX_TRANSLATION_CHARS`     | Translation character ceiling (default `500`)        |
-| `TRANSLATION_WARM_PAIRS`    | Comma-separated lang pairs to pre-warm on boot (e.g., `en-es,es-en`) |
-| `TRANSFORMERS_CACHE`        | Cache directory for @xenova/transformers models      |
-| `STAYS_PER_USER_PER_HOUR` / `POI_PER_USER_PER_HOUR` / `PHRASEBOOK_MAX_REQUESTS_PER_HOUR` / `ITINERARY_MAX_REQUESTS_PER_HOUR` | Per-user quota knobs for external API usage |
-| `STAYS_SEARCH_MAX_PER_IP`   | Per-IP throttle for `/api/stays/search`              |
-| `USAGE_ALERT_FALLBACK`      | Default threshold before emitting external usage alerts |
-| `FBAPP_*`                   | Firebase JS SDK config (if using client SDK server-side) |
+| Variable (backend)                                                                                                           | Purpose                                                                                                         |
+| ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `APP_PORT`                                                                                                                   | Express port for local dev (default `8000`)                                                                     |
+| `FIRESTORE_PREFER_REST`                                                                                                      | Prefer Firestore REST client (set `true` in containers)                                                         |
+| `FB_ADMIN_CREDENTIALS`                                                                                                       | **Required.** Base64-encoded Firebase service-account JSON injected via your secrets manager. No file fallback. |
+| `GOOGLE_PLACES_API_KEY`                                                                                                      | Enables stays search/photo proxy                                                                                |
+| `OPENROUTER_API_KEY`                                                                                                         | Token for phrasebook & itinerary generation                                                                     |
+| `OPENROUTER_MODEL`                                                                                                           | Optional default model (env templates use `x-ai/grok-4.1-fast:free`; code defaults to `gpt-4o-mini`)            |
+| `ITINERARY_MODEL`                                                                                                            | Optional dedicated model just for itinerary generation                                                          |
+| `ITINERARY_ENABLE_FALLBACK`                                                                                                  | Enable static/sample itinerary fallback (default `true`)                                                        |
+| `REQUEST_SIGNING_SECRET`                                                                                                     | HMAC secret required for all non-authenticated API clients                                                      |
+| `REQUEST_BODY_LIMIT`                                                                                                         | Override JSON payload size (default `256kb`)                                                                    |
+| `MAX_TRANSLATION_CHARS`                                                                                                      | Translation character ceiling (default `500`)                                                                   |
+| `TRANSLATION_WARM_PAIRS`                                                                                                     | Comma-separated lang pairs to pre-warm on boot (e.g., `en-es,es-en`)                                            |
+| `TRANSFORMERS_CACHE`                                                                                                         | Cache directory for @xenova/transformers models                                                                 |
+| `STAYS_PER_USER_PER_HOUR` / `POI_PER_USER_PER_HOUR` / `PHRASEBOOK_MAX_REQUESTS_PER_HOUR` / `ITINERARY_MAX_REQUESTS_PER_HOUR` | Per-user quota knobs for external API usage                                                                     |
+| `STAYS_SEARCH_MAX_PER_IP`                                                                                                    | Per-IP throttle for `/api/stays/search`                                                                         |
+| `USAGE_ALERT_FALLBACK`                                                                                                       | Default threshold before emitting external usage alerts                                                         |
+| `FBAPP_*`                                                                                                                    | Firebase JS SDK config (if using client SDK server-side)                                                        |
 
-| Variable (frontend)         | Purpose                                              |
-|-----------------------------|------------------------------------------------------|
-| `VITE_API_URL`              | Base API URL, include `/api` (e.g., `http://localhost:8000/api`) |
-| `VITE_API_TIMEOUT`          | Optional axios timeout (ms)                          |
-| `VITE_FIREBASE_*`           | Firebase Web App configuration                       |
-| `VITE_ENABLE_ITINERARY_PLANNER` | Toggle Discover itinerary planner UI             |
-| `VITE_ENABLE_OFFLINE_MODE`  | Enable optional offline caching helpers              |
-| `VITE_ANALYTICS_WRITE_KEY`  | External analytics key (when analytics is on)        |
+| Variable (frontend)             | Purpose                                                          |
+| ------------------------------- | ---------------------------------------------------------------- |
+| `VITE_API_URL`                  | Base API URL, include `/api` (e.g., `http://localhost:8000/api`) |
+| `VITE_API_TIMEOUT`              | Optional axios timeout (ms)                                      |
+| `VITE_FIREBASE_*`               | Firebase Web App configuration                                   |
+| `VITE_ENABLE_ITINERARY_PLANNER` | Toggle Discover itinerary planner UI                             |
+| `VITE_ENABLE_OFFLINE_MODE`      | Enable optional offline caching helpers                          |
+| `VITE_ANALYTICS_WRITE_KEY`      | External analytics key (when analytics is on)                    |
 
 > 🔐 **Secret storage**: The backend now _only_ reads credentials from `FB_ADMIN_CREDENTIALS` (formerly `FIREBASE_ADMIN_CREDENTIALS`). Encode the raw service-account JSON (or paste the JSON directly) into the env var provided by your hosting platform or local `.env`. The legacy `serviceAccountKey.json` file has been removed to avoid accidental leaks.
 
@@ -103,23 +103,23 @@ npm run dev          # nodemon server.js
 
 The API will be reachable on `http://localhost:8000`. Core routes (see `API_Documentation.md` for full reference):
 
-| Endpoint                                   | Description                                                    |
-|--------------------------------------------|----------------------------------------------------------------|
-| `POST /api/translate`                      | Text translation (`text`, `langPair`)                          |
-| `POST /api/phrasebook/generate`            | Topic-based phrase suggestions                                 |
-| `GET /api/saved-phrases`                   | List user phrases (auth required)                              |
-| `POST /api/saved-phrases`                  | Save phrase (auth required)                                    |
-| `DELETE /api/saved-phrases/:id`            | Remove phrase (auth required)                                  |
-| `GET /api/stays/search`                    | Search lodging (dest/lat/lng filters)                          |
-| `GET /api/stays/:id`                       | Detailed stay info                                             |
-| `GET /api/stays/photo`                     | Proxy Google Places photos                                     |
-| `GET /api/poi/search`                      | Search points of interest                                      |
-| `GET /api/poi/:id`                         | Detailed POI information                                       |
-| `GET /api/culture/brief`                   | Cultural intelligence brief (cached Firestore handoff)         |
-| `POST /api/culture/qa`                     | Conversational culture coach                                   |
-| `POST /api/culture/contextual`             | Micro-tips for translation/POI/stay contexts                   |
-| `GET /api/cultural-etiquette`              | Legacy alias for the culture brief                             |
-| `GET /api/itinerary/generate`              | Generate itineraries (used by Discover Itinerary planner beta) |
+| Endpoint                        | Description                                                    |
+| ------------------------------- | -------------------------------------------------------------- |
+| `POST /api/translate`           | Text translation (`text`, `langPair`)                          |
+| `POST /api/phrasebook/generate` | Topic-based phrase suggestions                                 |
+| `GET /api/saved-phrases`        | List user phrases (auth required)                              |
+| `POST /api/saved-phrases`       | Save phrase (auth required)                                    |
+| `DELETE /api/saved-phrases/:id` | Remove phrase (auth required)                                  |
+| `GET /api/stays/search`         | Search lodging (dest/lat/lng filters)                          |
+| `GET /api/stays/:id`            | Detailed stay info                                             |
+| `GET /api/stays/photo`          | Proxy Google Places photos                                     |
+| `GET /api/poi/search`           | Search points of interest                                      |
+| `GET /api/poi/:id`              | Detailed POI information                                       |
+| `GET /api/culture/brief`        | Cultural intelligence brief (cached Firestore handoff)         |
+| `POST /api/culture/qa`          | Conversational culture coach                                   |
+| `POST /api/culture/contextual`  | Micro-tips for translation/POI/stay contexts                   |
+| `GET /api/cultural-etiquette`   | Legacy alias for the culture brief                             |
+| `GET /api/itinerary/generate`   | Generate itineraries (used by Discover Itinerary planner beta) |
 
 Rate limits in dev mirror production defaults: 20 requests/min (anonymous), 60/min (authenticated), and 120/min (admin), plus endpoint quotas driven by `STAYS_PER_USER_PER_HOUR`, `STAYS_SEARCH_MAX_PER_IP`, `POI_PER_USER_PER_HOUR`, `PHRASEBOOK_MAX_REQUESTS_PER_HOUR`, and `ITINERARY_MAX_REQUESTS_PER_HOUR`. Adjust these envs if you hit throttles during local testing.
 
@@ -145,6 +145,7 @@ npm run dev          # Vite dev server on http://localhost:5173
 By default the React app points to `VITE_API_URL`. Ensure CORS on the backend allows this origin.
 
 Key UX modules:
+
 - **Discover** – Unified search for POIs with filters, plus an **Itinerary planner (beta)**:
   - Users can toggle the “Itinerary” chip.
   - Configure trip via MUI-styled controls (days, budget, pace, season, interests).
@@ -225,7 +226,7 @@ Both commands automatically provision mocked Firebase/OpenRouter/Google dependen
 
 1. **Security & Auth**
    - Enforce HTTPS everywhere and manage Firebase tokens via secure storage.
-   - Ensure *all* API routes that read/write user data require authentication. Stays/POI/itinerary/phrasebook endpoints now enforce Firebase auth + quotas—mirror the same pattern for future routes.
+   - Ensure _all_ API routes that read/write user data require authentication. Stays/POI/itinerary/phrasebook endpoints now enforce Firebase auth + quotas—mirror the same pattern for future routes.
    - Rotate API keys regularly and store them in a secrets manager (Vault, SSM, Secrets Manager).
 2. **Data & Storage**
    - Define Firestore security rules for per-user data.
