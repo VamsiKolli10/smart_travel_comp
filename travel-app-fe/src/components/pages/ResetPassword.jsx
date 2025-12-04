@@ -1,5 +1,10 @@
-import { useState } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import {
   Alert,
   IconButton,
@@ -18,6 +23,14 @@ import {
 import Button from "../common/Button";
 import AuthShell from "../layout/AuthShell";
 import useNotification from "../../hooks/useNotification";
+import {
+  confirmPasswordResetWithCode,
+  EmailNotVerifiedError,
+  loginWithEmail,
+  verifyPasswordReset,
+} from "../../services/auth";
+import { auth } from "../../firebase";
+import { signOut } from "firebase/auth";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -25,6 +38,8 @@ export default function ResetPassword() {
   const { showNotification } = useNotification();
   const [searchParams] = useSearchParams();
 
+  const clientApiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+  const linkApiKey = searchParams.get("apiKey");
   const [formData, setFormData] = useState({
     password: "",
     confirmPassword: "",
@@ -34,9 +49,62 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [verifiedEmail, setVerifiedEmail] = useState(
+    location.state?.email || ""
+  );
+  const [verifyingLink, setVerifyingLink] = useState(true);
+  const [postCheck, setPostCheck] = useState(null);
 
-  const emailHint = location.state?.email || "your account";
-  const token = searchParams.get("token");
+  const oobCode = searchParams.get("oobCode");
+
+  useEffect(() => {
+    let isMounted = true;
+    const verifyLink = async () => {
+      if (!oobCode) {
+        navigate("/");
+        // if (isMounted) {
+        //   setError(
+        //     "Reset link is missing or invalid. Please request a new link."
+        //   );
+        //   setVerifyingLink(false);
+        // }
+        return;
+      }
+
+      if (linkApiKey && clientApiKey && linkApiKey !== clientApiKey) {
+        const message =
+          "This reset link belongs to a different environment. Open the link from the same app that issued it.";
+        if (isMounted) {
+          setError(message);
+          setVerifyingLink(false);
+        }
+        showNotification(message, "error");
+        return;
+      }
+
+      try {
+        const email = await verifyPasswordReset(oobCode);
+        if (isMounted) {
+          setVerifiedEmail(email);
+          setError("");
+        }
+      } catch (err) {
+        const message =
+          "Reset link is invalid or has expired. Please request a new one.";
+        if (isMounted) {
+          setError(message);
+        }
+        showNotification(message, "error");
+      } finally {
+        if (isMounted) setVerifyingLink(false);
+      }
+    };
+
+    verifyLink();
+    return () => {
+      isMounted = false;
+    };
+  }, [oobCode, showNotification]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -63,16 +131,60 @@ export default function ResetPassword() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!validate()) return;
+    if (!oobCode) {
+      setError(
+        "Reset link is missing or invalid. Request a new one from Forgot Password."
+      );
+      return;
+    }
 
     setLoading(true);
     setError("");
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await confirmPasswordResetWithCode(oobCode, formData.password);
+
+      const targetEmail = verifiedEmail || location.state?.email;
+      if (targetEmail) {
+        try {
+          await loginWithEmail(targetEmail, formData.password);
+          await signOut(auth); // keep flow explicit; user can log in from login page
+          setPostCheck({
+            type: "success",
+            message:
+              "Password updated and sign-in confirmed. You can now log in with your new password.",
+          });
+        } catch (signInErr) {
+          if (signInErr instanceof EmailNotVerifiedError) {
+            setPostCheck({
+              type: "warning",
+              message:
+                "Password updated, but your email is not verified. Verify your email, then log in with the new password.",
+            });
+          } else {
+            const codeLabel = signInErr?.code || "unknown";
+            setPostCheck({
+              type: "error",
+              message:
+                `Password updated, but sign-in failed with code: ${codeLabel}. Please log in manually with the new password.`,
+            });
+          }
+        }
+      } else {
+        setPostCheck({
+          type: "info",
+          message: "Password updated. Return to login and sign in with your email.",
+        });
+      }
+
       setSuccess(true);
       showNotification("Password reset successfully!", "success");
     } catch (err) {
-      setError("Failed to reset password. Please try again.");
-      showNotification("Failed to reset password. Please try again.", "error");
+      const message =
+        err?.code === "auth/expired-action-code"
+          ? "Reset link has expired. Please request a new one."
+          : "Failed to reset password. Please try again.";
+      setError(message);
+      showNotification(message, "error");
     } finally {
       setLoading(false);
     }
@@ -80,14 +192,24 @@ export default function ResetPassword() {
 
   const primaryContent = (
     <Stack component="form" spacing={3} onSubmit={handleSubmit}>
-      {token && (
+      {verifyingLink && (
         <Alert severity="info" sx={{ borderRadius: 2 }}>
-          Reset link verified. Set a new password for {emailHint}.
+          Verifying your reset link…
+        </Alert>
+      )}
+      {!verifyingLink && oobCode && !error && (
+        <Alert severity="success" sx={{ borderRadius: 2 }}>
+          Reset link verified. Set a new password for{" "}
+          {verifiedEmail || "your account"}.
         </Alert>
       )}
 
       {error && (
-        <Alert severity="error" onClose={() => setError("")} sx={{ borderRadius: 2 }}>
+        <Alert
+          severity="error"
+          onClose={() => setError("")}
+          sx={{ borderRadius: 2 }}
+        >
           {error}
         </Alert>
       )}
@@ -100,7 +222,7 @@ export default function ResetPassword() {
         onChange={handleChange}
         autoComplete="new-password"
         fullWidth
-        disabled={loading}
+        disabled={loading || verifyingLink || !oobCode}
         helperText="Must be at least 6 characters"
         InputProps={{
           endAdornment: (
@@ -126,7 +248,7 @@ export default function ResetPassword() {
         onChange={handleChange}
         autoComplete="new-password"
         fullWidth
-        disabled={loading}
+        disabled={loading || verifyingLink || !oobCode}
         InputProps={{
           endAdornment: (
             <InputAdornment position="end">
@@ -134,9 +256,15 @@ export default function ResetPassword() {
                 onClick={() => setShowConfirmPassword((prev) => !prev)}
                 edge="end"
                 disabled={loading}
-                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                aria-label={
+                  showConfirmPassword ? "Hide password" : "Show password"
+                }
               >
-                {showConfirmPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                {showConfirmPassword ? (
+                  <VisibilityOffIcon />
+                ) : (
+                  <VisibilityIcon />
+                )}
               </IconButton>
             </InputAdornment>
           ),
@@ -148,7 +276,7 @@ export default function ResetPassword() {
         variant="contained"
         fullWidth
         size="large"
-        disabled={loading}
+        disabled={loading || verifyingLink || !oobCode}
       >
         {loading ? "Updating password…" : "Update password"}
       </Button>
@@ -170,12 +298,16 @@ export default function ResetPassword() {
         backLink={{ to: "/", label: "← Back to home" }}
         footer={
           <Typography variant="body2" color="text.secondary" align="center">
-            For extra security, enable two-factor authentication in your profile settings.
+            For extra security, enable two-factor authentication in your profile
+            settings.
           </Typography>
         }
       >
         <Stack spacing={3}>
-          <List disablePadding sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <List
+            disablePadding
+            sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
+          >
             {[
               {
                 primary: "Sign in",
@@ -183,7 +315,8 @@ export default function ResetPassword() {
               },
               {
                 primary: "Stay secure",
-                secondary: "Avoid reusing passwords and consider a password manager.",
+                secondary:
+                  "Avoid reusing passwords and consider a password manager.",
               },
             ].map((step) => (
               <ListItem
@@ -211,6 +344,12 @@ export default function ResetPassword() {
               </ListItem>
             ))}
           </List>
+
+          {postCheck && (
+            <Alert severity={postCheck.type || "info"} sx={{ borderRadius: 2 }}>
+              {postCheck.message}
+            </Alert>
+          )}
 
           <Button
             variant="contained"

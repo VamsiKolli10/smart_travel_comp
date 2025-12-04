@@ -1,5 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { onAuthStateChanged, isSignInWithEmailLink } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  onIdTokenChanged,
+  isSignInWithEmailLink,
+  signOut,
+} from "firebase/auth";
 import { useDispatch, useSelector } from "react-redux";
 import { auth } from "../firebase";
 import { setUser, clearUser, setLoading } from "../store/slices/authSlice";
@@ -70,7 +75,7 @@ export function AuthProvider({ children }) {
     checkEmailVerification();
 
     // Set up the auth state listener
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (isEmailVerificationInProgress) {
           return; // Skip auth state change while email verification is in progress
@@ -79,6 +84,16 @@ export function AuthProvider({ children }) {
         if (firebaseUser) {
           // Ensure user data is fully loaded
           await firebaseUser.reload();
+          try {
+            // Force-refresh token to detect revocation (e.g., password reset elsewhere)
+            await firebaseUser.getIdToken(true);
+          } catch (tokenError) {
+            console.warn("Token refresh failed, forcing logout", tokenError);
+            await signOut(auth);
+            dispatch(clearUser());
+            setStatusMessage("Session expired. Please sign in again.");
+            return;
+          }
 
           if (firebaseUser.emailVerified) {
             dispatch(
@@ -104,7 +119,23 @@ export function AuthProvider({ children }) {
       }
     });
 
-    return unsubscribe;
+    // Watch token changes to catch revocation mid-session
+    const unsubscribeToken = onIdTokenChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) return;
+      try {
+        await firebaseUser.getIdToken(true);
+      } catch (tokenError) {
+        console.warn("Token refresh failed mid-session, forcing logout", tokenError);
+        await signOut(auth);
+        dispatch(clearUser());
+        setStatusMessage("Session expired. Please sign in again.");
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeToken();
+    };
   }, [dispatch, isEmailVerificationInProgress]);
 
   const contextValue = useMemo(

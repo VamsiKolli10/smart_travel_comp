@@ -12,6 +12,7 @@ import {
 import Button from "../common/Button";
 import AuthShell from "../layout/AuthShell";
 import useNotification from "../../hooks/useNotification";
+import { sendPasswordReset } from "../../services/auth";
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
@@ -41,25 +42,40 @@ export default function ForgotPassword() {
     setLoading(true);
     setError("");
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await sendPasswordReset(email);
       setSuccess(true);
       showNotification("Password reset email sent successfully!", "success");
     } catch (err) {
-      setError("Failed to send reset email. Please try again.");
-      showNotification("Failed to send reset email. Please try again.", "error");
+      const message =
+        err?.code === "auth/user-not-found"
+          ? "No account found for that email."
+          : err?.code === "auth/invalid-email"
+          ? "Please enter a valid email address."
+          : "Failed to send reset email. Please try again.";
+      setError(message);
+      showNotification(message, "error");
     } finally {
       setLoading(false);
     }
   };
 
   const handleResend = async () => {
+    if (!email) {
+      setError("Enter your email before resending the link.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      await sendPasswordReset(email);
       showNotification("Reset email sent again!", "success");
     } catch (err) {
-      setError("Failed to resend email. Please try again.");
+      const message =
+        err?.code === "auth/user-not-found"
+          ? "No account found for that email."
+          : "Failed to resend email. Please try again.";
+      setError(message);
+      showNotification(message, "error");
     } finally {
       setLoading(false);
     }
@@ -79,26 +95,22 @@ export default function ForgotPassword() {
         }
       >
         <Stack spacing={3}>
+          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+            Password reset email sent
+          </Typography>
           <Typography variant="body2" color="text.secondary">
-            Follow the steps below to finish resetting your password.
+            We just sent a reset link to <strong>{email}</strong>. Check your inbox (and
+            spam) to finish resetting your password. If you opened this in another tab or
+            device, use the same email when prompted.
           </Typography>
           <List disablePadding sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
             {[
-              {
-                primary: "Check your inbox",
-                secondary: "Look for an email from VoxTrail.",
-              },
-              {
-                primary: "Open the reset link",
-                secondary: "Click the button inside the email to pick a new password.",
-              },
-              {
-                primary: "Create your password",
-                secondary: "Enter a strong password you'll remember and confirm it.",
-              },
-            ].map((step, index) => (
+              "Open the email titled “Reset your VoxTrail password.”",
+              "Tap the reset link to create a new password.",
+              "Return here and sign in with your new credentials.",
+            ].map((text, index) => (
               <ListItem
-                key={step.primary}
+                key={text}
                 sx={{
                   border: "1px solid rgba(94,82,64,0.12)",
                   borderRadius: 2,
@@ -116,38 +128,14 @@ export default function ForgotPassword() {
                 </Typography>
                 <ListItemText
                   primary={
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                      {step.primary}
-                    </Typography>
-                  }
-                  secondary={
                     <Typography variant="body2" color="text.secondary">
-                      {step.secondary}
+                      {text}
                     </Typography>
                   }
                 />
               </ListItem>
             ))}
           </List>
-
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-            <Button
-              variant="outlined"
-              fullWidth
-              onClick={handleResend}
-              disabled={loading}
-            >
-              {loading ? "Sending…" : "Resend email"}
-            </Button>
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={() => navigate("/reset-password", { state: { email } })}
-            >
-              Continue to reset
-            </Button>
-          </Stack>
-
           {error && (
             <Alert severity="error" onClose={() => setError("")} sx={{ borderRadius: 2 }}>
               {error}

@@ -10,6 +10,9 @@ import {
   isSignInWithEmailLink,
   checkActionCode,
   applyActionCode,
+  sendPasswordResetEmail,
+  confirmPasswordReset,
+  verifyPasswordResetCode,
 } from "firebase/auth";
 
 export class EmailNotVerifiedError extends Error {
@@ -83,10 +86,16 @@ export async function resendEmailVerification({ user, email, password } = {}) {
 
     if (!targetUser) {
       if (!email || !password) {
-        throw new Error("Email and password are required to resend verification emails");
+        throw new Error(
+          "Email and password are required to resend verification emails"
+        );
       }
 
-      const credential = await signInWithEmailAndPassword(auth, email, password);
+      const credential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
       targetUser = credential.user;
       signedInForResend = true;
     }
@@ -102,4 +111,20 @@ export async function resendEmailVerification({ user, email, password } = {}) {
     console.error("Resend email verification error:", error);
     throw error;
   }
+}
+
+export async function sendPasswordReset(email, redirectUrl) {
+  const actionCodeSettings = {
+    url: redirectUrl || `${window.location.origin}/reset-password`,
+    handleCodeInApp: true,
+  };
+  return sendPasswordResetEmail(auth, email, actionCodeSettings);
+}
+
+export async function verifyPasswordReset(oobCode) {
+  return verifyPasswordResetCode(auth, oobCode);
+}
+
+export async function confirmPasswordResetWithCode(oobCode, newPassword) {
+  return confirmPasswordReset(auth, oobCode, newPassword);
 }

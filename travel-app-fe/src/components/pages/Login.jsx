@@ -146,6 +146,7 @@ export default function Login() {
       await loginWithEmail(formData.email, formData.password);
       showNotification("Login successful! Redirecting…", "success");
     } catch (err) {
+      const codeLabel = err?.code || "unknown";
       if (err?.code === "auth/email-not-verified") {
         const email = err?.email || formData.email;
         setError("Please verify your email before continuing.");
@@ -155,8 +156,10 @@ export default function Login() {
         );
         showNotification("Verify your email to continue.", "warning");
       } else {
-        setError("Login failed. Please check your credentials and try again.");
-        showNotification("Login failed. Please try again.", "error");
+        setError(
+          `Login failed. Please check your credentials and try again. (code: ${codeLabel})`
+        );
+        showNotification(`Login failed. (code: ${codeLabel})`, "error");
       }
     } finally {
       setLoading(false);

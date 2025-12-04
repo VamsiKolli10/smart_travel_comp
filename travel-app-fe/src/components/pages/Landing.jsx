@@ -16,8 +16,8 @@ import {
 } from "@mui/material";
 import {
   AirplanemodeActive as PlaneIcon,
-  Brightness4 as DarkIcon,
-  Brightness7 as LightIcon,
+  Brightness2 as DarkIcon,
+  Brightness4 as LightIcon,
   Explore as ExploreIcon,
   Language as LanguageIcon,
   LocalActivity as ActivityIcon,
@@ -248,20 +248,35 @@ export default function Landing() {
         aria-label={`Switch to ${mode === "light" ? "dark" : "light"} mode`}
         onClick={toggleMode}
         className="landing-toggle-button"
-        sx={{
+        sx={(theme) => ({
           position: "fixed",
-          top: 18,
-          right: 18,
+          top: `calc(${theme.spacing(2)} + env(safe-area-inset-top, 0px))`,
+          right: `calc(${theme.spacing(6)} + env(safe-area-inset-right, 0px))`,
+          left: "auto",
+          bottom: "auto",
           zIndex: 2000,
+          width: { xs: "32px", sm: "48px" },
+          height: { xs: "32px", sm: "48px" },
+          p: { xs: 1.1, sm: 1.25 },
           backgroundColor:
-            mode === "light" ? "rgba(255,255,255,0.9)" : "rgba(16,28,36,0.85)",
+            mode === "light" ? "rgba(255,255,255,0.9)" : "rgba(16,28,36,0.9)",
           border: (t) => `1px solid ${t.palette.divider}`,
+          boxShadow:
+            mode === "light"
+              ? "0 12px 32px -18px rgba(12,32,44,0.35)"
+              : "0 12px 32px -16px rgba(0,0,0,0.55)",
+          backdropFilter: "blur(12px)",
           color: "inherit",
+          transition: "transform 180ms ease, box-shadow 180ms ease",
+          touchAction: "manipulation",
           "&:hover": {
             backgroundColor:
-              mode === "light" ? "rgba(255,255,255,1)" : "rgba(18,32,40,0.95)",
+              mode === "light" ? "rgba(255,255,255,1)" : "rgba(18,32,40,0.96)",
           },
-        }}
+          "&:active": {
+            transform: "translateY(1px) scale(0.99)",
+          },
+        })}
       >
         {mode === "light" ? <DarkIcon /> : <LightIcon />}
       </IconButton>
@@ -785,8 +800,8 @@ function TestimonialsSection({ testimonials }) {
             lineHeight: 1.6,
           })}
         >
-          Whether you travel solo or with family, VoxTrail keeps
-          each traveler informed and inspired.
+          Whether you travel solo or with family, VoxTrail keeps each traveler
+          informed and inspired.
         </Typography>
       </Stack>
       <Grid container spacing={3}>
@@ -941,8 +956,8 @@ function FinalCTA() {
             color="text.secondary"
             sx={{ maxWidth: 540, mx: "auto" }}
           >
-            Join thousands of travelers who rely on VoxTrail for
-            smarter translation, curated planning, and real-time safety.
+            Join thousands of travelers who rely on VoxTrail for smarter
+            translation, curated planning, and real-time safety.
           </Typography>
           <Stack
             direction={{ xs: "column", sm: "row" }}
