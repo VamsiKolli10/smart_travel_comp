@@ -6,6 +6,11 @@
  */
 
 const { getBrief } = require("./cultureIntelligenceController");
+const {
+  createErrorResponse,
+  ERROR_CODES,
+  logError,
+} = require("../utils/errorHandler");
 
 exports.generateCulturalEtiquette = async (req, res) => {
   try {
