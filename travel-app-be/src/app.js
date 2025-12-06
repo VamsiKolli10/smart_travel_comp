@@ -34,10 +34,7 @@ const {
   enhancedAuthorization,
   validateRequestSignature,
 } = require("./utils/security");
-const {
-  recordTiming,
-  getPerformanceSnapshot,
-} = require("./utils/performance");
+const { recordTiming, getPerformanceSnapshot } = require("./utils/performance");
 const { validateBody } = require("./middleware/validate");
 const { userWriteSchema } = require("./utils/schemas");
 
@@ -249,10 +246,7 @@ function createApp() {
 
   app.get("/api/users", requireAdmin(), async (req, res) => {
     try {
-      const max = Math.min(
-        Number(req.query.limit) || 50,
-        200
-      );
+      const max = Math.min(Number(req.query.limit) || 50, 200);
       const snapshot = await db.collection("users").limit(max).get();
       res.json(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (e) {
@@ -269,7 +263,11 @@ function createApp() {
     }
   });
 
-  app.post("/api/users", requireAdmin(), validateBody(userWriteSchema), async (req, res) => {
+  app.post(
+    "/api/users",
+    requireAdmin(),
+    validateBody(userWriteSchema),
+    async (req, res) => {
       try {
         const docRef = await db.collection("users").add(req.body || {});
         res.status(201).json({ id: docRef.id });

@@ -16,15 +16,18 @@ export default defineConfig({
   define: {
     "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "test"),
   },
-  // Alias imports to mock modules in test environment
-  resolve: {
-    alias: {
-      // Mock CSS imports
-      "maplibre-gl/dist/maplibre-gl.css": "src/test/mockStyles.js",
-      "./Landing.css": "src/test/mockStyles.js",
-      "@/styles/global.css": "src/test/mockStyles.js",
-      // Mock MapLibre GL JS
-      "maplibre-gl": "src/test/mockMapLibre.js",
-    },
-  },
+  // Alias imports to mock modules only in test environment
+  resolve:
+    process.env.NODE_ENV === "test"
+      ? {
+          alias: {
+            // Mock CSS imports
+            "maplibre-gl/dist/maplibre-gl.css": "src/test/mockStyles.js",
+            "./Landing.css": "src/test/mockStyles.js",
+            "@/styles/global.css": "src/test/mockStyles.js",
+            // Mock MapLibre GL JS
+            "maplibre-gl": "src/test/mockMapLibre.js",
+          },
+        }
+      : undefined,
 });
