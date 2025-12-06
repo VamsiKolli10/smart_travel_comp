@@ -197,10 +197,11 @@ function getTranslationCacheKey(text, langPair) {
 }
 
 exports.translateText = async (req, res) => {
-  try {
-    const { text, langPair } = req.body || {};
+  const rawText = req.body?.text;
+  const rawLangPair = req.body?.langPair;
 
-    const cleanText = sanitizeTextInput(text, {
+  try {
+    const cleanText = sanitizeTextInput(rawText, {
       maxLength: MAX_TEXT_LENGTH,
       label: "text",
     });
@@ -216,7 +217,7 @@ exports.translateText = async (req, res) => {
         );
     }
 
-    const normalizedPair = normalizeLangPair(langPair, SUPPORTED_PAIRS);
+    const normalizedPair = normalizeLangPair(rawLangPair, SUPPORTED_PAIRS);
     if (normalizedPair.error) {
       return res
         .status(400)
@@ -255,8 +256,8 @@ exports.translateText = async (req, res) => {
     // Enhanced error logging for production debugging
     const errorContext = {
       endpoint: "/api/translate",
-      textLength: text?.length || 0,
-      langPair: langPair || "unknown",
+      textLength: rawText?.length || 0,
+      langPair: rawLangPair || "unknown",
       nodeEnv: process.env.NODE_ENV,
       memoryUsage: process.memoryUsage(),
       timestamp: new Date().toISOString(),
