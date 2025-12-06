@@ -7,6 +7,7 @@ const {
   logError,
 } = require("../utils/errorHandler");
 const { getCached, setCached } = require("../utils/cache");
+const { chatComplete } = require("../lib/openrouterClient");
 
 const SUPPORTED_PAIRS = new Set([
   "en-es",
@@ -32,8 +33,32 @@ const DEFAULT_WARM_PAIRS = (process.env.TRANSLATION_WARM_PAIRS || "")
 const TRANSLATION_CACHE_TTL_MS = Number(
   process.env.TRANSLATION_CACHE_TTL_MS || 10 * 60 * 1000
 );
+const TRANSLATION_INFERENCE_TIMEOUT_MS = Number(
+  process.env.TRANSLATION_INFERENCE_TIMEOUT_MS || 20000
+);
+const TRANSLATION_FALLBACK_ENABLED =
+  String(process.env.TRANSLATION_FALLBACK_ENABLED || "true").toLowerCase() !==
+  "false";
+const CAN_USE_FALLBACK =
+  TRANSLATION_FALLBACK_ENABLED && Boolean(process.env.OPENROUTER_API_KEY);
+
+const LANG_LABELS = {
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+};
 // Determine cache directory - Firebase Functions require /tmp, other environments can use custom path
-const isFirebaseFunction = !!(process.env.FUNCTION_TARGET || process.env.K_SERVICE);
+// Firebase Functions v1 sets FUNCTION_TARGET, v2 sets K_SERVICE, also check for GCP_PROJECT
+const isFirebaseFunction = !!(
+  process.env.FUNCTION_TARGET ||
+  process.env.K_SERVICE ||
+  process.env.GCP_PROJECT ||
+  process.env.GCLOUD_PROJECT ||
+  // Check if we're in a Cloud Functions environment by checking for typical paths
+  process.cwd().includes("/user_code") ||
+  process.env.HOME === "/tmp"
+);
 const getCacheDir = () => {
   // For Firebase Functions, always force /tmp (only writable directory)
   if (isFirebaseFunction) {
@@ -57,7 +82,7 @@ function ensureModelCacheDir() {
   try {
     // Ensure parent directories exist
     fs.mkdirSync(DEFAULT_MODEL_CACHE, { recursive: true });
-    
+
     // Verify write permissions by creating a test file
     const testFile = path.join(DEFAULT_MODEL_CACHE, ".write-test");
     try {
@@ -68,13 +93,15 @@ function ensureModelCacheDir() {
         `Cache directory ${DEFAULT_MODEL_CACHE} is not writable: ${writeErr.message}`
       );
     }
-    
+
     // Set environment variables for transformers library
     process.env.TRANSFORMERS_CACHE = DEFAULT_MODEL_CACHE;
     process.env.HF_HOME = DEFAULT_MODEL_CACHE;
     process.env.HF_HUB_CACHE = path.join(DEFAULT_MODEL_CACHE, "hub");
-    
-    console.log(`✅ Translation cache directory initialized: ${DEFAULT_MODEL_CACHE}`);
+
+    console.log(
+      `✅ Translation cache directory initialized: ${DEFAULT_MODEL_CACHE}`
+    );
   } catch (err) {
     // Log error but don't throw - allow the app to start
     // Model loading will fail later with a clearer error message
@@ -86,7 +113,7 @@ function ensureModelCacheDir() {
     });
     console.error(
       `⚠️  Failed to initialize translation cache directory: ${err.message}. ` +
-      `Translation models may fail to load. Cache dir: ${DEFAULT_MODEL_CACHE}`
+        `Translation models may fail to load. Cache dir: ${DEFAULT_MODEL_CACHE}`
     );
   }
 }
@@ -101,19 +128,18 @@ async function getTranslator(langPair) {
     const loader = (async () => {
       let timeoutHandle = null;
       let modelPromise = null;
-      
+
       try {
         console.log(`🔄 Loading translation model for ${langPair}...`);
         const { pipeline } = await import("@xenova/transformers");
 
         // Create model loading promise
-        modelPromise = pipeline(
-          "translation",
-          `Xenova/opus-mt-${langPair}`
-        );
+        modelPromise = pipeline("translation", `Xenova/opus-mt-${langPair}`);
 
         // Add timeout for model loading (increased to 90s for production)
-        const timeoutMs = Number(process.env.TRANSLATION_MODEL_TIMEOUT_MS || 90000);
+        const timeoutMs = Number(
+          process.env.TRANSLATION_MODEL_TIMEOUT_MS || 90000
+        );
         const timeoutPromise = new Promise((_, reject) => {
           timeoutHandle = setTimeout(
             () => reject(new Error("Model loading timeout")),
@@ -122,13 +148,13 @@ async function getTranslator(langPair) {
         });
 
         const model = await Promise.race([modelPromise, timeoutPromise]);
-        
+
         // Clear timeout if model loaded successfully
         if (timeoutHandle) {
           clearTimeout(timeoutHandle);
           timeoutHandle = null;
         }
-        
+
         console.log(`✅ Successfully loaded model for ${langPair}`);
         return model;
       } catch (error) {
@@ -137,7 +163,7 @@ async function getTranslator(langPair) {
           clearTimeout(timeoutHandle);
           timeoutHandle = null;
         }
-        
+
         console.error(
           `❌ Failed to load model for ${langPair}:`,
           error.message
@@ -200,9 +226,68 @@ function getTranslationCacheKey(text, langPair) {
   return `${langPair}::${text}`;
 }
 
+function getLangLabel(code = "") {
+  const normalized = String(code || "").toLowerCase();
+  return LANG_LABELS[normalized] || normalized || "unknown";
+}
+
+async function withTimeout(promise, timeoutMs, label) {
+  let timeoutHandle = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutHandle = setTimeout(
+      () =>
+        reject(new Error(`${label} timed out after ${timeoutMs}ms`)),
+      timeoutMs
+    );
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+  }
+}
+
+async function translateWithOpenRouter(text, langPair) {
+  if (!CAN_USE_FALLBACK) {
+    throw new Error("Translation fallback is disabled or misconfigured");
+  }
+
+  const [source, target] = (langPair || "").split("-");
+  const system = `You are a precise translation engine. Translate strictly from ${getLangLabel(
+    source
+  )} to ${getLangLabel(
+    target
+  )}. Return only the translated text with no quotes, no preamble, and preserve punctuation.`;
+  const user = `Text to translate:\n"""${text}"""`;
+
+  const raw = await chatComplete({
+    system,
+    user,
+    temperature: 0,
+  });
+
+  const cleaned =
+    (raw || "")
+      .trim()
+      .replace(/^["'\s]+|["'\s]+$/g, "") || "";
+
+  if (!cleaned) {
+    throw new Error("Fallback translation returned an empty result");
+  }
+
+  return cleaned;
+}
+
 exports.translateText = async (req, res) => {
   const rawText = req.body?.text;
   const rawLangPair = req.body?.langPair;
+  let translation = null;
+  let provider = "local";
+  let primaryError = null;
+  let fallbackError = null;
 
   try {
     const cleanText = sanitizeTextInput(rawText, {
@@ -243,25 +328,67 @@ exports.translateText = async (req, res) => {
       return res.json({ translation: cached, provider: "cache" });
     }
 
-    const translatorLoader = await getTranslator(normalizedPair.value);
-    let translator;
     try {
-      translator = await translatorLoader;
+      const translatorPromise = getTranslator(normalizedPair.value);
+      let translator;
+      try {
+        translator = await translatorPromise;
+      } catch (err) {
+        translatorCache.delete(normalizedPair.value);
+        throw err;
+      }
+
+      const result = await withTimeout(
+        translator(cleanText.value),
+        TRANSLATION_INFERENCE_TIMEOUT_MS,
+        "Translation inference"
+      );
+      translation = result[0]?.translation_text || "";
     } catch (err) {
+      primaryError = err;
       translatorCache.delete(normalizedPair.value);
-      throw err;
+
+      if (CAN_USE_FALLBACK) {
+        try {
+          translation = await translateWithOpenRouter(
+            cleanText.value,
+            normalizedPair.value
+          );
+          provider = "openrouter";
+          console.warn(
+            `⚠️  Fell back to OpenRouter translation for ${normalizedPair.value}`
+          );
+        } catch (fallbackErr) {
+          fallbackError = fallbackErr;
+          logError(fallbackErr, {
+            endpoint: "/api/translate",
+            stage: "fallback",
+            langPair: normalizedPair.value,
+          });
+        }
+      }
+
+      if (!translation) {
+        throw primaryError;
+      }
     }
 
-    const result = await translator(cleanText.value);
-    const translation = result[0]?.translation_text || "";
+    if (!translation) {
+      throw new Error("Translation produced an empty result");
+    }
+
     setCached("translation", cacheKey, translation, TRANSLATION_CACHE_TTL_MS);
-    res.json({ translation });
+    res.json({ translation, provider });
   } catch (err) {
     // Enhanced error logging for production debugging
     const errorContext = {
       endpoint: "/api/translate",
       textLength: rawText?.length || 0,
       langPair: rawLangPair || "unknown",
+      providerAttempted: provider,
+      fallbackEnabled: CAN_USE_FALLBACK,
+      primaryError: primaryError?.message,
+      fallbackError: fallbackError?.message,
       nodeEnv: process.env.NODE_ENV,
       memoryUsage: process.memoryUsage(),
       timestamp: new Date().toISOString(),
@@ -282,10 +409,25 @@ exports.translateText = async (req, res) => {
       errorCode = "MODEL_UNAVAILABLE";
     } else if (
       err.message?.includes("timeout") ||
-      err.message?.includes("Timeout")
+      err.message?.includes("Timeout") ||
+      err.code === "ETIMEDOUT"
     ) {
       userMessage = "Translation service is slow - please try again";
       errorCode = "SERVICE_TIMEOUT";
+      // Return 503 for timeout scenarios (service unavailable)
+      return res.status(503).json(
+        createErrorResponse(
+          503,
+          errorCode,
+          userMessage,
+          process.env.NODE_ENV === "development"
+            ? {
+                originalError: err.message,
+                stack: err.stack,
+              }
+            : undefined
+        )
+      );
     } else if (
       err.message?.includes("network") ||
       err.message?.includes("Network") ||
@@ -300,7 +442,8 @@ exports.translateText = async (req, res) => {
       err.message?.includes("not writable") ||
       err.message?.includes("Cache directory")
     ) {
-      userMessage = "Translation service configuration error - please contact support";
+      userMessage =
+        "Translation service configuration error - please contact support";
       errorCode = "CONFIGURATION_ERROR";
     }
 

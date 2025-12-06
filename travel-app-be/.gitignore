@@ -9,4 +9,5 @@ build/
 .DS_Store
 serviceAccountKey.json
 public/
+public.*/
 .firebase/

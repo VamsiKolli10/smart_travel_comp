@@ -1,11 +1,44 @@
 const request = require("supertest");
 
+// Avoid hitting the real OpenRouter client; the test only cares about rate limits.
+jest.mock("../src/lib/openrouterClient", () => ({
+  chatComplete: jest.fn(),
+}));
+
+const { chatComplete } = require("../src/lib/openrouterClient");
+const mockFirestore = require("firebase-admin").firestore;
+
 describe("Culture brief rate limiting by role", () => {
   let app;
 
   beforeAll(() => {
     const { createApp } = require("../src/app");
     app = createApp();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Reset cached briefs between runs so responses stay fast/deterministic.
+    const cacheStore = mockFirestore.__cultureBriefsStore || {};
+    Object.keys(cacheStore).forEach((key) => delete cacheStore[key]);
+
+    // Default model payload to keep the route handler quick.
+    chatComplete.mockResolvedValue(
+      JSON.stringify({
+        destination: "Paris",
+        culture: "French",
+        language: "en",
+        categories: {
+          greetings: ["Hi", "Hello", "Good day"],
+          dining: ["tip", "reserve", "be polite"],
+          dress_code: ["smart casual", "clean shoes", "modest"],
+          gestures: ["handshake", "eye contact", "no pointing"],
+          taboos: ["loud voices", "cutting lines", "politics"],
+          safety_basics: ["watch bags"],
+        },
+        generatedAt: new Date().toISOString(),
+      })
+    );
   });
 
   test("allows admin to exceed user limit", async () => {

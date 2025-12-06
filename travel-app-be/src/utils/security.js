@@ -367,7 +367,11 @@ function enhancedAuthorization(options = {}) {
     ];
 
     // Skip checks for public API endpoints that should be accessible without authentication
-    const publicPaths = ["/api/stays/photo", "/api/stays/search"];
+    const publicPaths = [
+      "/api/stays/photo",
+      "/api/stays/search",
+      "/api/translate/health",
+    ];
 
     if (
       authPaths.some((path) => req.path.startsWith(path)) ||

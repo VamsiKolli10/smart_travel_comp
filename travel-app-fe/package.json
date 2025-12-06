@@ -4,11 +4,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": " vite",
-    "build": " vite build",
-    "preview": " vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run --config vitest.config.js",
+    "test:watch": "vitest --config vitest.config.js",
+    "test:coverage": "vitest run --config vitest.config.js --coverage"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
