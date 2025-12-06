@@ -2,11 +2,6 @@
 
 This file tracks which recommendations from `IMPROVEMENTS.md` have been implemented and where.
 
-**Last Updated**: 2025-12-06  
-**Status**: ✅ All tests passing (Backend: 24/24 suites, 73/73 tests | Frontend: 33/33 suites, 63/63 tests)
-
----
-
 ## ✅ Completed Improvements
 
 ### 1. Environment Variable Validation (High Priority)
@@ -64,6 +59,10 @@ This file tracks which recommendations from `IMPROVEMENTS.md` have been implemen
 - ✅ Saved phrases listing capped via `SAVED_PHRASE_LIMIT`
 - ✅ POI search pagination validation (1–200)
 - ✅ Itinerary query validation with reasonable limits
+- ✅ `/api/users` supports `?limit=` with an upper bound to avoid overfetching
+
+### 9. Error Handling
+- ✅ Shared `asyncHandler` wraps major routes (translation, phrasebook, itinerary, POI, stays, saved phrases, culture, location) to funnel async errors to the global handler
 
 ### 7. Frontend Resilience (Medium Priority)
 - ✅ Global `ErrorBoundary` wraps the app (`travel-app-fe/src/main.jsx`)
@@ -84,8 +83,7 @@ This file tracks which recommendations from `IMPROVEMENTS.md` have been implemen
 ### Error Handling Standardization
 - ✅ Standardized error response format (`utils/errorHandler.js`)
 - ✅ Error codes defined (`ERROR_CODES`)
-- ⚠️ Some controllers still have mixed error handling patterns
-- ⚠️ No async wrapper middleware yet (would simplify error handling)
+- ⚠️ Some controllers still have mixed inline try/catch patterns; further cleanup could simplify controllers
 
 ---
 
@@ -114,9 +112,7 @@ This file tracks which recommendations from `IMPROVEMENTS.md` have been implemen
    - **Note**: Current implementation works well for single-instance deployments
 
 4. **Database Query Optimization**
-   - ⚠️ Additional pagination/limit checks needed for:
-     - `/api/users` endpoint (currently limited to 50, but no pagination)
-     - Culture brief data queries
+   - ⚠️ Additional pagination/limit checks needed for culture brief data queries
    - ⚠️ No cursor-based pagination yet
 
 5. **Metrics/Alerting Pipeline**
@@ -128,7 +124,7 @@ This file tracks which recommendations from `IMPROVEMENTS.md` have been implemen
 ### Low Priority
 
 6. **Frontend Enhancements**
-   - ⚠️ Component-level error boundaries (only global and page-level exist)
+   - ⚠️ Additional component-level error boundaries where needed
    - ⚠️ Retry logic for failed API requests (exponential backoff)
    - ⚠️ Offline mode detection and handling
    - ⚠️ Bundle size optimization and code splitting
@@ -146,49 +142,6 @@ This file tracks which recommendations from `IMPROVEMENTS.md` have been implemen
 9. **Internationalization (i18n)**
    - ⚠️ No i18n framework implemented
    - ⚠️ UI text is hardcoded in English
-
----
-
-## 📊 Implementation Statistics
-
-- **Total Improvements from IMPROVEMENTS.md**: 19 items
-- **Completed**: 8 items (42%)
-- **Partially Completed**: 1 item (5%)
-- **Pending**: 10 items (53%)
-
-### Priority Breakdown
-- **High Priority Completed**: 2/4 (50%)
-- **Medium Priority Completed**: 5/8 (63%)
-- **Low Priority Completed**: 1/7 (14%)
-
----
-
-## 🎯 Next Steps (Recommended Order)
-
-1. **Structured Logging** (High Priority, Medium Effort)
-   - Install pino or winston
-   - Replace all `console.*` calls
-   - Add request ID middleware
-   - Estimated: 4-6 hours
-
-2. **Request ID Middleware** (High Priority, Low Effort)
-   - Generate UUID per request
-   - Add to response headers
-   - Include in all log entries
-   - Estimated: 1-2 hours
-
-3. **Error Handling Wrapper** (Medium Priority, Low Effort)
-   - Create async wrapper middleware
-   - Standardize error handling across controllers
-   - Estimated: 2-3 hours
-
-4. **Redis Cache Option** (Medium Priority, High Effort)
-   - Add Redis client
-   - Create cache service abstraction
-   - Migrate controllers gradually
-   - Estimated: 6-8 hours
-
----
 
 ## 📝 Notes
 

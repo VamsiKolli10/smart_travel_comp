@@ -1,5 +1,9 @@
 const express = require("express");
-const { translateText, warmup } = require("../controllers/translationController");
+const {
+  translateText,
+  warmup,
+  healthCheck,
+} = require("../controllers/translationController");
 const { requireAuth } = require("../middleware/authenticate");
 const { validateBody } = require("../middleware/validate");
 const { translationSchema } = require("../utils/schemas");
@@ -13,6 +17,11 @@ router.post(
   validateBody(translationSchema),
   asyncHandler(translateText)
 );
-router.get("/warmup", requireAuth({ allowRoles: ["admin"] }), asyncHandler(warmup));
+router.get(
+  "/warmup",
+  requireAuth({ allowRoles: ["admin"] }),
+  asyncHandler(warmup)
+);
+router.get("/health", asyncHandler(healthCheck));
 
 module.exports = router;
