@@ -55,6 +55,7 @@ Environment variables are crucial for configuring the VoxTrail application. They
 | `GOOGLE_PLACES_API_KEY`     | Google Places / POI / Stays search key     | Yes                         |
 | `OPENROUTER_API_KEY`        | OpenRouter API key for AI phrasebooks/etc. | Yes                         |
 | `OPENROUTER_MODEL`          | Default AI model name                      | No (default: `gpt-4o-mini`) |
+| `OPENROUTER_MODEL_CHAIN`    | Comma-separated fallback models to try     | No                          |
 | `ITINERARY_MODEL`           | Optional dedicated itinerary model         | No                          |
 | `ITINERARY_ENABLE_FALLBACK` | Enable static/sample itinerary fallback    | No (default: `true`)        |
 
@@ -181,7 +182,7 @@ VITE_API_URL=https://api.yourdomain.com
 
 - Configure a strong `REQUEST_SIGNING_SECRET` per environment and rotate regularly.
 - Server-to-server clients must include `x-timestamp` and `x-request-signature` headers for protected routes.
-- Firebase-authenticated clients are already validated by ID tokens, but background jobs or tooling **must** use signed requests.
+- Any request with an `Authorization: Bearer <token>` header skips signature validation and will be validated by the auth middleware instead. Background jobs or tooling that cannot send ID tokens **must** use signed requests.
 
 ## CI/CD Secrets (GitHub Actions)
 
@@ -274,6 +275,8 @@ FBAPP_APP_ID=1:123456:web:abc
 GOOGLE_PLACES_API_KEY=your_google_places_api_key
 OPENROUTER_API_KEY=your_openrouter_api_key
 OPENROUTER_MODEL=x-ai/grok-4.1-fast:free
+# Optional comma-separated fallbacks, tried in order
+OPENROUTER_MODEL_CHAIN=x-ai/grok-4.1-fast:free,openai/gpt-4o-mini
 
 # Security
 REQUEST_SIGNING_SECRET=your_random_secret_string_here

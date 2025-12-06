@@ -154,7 +154,7 @@ Create these composite indexes in Firebase Console:
 1. Sign up at [OpenRouter](https://openrouter.ai/)
 2. Get API key from dashboard
 3. Add to environment variables
-4. Set model to `gpt-4o-mini` for cost optimization
+4. Set model to `gpt-4o-mini` for cost optimization, or provide `OPENROUTER_MODEL_CHAIN` (comma-separated) to fall back automatically if a model is unavailable.
 
 ### Firebase
 
@@ -204,7 +204,7 @@ const allowedOrigins = ["https://yourdomain.com", "https://www.yourdomain.com"];
 
 - `REQUEST_SIGNING_SECRET` is mandatory in every environment.
 - Server-to-server clients must include `x-timestamp` (epoch ms) and `x-request-signature` (hex HMAC of `method:path:body:timestamp`).
-- Firebase-authenticated requests bypass signing, but any automation or tooling without ID tokens must sign requests.
+- Requests carrying a `Bearer` token skip signature validation (the token is then validated by auth middleware), so prefer sending Firebase ID tokens for user-facing traffic. Only automation or tooling that cannot send ID tokens should rely on signed requests.
 
 ### 6. Quota Monitoring
 

@@ -6,6 +6,8 @@ const {
 } = require("../utils/errorHandler");
 const { enforceQuota } = require("../utils/quota");
 const { trackExternalCall } = require("../utils/monitoring");
+const { getCached, setCached } = require("../utils/cache");
+const { getCacheStats } = require("../utils/cache");
 
 const phrasebookLimit = Number(
   process.env.PHRASEBOOK_MAX_REQUESTS_PER_HOUR || 25
@@ -16,10 +18,6 @@ const phrasebookWindow = Number(
 const PHRASEBOOK_CACHE_TTL_MS = Number(
   process.env.PHRASEBOOK_CACHE_TTL_MS || 15 * 60 * 1000
 );
-const PHRASEBOOK_CACHE_MAX = Number(
-  process.env.PHRASEBOOK_CACHE_MAX || 100
-);
-const phrasebookCache = new Map();
 
 function sanitizeStr(s) {
   return typeof s === "string" ? s.trim() : "";
@@ -36,28 +34,6 @@ function getPhrasebookCacheKey({ topic, sourceLang, targetLang, count }) {
     targetLang.toLowerCase(),
     count,
   ].join("::");
-}
-
-function getCachedPhrasebook(key) {
-  const entry = phrasebookCache.get(key);
-  if (!entry) return null;
-  if (entry.expiresAt < Date.now()) {
-    phrasebookCache.delete(key);
-    return null;
-  }
-  return entry.value;
-}
-
-function setCachedPhrasebook(key, value) {
-  if (PHRASEBOOK_CACHE_TTL_MS <= 0 || PHRASEBOOK_CACHE_MAX <= 0) return;
-  if (phrasebookCache.size >= PHRASEBOOK_CACHE_MAX) {
-    const oldestKey = phrasebookCache.keys().next().value;
-    if (oldestKey) phrasebookCache.delete(oldestKey);
-  }
-  phrasebookCache.set(key, {
-    value,
-    expiresAt: Date.now() + PHRASEBOOK_CACHE_TTL_MS,
-  });
 }
 
 async function generatePhrases(req, res) {
@@ -174,7 +150,7 @@ async function generatePhrases(req, res) {
       targetLang,
       count: n,
     });
-    const cached = getCachedPhrasebook(cacheKey);
+    const cached = getCached("phrasebook", cacheKey);
     if (cached) {
       return res.status(200).json({ ...cached, provider: "cache" });
     }
@@ -228,8 +204,11 @@ async function generatePhrases(req, res) {
         .filter((p) => p.phrase && p.meaning && p.usageExample),
     };
 
-    setCachedPhrasebook(cacheKey, normalized);
-    return res.status(200).json(normalized);
+    setCached("phrasebook", cacheKey, normalized, PHRASEBOOK_CACHE_TTL_MS);
+    return res.status(200).json({
+      ...normalized,
+      cache: { provider: "memory", stats: getCacheStats() },
+    });
   } catch (err) {
     logError(err, { endpoint: "/api/phrasebook/generate" });
     return res

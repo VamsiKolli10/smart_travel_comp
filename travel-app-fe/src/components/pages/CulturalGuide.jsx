@@ -385,6 +385,49 @@ export default function CulturalGuide() {
               <CardContent>
                 <Stack spacing={2}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Quick picks
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {featuredDestinations.map((item) => (
+                      <Button
+                        key={item.destination}
+                        variant="outlined"
+                        size="small"
+                        onClick={() => {
+                          setDestinationInput(item.destination);
+                          setCultureInput(item.culture);
+                          setLanguageInput(item.language);
+                          setDestinationContext(
+                            item.destination,
+                            { display: item.destination },
+                            { source: "cultural-guide-quick-pick" }
+                          );
+                          updateTravelContext(
+                            {
+                              culture: item.culture,
+                              language: item.language,
+                            },
+                            { source: "cultural-guide-quick-pick" }
+                          );
+                          recordRecent(
+                            item.destination,
+                            item.culture,
+                            item.language
+                          );
+                        }}
+                      >
+                        {item.destination}
+                      </Button>
+                    ))}
+                  </Stack>
+                </Stack>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent>
+                <Stack spacing={2}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                     Recently explored
                   </Typography>
                   {recentDestinations.length ? (

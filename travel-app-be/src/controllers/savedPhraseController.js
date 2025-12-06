@@ -11,6 +11,7 @@ const {
 } = require("../utils/errorHandler");
 
 const fdb = () => admin.firestore();
+const SAVED_PHRASE_LIMIT = Number(process.env.SAVED_PHRASE_LIMIT || 200);
 
 const detail = (e) =>
   [
@@ -43,6 +44,7 @@ exports.listSaved = async (req, res) => {
       .doc(ownership.value)
       .collection("saved_phrases")
       .orderBy("createdAt", "desc")
+      .limit(SAVED_PHRASE_LIMIT)
       .get();
     res.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
   } catch (e) {

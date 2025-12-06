@@ -21,6 +21,10 @@ const { requireAuth } = require("../middleware/authenticate");
 const { createCustomLimiter } = require("../utils/rateLimiter");
 const { enforceQuota } = require("../utils/quota");
 const { trackExternalCall } = require("../utils/monitoring");
+const { validateQuery, validateParams } = require("../middleware/validate");
+const { staysSearchSchema } = require("../utils/schemas");
+const { z } = require("zod");
+const asyncHandler = require("../utils/asyncHandler");
 
 const searchLimiter = createCustomLimiter({
   windowMs: Number(process.env.STAYS_SEARCH_WINDOW_MS || 60_000),
@@ -129,18 +133,20 @@ router.get("/photo", async (req, res) => {
 router.get(
   "/search",
   requireAuth({ allowRoles: ["user", "admin"] }),
+  validateQuery(staysSearchSchema),
   searchLimiter,
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     try {
-      const {
-        dest,
-        lat,
-        lng,
-        rating,
-        distance,
-        type,
-        amenities,
+    const {
+      dest,
+      lat,
+      lng,
+      rating,
+      distance,
+      type,
+      amenities,
         page = 1,
+        pageSize: pageSizeInput,
         lang = "en",
         checkInDate,
         checkOutDate,
@@ -287,8 +293,14 @@ router.get(
       }
     }
 
-    // simple pagination
-    const pageSize = 5;
+    // simple pagination (allow client to request larger page sizes for frontend pagination)
+    const pageSize = (() => {
+      const requested = Number(pageSizeInput);
+      if (Number.isFinite(requested) && requested > 0) {
+        return Math.min(50, Math.max(5, Math.floor(requested)));
+      }
+      return 5;
+    })();
     const totalResults = items.length;
     const totalPages = Math.max(1, Math.ceil(totalResults / pageSize));
     const currentPage = Math.min(pageNumber, totalPages);
@@ -316,14 +328,19 @@ router.get(
         createErrorResponse(status, ERROR_CODES.EXTERNAL_SERVICE_ERROR, message)
       );
   }
-  }
+  })
 );
 
 router.get(
   "/:id",
   requireAuth({ allowRoles: ["user", "admin"] }),
+  validateParams(
+    z.object({
+      id: z.string().min(1, "id is required"),
+    })
+  ),
   detailLimiter,
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     try {
       const quotaResult = enforceQuota({
         identifier: req.user?.uid || req.ip,
@@ -373,7 +390,7 @@ router.get(
         .status(500)
         .json(createErrorResponse(500, ERROR_CODES.DB_ERROR, e.message));
     }
-  }
+  })
 );
 
 module.exports = router;

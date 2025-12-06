@@ -53,11 +53,19 @@ describe("Translation page", () => {
     fireEvent.change(input, {
       target: { value: "hello" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /translate/i }));
+    
+    const translateButton = screen.getByRole("button", { name: /translate/i });
+    fireEvent.click(translateButton);
 
-    await waitFor(() => {
-      expect(screen.getByDisplayValue("hola")).toBeInTheDocument();
-    });
+    // Wait for the translation to complete and appear in the output field
+    await waitFor(
+      () => {
+        expect(screen.getByDisplayValue("hola")).toBeInTheDocument();
+      },
+      { timeout: 10000 }
+    );
+
+    expect(translateText).toHaveBeenCalledWith("hello", "en-es");
   });
 
   it("saves a translation to phrasebook", async () => {

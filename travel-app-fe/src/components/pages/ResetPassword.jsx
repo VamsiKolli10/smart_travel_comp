@@ -25,12 +25,8 @@ import AuthShell from "../layout/AuthShell";
 import useNotification from "../../hooks/useNotification";
 import {
   confirmPasswordResetWithCode,
-  EmailNotVerifiedError,
-  loginWithEmail,
   verifyPasswordReset,
 } from "../../services/auth";
-import { auth } from "../../firebase";
-import { signOut } from "firebase/auth";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -53,7 +49,6 @@ export default function ResetPassword() {
     location.state?.email || ""
   );
   const [verifyingLink, setVerifyingLink] = useState(true);
-  const [postCheck, setPostCheck] = useState(null);
 
   const oobCode = searchParams.get("oobCode");
 
@@ -142,40 +137,6 @@ export default function ResetPassword() {
     setError("");
     try {
       await confirmPasswordResetWithCode(oobCode, formData.password);
-
-      const targetEmail = verifiedEmail || location.state?.email;
-      if (targetEmail) {
-        try {
-          await loginWithEmail(targetEmail, formData.password);
-          await signOut(auth); // keep flow explicit; user can log in from login page
-          setPostCheck({
-            type: "success",
-            message:
-              "Password updated and sign-in confirmed. You can now log in with your new password.",
-          });
-        } catch (signInErr) {
-          if (signInErr instanceof EmailNotVerifiedError) {
-            setPostCheck({
-              type: "warning",
-              message:
-                "Password updated, but your email is not verified. Verify your email, then log in with the new password.",
-            });
-          } else {
-            const codeLabel = signInErr?.code || "unknown";
-            setPostCheck({
-              type: "error",
-              message:
-                `Password updated, but sign-in failed with code: ${codeLabel}. Please log in manually with the new password.`,
-            });
-          }
-        }
-      } else {
-        setPostCheck({
-          type: "info",
-          message: "Password updated. Return to login and sign in with your email.",
-        });
-      }
-
       setSuccess(true);
       showNotification("Password reset successfully!", "success");
     } catch (err) {
@@ -344,12 +305,6 @@ export default function ResetPassword() {
               </ListItem>
             ))}
           </List>
-
-          {postCheck && (
-            <Alert severity={postCheck.type || "info"} sx={{ borderRadius: 2 }}>
-              {postCheck.message}
-            </Alert>
-          )}
 
           <Button
             variant="contained"

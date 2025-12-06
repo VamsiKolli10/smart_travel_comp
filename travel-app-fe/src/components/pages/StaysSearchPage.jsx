@@ -36,8 +36,20 @@ import MapView from "../stays/MapView";
 import { useAnalytics } from "../../contexts/AnalyticsContext.jsx";
 import { logRecentActivity } from "../../utils/recentActivity";
 import useTravelContext from "../../hooks/useTravelContext";
+import ErrorBoundary from "../common/ErrorBoundary";
+
+const PAGE_SIZE = 5;
+const BACKEND_FETCH_SIZE = 50; // request a larger page size so we can paginate on the client
 
 export default function StaysSearchPage() {
+  return (
+    <ErrorBoundary>
+      <StaysSearchPageBody />
+    </ErrorBoundary>
+  );
+}
+
+function StaysSearchPageBody() {
   const [params, setParams] = useSearchParams();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -76,6 +88,7 @@ export default function StaysSearchPage() {
   const [view, setView] = useState(params.get("view") || "list");
   const [page, setPage] = useState(Number(params.get("page") || 1));
   const [loading, setLoading] = useState(false);
+  const [allItems, setAllItems] = useState([]);
   const [items, setItems] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
@@ -169,6 +182,22 @@ export default function StaysSearchPage() {
   };
 
   // Fixed: performSearch accepts query and filters as parameters to avoid async state delays
+  const applyPage = (
+    nextPage,
+    sourceItems = allItems,
+    currentQuery = query,
+    currentFilters = filters
+  ) => {
+    const total = sourceItems.length;
+    const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const clamped = Math.min(Math.max(1, nextPage || 1), maxPage);
+    const start = (clamped - 1) * PAGE_SIZE;
+    setItems(sourceItems.slice(start, start + PAGE_SIZE));
+    setPage(clamped);
+    setTotalPages(maxPage);
+    syncUrl(currentQuery, currentFilters, { page: clamped });
+  };
+
   const performSearch = async (
     searchQuery = query,
     searchFilters = filters,
@@ -185,7 +214,8 @@ export default function StaysSearchPage() {
       // Build search params - only include non-empty values
       const searchParams = {
         ...normalizedQuery,
-        page: effectivePage,
+        page: 1,
+        pageSize: BACKEND_FETCH_SIZE,
       };
 
       // Add type filter only if there are selected types
@@ -204,14 +234,13 @@ export default function StaysSearchPage() {
       }
 
       const data = await searchStays(searchParams);
-      setItems(data.items || []);
-      const resolvedTotal = data.total ?? data.items?.length ?? 0;
-      setTotalResults(resolvedTotal);
+      const fullItems = data.items || [];
+      const responseTotal = data.total ?? fullItems.length ?? 0;
+      setAllItems(fullItems);
+      setTotalResults(responseTotal);
       setDestinationMeta(data.resolvedDestination || null);
-      setTotalPages(Math.max(1, data.totalPages || 1));
-      if (typeof data.page === "number") {
-        setPage(data.page);
-      }
+      const computedPage = effectivePage || 1;
+      applyPage(computedPage, fullItems, normalizedQuery, searchFilters);
       const destinationLabel =
         data.resolvedDestination?.city?.trim() ||
         data.resolvedDestination?.display ||
@@ -256,12 +285,12 @@ export default function StaysSearchPage() {
       logRecentActivity({
         type: "stays",
         title: "Searched stays",
-        description: `${destinationLabel} · ${resolvedTotal} result${
-          resolvedTotal === 1 ? "" : "s"
+        description: `${destinationLabel} · ${responseTotal} result${
+          responseTotal === 1 ? "" : "s"
         }`,
         meta: {
           page: effectivePage,
-          total: resolvedTotal,
+          total: responseTotal,
         },
       });
       trackEvent("stays_search", {
@@ -272,17 +301,18 @@ export default function StaysSearchPage() {
           amenities: searchFilters.amenities?.length || 0,
           rating: Boolean(searchFilters.rating),
         },
-        results: (data.total ?? data.items?.length) || 0,
+        results: responseTotal,
         success: true,
       });
       setQuery((prev) => ({
         ...prev,
         ...normalizedQuery,
       }));
-      syncUrl(normalizedQuery, searchFilters, { page: effectivePage });
+      // applyPage already syncs the URL
     } catch (e) {
       const apiMsg = e?.response?.data?.error?.message;
       setError(apiMsg || e?.message || "Failed to fetch stays");
+      setAllItems([]);
       setItems([]);
       setTotalResults(0);
       setDestinationMeta(null);
@@ -322,7 +352,7 @@ export default function StaysSearchPage() {
   const handleFiltersApply = (newFilters, options = {}) => {
     const filtersToApply = newFilters || filters;
     setFilters(filtersToApply);
-    setPage(1);
+    applyPage(1, allItems, query, filtersToApply);
     performSearch(query, filtersToApply, 1);
     const shouldClose =
       options.closePanel !== false && !(options?.reason === "auto");
@@ -758,8 +788,7 @@ export default function StaysSearchPage() {
                     disabled={page === 1}
                     onClick={() => {
                       const newPage = Math.max(1, page - 1);
-                      setPage(newPage);
-                      performSearch(query, filters, newPage);
+                      applyPage(newPage);
                     }}
                   >
                     Previous
@@ -774,8 +803,7 @@ export default function StaysSearchPage() {
                     disabled={page >= totalPages}
                     onClick={() => {
                       const newPage = page + 1;
-                      setPage(newPage);
-                      performSearch(query, filters, newPage);
+                      applyPage(newPage);
                     }}
                   >
                     Next

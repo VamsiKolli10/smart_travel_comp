@@ -6,10 +6,13 @@ const {
   askQuestion,
   getContextualTips,
 } = require("../controllers/cultureIntelligenceController");
+const { validateBody } = require("../middleware/validate");
+const { cultureQuestionSchema, cultureContextualSchema } = require("../utils/schemas");
 const {
   createRoleBasedLimiter,
   createCustomLimiter,
 } = require("../utils/rateLimiter");
+const asyncHandler = require("../utils/asyncHandler");
 
 // Rate limiting strategy:
 // - /brief: moderate shared limit (e.g., 40/min window) with role-aware behavior.
@@ -42,12 +45,22 @@ const contextualLimiter = createCustomLimiter({
 });
 
 // GET /api/culture/brief
-router.get("/brief", briefLimiter, getBrief);
+router.get("/brief", briefLimiter, asyncHandler(getBrief));
 
 // POST /api/culture/qa
-router.post("/qa", qaLimiter, askQuestion);
+router.post(
+  "/qa",
+  qaLimiter,
+  validateBody(cultureQuestionSchema),
+  asyncHandler(askQuestion)
+);
 
 // POST /api/culture/contextual
-router.post("/contextual", contextualLimiter, getContextualTips);
+router.post(
+  "/contextual",
+  contextualLimiter,
+  validateBody(cultureContextualSchema),
+  asyncHandler(getContextualTips)
+);
 
 module.exports = router;

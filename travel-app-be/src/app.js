@@ -5,6 +5,7 @@ process.env.FIRESTORE_PREFER_REST = process.env.FIRESTORE_PREFER_REST || "true";
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const env = require("./config/env");
 const translationRoutes = require("./routes/translationRoutes");
 const phrasebookRoutes = require("./routes/phrasebookRoutes");
 const savedPhraseRoutes = require("./routes/savedPhraseRoutes");
@@ -33,24 +34,30 @@ const {
   enhancedAuthorization,
   validateRequestSignature,
 } = require("./utils/security");
+const {
+  recordTiming,
+  getPerformanceSnapshot,
+} = require("./utils/performance");
 const { validateBody } = require("./middleware/validate");
 const { userWriteSchema } = require("./utils/schemas");
 
-const allowedOrigins =
-  process.env.CORS_ALLOWED_ORIGINS?.split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean) || [
-    "http://localhost",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://smarttravelcompanion-9ed6c.web.app",
-    "https://smarttravelcompanion-9ed6c.firebaseapp.com",
-  ];
+const defaultAllowedOrigins = [
+  "http://localhost",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://smarttravelcompanion-9ed6c.web.app",
+  "https://smarttravelcompanion-9ed6c.firebaseapp.com",
+];
 
-const rateLimitWindowMs = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
-const rateLimitMax = Number(process.env.RATE_LIMIT_MAX || 60);
-const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || "256kb";
-const signingSecret = process.env.REQUEST_SIGNING_SECRET;
+const allowedOrigins =
+  env.CORS_ALLOWED_ORIGIN_LIST.length > 0
+    ? env.CORS_ALLOWED_ORIGIN_LIST
+    : defaultAllowedOrigins;
+
+const rateLimitWindowMs = env.RATE_LIMIT_WINDOW_MS ?? 60_000;
+const rateLimitMax = env.RATE_LIMIT_MAX ?? 60;
+const requestBodyLimit = env.REQUEST_BODY_LIMIT || "256kb";
+const signingSecret = env.REQUEST_SIGNING_SECRET;
 
 if (!signingSecret) {
   throw new Error(
@@ -197,6 +204,23 @@ function createApp() {
   app.use(enhancedAuthorization({ strictMode: true }));
   app.use(securityLogging({ trackSuspiciousActivity: true }));
 
+  // Lightweight response time tracking (no logging); adds X-Response-Time-ms header
+  app.use((req, res, next) => {
+    const start = process.hrtime.bigint();
+    const originalEnd = res.end;
+    res.end = function patchedEnd(chunk, encoding, callback) {
+      const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+      res.setHeader("X-Response-Time-ms", durationMs.toFixed(1));
+      res.requestDurationMs = durationMs;
+      const routeKey = `${req.method} ${
+        req.route?.path || req.originalUrl.split("?")[0] || req.path
+      }`;
+      recordTiming(routeKey, durationMs);
+      return originalEnd.call(this, chunk, encoding, callback);
+    };
+    next();
+  });
+
   // Validate request signatures for sensitive endpoints
   app.use(
     validateRequestSignature({
@@ -219,24 +243,31 @@ function createApp() {
   const requireUser = () => requireAuth({ allowRoles: ["user", "admin"] });
   const requireAdmin = () => requireAuth({ allowRoles: ["admin"] });
 
-  app.get("/api/users", requireAdmin(), async (_req, res) => {
-      try {
-        const snapshot = await db.collection("users").limit(50).get();
-        res.json(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
-      } catch (e) {
-        logError(e, { endpoint: "/api/users" });
-        res
-          .status(500)
-          .json(
-            createErrorResponse(
-              500,
-              ERROR_CODES.DB_ERROR,
-              "Failed to fetch users"
-            )
-          );
-      }
+  app.get("/api/metrics/perf", requireAdmin(), (_req, res) => {
+    res.json({ routes: getPerformanceSnapshot() });
+  });
+
+  app.get("/api/users", requireAdmin(), async (req, res) => {
+    try {
+      const max = Math.min(
+        Number(req.query.limit) || 50,
+        200
+      );
+      const snapshot = await db.collection("users").limit(max).get();
+      res.json(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+    } catch (e) {
+      logError(e, { endpoint: "/api/users" });
+      res
+        .status(500)
+        .json(
+          createErrorResponse(
+            500,
+            ERROR_CODES.DB_ERROR,
+            "Failed to fetch users"
+          )
+        );
     }
-  );
+  });
 
   app.post("/api/users", requireAdmin(), validateBody(userWriteSchema), async (req, res) => {
       try {

@@ -14,6 +14,7 @@ const {
   logError,
 } = require("../utils/errorHandler");
 const { getCached, setCached } = require("../utils/cache");
+const { getCacheStats } = require("../utils/cache");
 const { enforceQuota } = require("../utils/quota");
 const { trackExternalCall } = require("../utils/monitoring");
 
@@ -173,7 +174,7 @@ async function search(req, res) {
       resolvedDestination,
     };
     setCached("poi:search", cacheKey, payload, poiSearchCacheTtl);
-    return res.json(payload);
+    return res.json({ ...payload, cache: { provider: "memory", stats: getCacheStats() } });
   } catch (e) {
     logError(e, { endpoint: "/api/poi/search", query: req.query });
     const status = e.response?.status || e.status || 500;
@@ -241,7 +242,7 @@ async function details(req, res) {
       description,
     };
     setCached("poi:detail", cacheKey, payload, poiDetailCacheTtl);
-    return res.json(payload);
+    return res.json({ ...payload, cache: { provider: "memory", stats: getCacheStats() } });
   } catch (e) {
     logError(e, { endpoint: "/api/poi/:id", id });
     const status = e.response?.status || e.status || 500;

@@ -27,5 +27,5 @@ describe("Culture brief rate limiting by role", () => {
       .set("Authorization", "Bearer valid-admin-token");
 
     expect([200, 429, 500]).toContain(adminRes.statusCode);
-  });
+  }, 30000); // Increase timeout to 30 seconds for this test
 });

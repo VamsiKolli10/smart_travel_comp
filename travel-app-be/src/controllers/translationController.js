@@ -6,6 +6,7 @@ const {
   ERROR_CODES,
   logError,
 } = require("../utils/errorHandler");
+const { getCached, setCached } = require("../utils/cache");
 
 const SUPPORTED_PAIRS = new Set([
   "en-es",
@@ -31,10 +32,6 @@ const DEFAULT_WARM_PAIRS = (process.env.TRANSLATION_WARM_PAIRS || "")
 const TRANSLATION_CACHE_TTL_MS = Number(
   process.env.TRANSLATION_CACHE_TTL_MS || 10 * 60 * 1000
 );
-const TRANSLATION_CACHE_MAX = Number(
-  process.env.TRANSLATION_CACHE_MAX || 200
-);
-const translationResultCache = new Map();
 const DEFAULT_MODEL_CACHE =
   process.env.TRANSFORMERS_CACHE ||
   process.env.HF_HOME ||
@@ -90,30 +87,6 @@ function getTranslationCacheKey(text, langPair) {
   return `${langPair}::${text}`;
 }
 
-function getCachedTranslation(key) {
-  const entry = translationResultCache.get(key);
-  if (!entry) return null;
-  if (entry.expiresAt < Date.now()) {
-    translationResultCache.delete(key);
-    return null;
-  }
-  return entry.value;
-}
-
-function setCachedTranslation(key, value) {
-  if (!value || TRANSLATION_CACHE_TTL_MS <= 0 || TRANSLATION_CACHE_MAX <= 0) {
-    return;
-  }
-  if (translationResultCache.size >= TRANSLATION_CACHE_MAX) {
-    const oldestKey = translationResultCache.keys().next().value;
-    if (oldestKey) translationResultCache.delete(oldestKey);
-  }
-  translationResultCache.set(key, {
-    value,
-    expiresAt: Date.now() + TRANSLATION_CACHE_TTL_MS,
-  });
-}
-
 exports.translateText = async (req, res) => {
   try {
     const { text, langPair } = req.body || {};
@@ -151,7 +124,7 @@ exports.translateText = async (req, res) => {
       cleanText.value,
       normalizedPair.value
     );
-    const cached = getCachedTranslation(cacheKey);
+    const cached = getCached("translation", cacheKey);
     if (cached) {
       return res.json({ translation: cached, provider: "cache" });
     }
@@ -167,7 +140,7 @@ exports.translateText = async (req, res) => {
 
     const result = await translator(cleanText.value);
     const translation = result[0]?.translation_text || "";
-    setCachedTranslation(cacheKey, translation);
+    setCached("translation", cacheKey, translation, TRANSLATION_CACHE_TTL_MS);
     res.json({ translation });
   } catch (err) {
     logError(err, { endpoint: "/api/translate" });

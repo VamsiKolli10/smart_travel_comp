@@ -119,6 +119,14 @@ function validateRequestSignature(options = {}) {
       return next();
     }
 
+    // If a Bearer token is present, let downstream auth middleware handle validity
+    const hasAuthHeader =
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer ");
+    if (hasAuthHeader) {
+      return next();
+    }
+
     const signature = req.headers["x-request-signature"];
     if (!signature) {
       return res

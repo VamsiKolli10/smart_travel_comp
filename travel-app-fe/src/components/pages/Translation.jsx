@@ -36,6 +36,7 @@ import { ModuleCard, ModuleCardGrid } from "../common/ModuleCard";
 import { translateText } from "../../services/translation";
 import { addSavedPhrase } from "../../services/savedPhrases";
 import { useAnalytics } from "../../contexts/AnalyticsContext.jsx";
+import ErrorBoundary from "../common/ErrorBoundary";
 import { logRecentActivity } from "../../utils/recentActivity";
 import useTravelContext from "../../hooks/useTravelContext";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -67,6 +68,14 @@ const quickTips = [
 ];
 
 export default function Translation() {
+  return (
+    <ErrorBoundary>
+      <TranslationBody />
+    </ErrorBoundary>
+  );
+}
+
+function TranslationBody() {
   const [source, setSource] = useState("");
   const [target, setTarget] = useState("");
   const {

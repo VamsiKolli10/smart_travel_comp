@@ -3,6 +3,10 @@ const router = express.Router();
 const { requireAuth } = require("../middleware/authenticate");
 const { createCustomLimiter } = require("../utils/rateLimiter");
 const { search, details } = require("../controllers/poiController");
+const { validateQuery, validateParams } = require("../middleware/validate");
+const { poiSearchSchema } = require("../utils/schemas");
+const { z } = require("zod");
+const asyncHandler = require("../utils/asyncHandler");
 
 const poiSearchLimiter = createCustomLimiter({
   windowMs: Number(process.env.POI_SEARCH_WINDOW_MS || 60_000),
@@ -19,14 +23,20 @@ const poiDetailLimiter = createCustomLimiter({
 router.get(
   "/search",
   requireAuth({ allowRoles: ["user", "admin"] }),
+  validateQuery(poiSearchSchema),
   poiSearchLimiter,
-  search
+  asyncHandler(search)
 );
 router.get(
   "/:id",
   requireAuth({ allowRoles: ["user", "admin"] }),
+  validateParams(
+    z.object({
+      id: z.string().min(1, "id is required"),
+    })
+  ),
   poiDetailLimiter,
-  details
+  asyncHandler(details)
 );
 
 module.exports = router;

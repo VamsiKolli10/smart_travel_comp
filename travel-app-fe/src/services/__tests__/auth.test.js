@@ -32,6 +32,8 @@ vi.mock("firebase/auth", () => {
     isSignInWithEmailLink: vi.fn(),
     checkActionCode: vi.fn(),
     applyActionCode: vi.fn(),
+    onAuthStateChanged: vi.fn(),
+    onIdTokenChanged: vi.fn(),
   };
 });
 
@@ -50,9 +52,9 @@ describe("auth service", () => {
       },
     });
 
-    await expect(loginWithEmail("user@test.dev", "secret")).rejects.toBeInstanceOf(
-      EmailNotVerifiedError
-    );
+    await expect(
+      loginWithEmail("user@test.dev", "secret")
+    ).rejects.toBeInstanceOf(EmailNotVerifiedError);
 
     expect(signOut).toHaveBeenCalled();
   });

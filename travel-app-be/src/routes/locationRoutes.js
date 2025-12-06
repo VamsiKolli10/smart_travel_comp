@@ -8,6 +8,7 @@ const {
 } = require("../utils/errorHandler");
 const { createCustomLimiter } = require("../utils/rateLimiter");
 const { getCached, setCached } = require("../utils/cache");
+const asyncHandler = require("../utils/asyncHandler");
 
 const resolveLimiter = createCustomLimiter({
   windowMs: Number(process.env.LOCATION_RESOLVE_WINDOW_MS || 60_000),
@@ -19,7 +20,7 @@ const cacheTtlMs = Number(
   process.env.LOCATION_RESOLVE_CACHE_TTL_MS || 5 * 60 * 1000
 );
 
-router.get("/resolve", resolveLimiter, async (req, res) => {
+router.get("/resolve", resolveLimiter, asyncHandler(async (req, res) => {
   const query =
     (req.query.q || req.query.query || req.query.dest || "").trim();
   const lang = (req.query.lang || "en").trim() || "en";
@@ -71,6 +72,6 @@ router.get("/resolve", resolveLimiter, async (req, res) => {
         )
       );
   }
-});
+}));
 
 module.exports = router;

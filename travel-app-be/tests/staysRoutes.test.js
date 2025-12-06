@@ -54,7 +54,7 @@ describe("Stays routes", () => {
       .set("Authorization", "Bearer valid-user-token");
 
     expect(res.statusCode).toBe(400);
-    expect(res.body.error.code).toBe("BAD_REQUEST");
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
 
   test("returns stay detail when found", async () => {

@@ -1,16 +1,23 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import ForgotPassword from "../ForgotPassword.jsx";
+import { sendPasswordReset } from "../../../services/auth";
+
+vi.mock("../../../services/auth", () => ({
+  sendPasswordReset: vi.fn(),
+}));
+
+vi.mock("../../../hooks/useNotification", () => ({
+  default: () => ({
+    showNotification: vi.fn(),
+  }),
+}));
 
 describe("ForgotPassword page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
+    sendPasswordReset.mockResolvedValue();
   });
 
   it("validates missing email", () => {
@@ -36,13 +43,12 @@ describe("ForgotPassword page", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /send reset email/i }));
 
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-
     await waitFor(
-      () => expect(screen.getByText(/check your email/i)).toBeInTheDocument(),
-      { timeout: 15000 }
+      () => expect(screen.getByText(/Check your email/i)).toBeInTheDocument(),
+      { timeout: 5000 }
     );
+
+    // sendPasswordReset is called with email (redirectUrl is optional)
+    expect(sendPasswordReset).toHaveBeenCalledWith("user@test.dev");
   });
 }, 20000);

@@ -133,7 +133,8 @@ Search for hotels and other accommodations.
 - `distance` (number, optional): Search radius in km (default: 5)
 - `type` (string, optional): Comma-separated accommodation types
 - `amenities` (string, optional): Comma-separated required amenities
-- `page` (number, optional): Page number (default: 1)
+- `page` (number, optional): Page number (default: 1). Used when paging on the backend.
+- `pageSize` (number, optional): Number of results per page (min: 5, max: 50). Use a higher value (e.g., 50) when doing client-side pagination.
 - `lang` (string, optional): Language code (default: "en")
 
 **Response Fields:**
@@ -177,7 +178,7 @@ GET /api/stays/search?dest=Paris&distance=3&rating=4&type=hotel&lang=en
     }
   ],
   "page": 1,
-  "pageSize": 20,
+  "pageSize": 50,
   "total": 45,
   "resolvedDestination": {
     "query": "Paris",
