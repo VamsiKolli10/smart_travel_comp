@@ -35,13 +35,17 @@ const TRANSLATION_CACHE_TTL_MS = Number(
 // Determine cache directory - Firebase Functions require /tmp, other environments can use custom path
 const isFirebaseFunction = !!(process.env.FUNCTION_TARGET || process.env.K_SERVICE);
 const getCacheDir = () => {
-  // If explicitly set, use that (highest priority)
+  // For Firebase Functions, always force /tmp (only writable directory)
+  if (isFirebaseFunction) {
+    const fromEnv = process.env.TRANSFORMERS_CACHE;
+    if (fromEnv && fromEnv.startsWith("/tmp")) {
+      return fromEnv;
+    }
+    return path.join("/tmp", "transformers");
+  }
+  // If explicitly set, use that (highest priority) in non-functions environments
   if (process.env.TRANSFORMERS_CACHE) {
     return process.env.TRANSFORMERS_CACHE;
-  }
-  // For Firebase Functions, always use /tmp (only writable directory)
-  if (isFirebaseFunction) {
-    return path.join("/tmp", "transformers");
   }
   // For other environments, try TMPDIR or default to /tmp
   return path.join(process.env.TMPDIR || "/tmp", "transformers");
