@@ -228,7 +228,16 @@ else
   
   # Confirmation prompt for production (unless forced or in CI)
   if [[ ${FORCE} -eq 0 ]] && [[ -z "${CI:-}" ]]; then
-    DEPLOY_PROJECT="${PROJECT_ID:-$(firebase use 2>/dev/null | grep -oP '(?<=\()[^)]+' || echo 'default')}"
+    # Extract project ID from firebase use output (portable, works on macOS and Linux)
+    if [[ -z "${PROJECT_ID}" ]]; then
+      FIREBASE_USE_OUTPUT=$(firebase use 2>/dev/null || echo "")
+      if [[ -n "${FIREBASE_USE_OUTPUT}" ]]; then
+        DEPLOY_PROJECT=$(echo "${FIREBASE_USE_OUTPUT}" | sed -n 's/.*(\([^)]*\)).*/\1/p' | head -1)
+      fi
+      DEPLOY_PROJECT="${DEPLOY_PROJECT:-default}"
+    else
+      DEPLOY_PROJECT="${PROJECT_ID}"
+    fi
     echo
     echo "Ready to deploy to Firebase project: ${DEPLOY_PROJECT}"
     read -p "Continue with deployment? (y/N) " -n 1 -r
@@ -255,8 +264,17 @@ fi
 # Post-deployment verification
 if [[ ${DRY_RUN} -eq 0 ]]; then
   log "[6/6] Verifying deployment..."
-  FINAL_PROJECT="${PROJECT_ID:-$(firebase use 2>/dev/null | grep -oP '(?<=\()[^)]+' || echo '')}"
-  if [[ -n "${FINAL_PROJECT}" ]]; then
+  # Extract project ID from firebase use output (portable, works on macOS and Linux)
+  if [[ -z "${PROJECT_ID}" ]]; then
+    FIREBASE_USE_OUTPUT=$(firebase use 2>/dev/null || echo "")
+    if [[ -n "${FIREBASE_USE_OUTPUT}" ]]; then
+      FINAL_PROJECT=$(echo "${FIREBASE_USE_OUTPUT}" | sed -n 's/.*(\([^)]*\)).*/\1/p' | head -1)
+    fi
+  else
+    FINAL_PROJECT="${PROJECT_ID}"
+  fi
+  
+  if [[ -n "${FINAL_PROJECT}" ]] && [[ "${FINAL_PROJECT}" != "default" ]]; then
     DEPLOYED_URL="https://${FINAL_PROJECT}.web.app"
     if command -v curl >/dev/null 2>&1; then
       if curl -sf --max-time 10 "${DEPLOYED_URL}" >/dev/null 2>&1; then
