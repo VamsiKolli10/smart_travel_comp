@@ -164,4 +164,18 @@ describe("Itinerary routes", () => {
     expect(res.body.days.length).toBe(3); // default days
     process.env.OPENROUTER_API_KEY = oldKey;
   });
+
+  test("returns fallback itinerary when OpenRouter responds with invalid JSON", async () => {
+    chatComplete.mockResolvedValueOnce("oops { not valid json");
+
+    const res = await request(app)
+      .get("/api/itinerary/generate?dest=Paris&days=3")
+      .set("user-agent", "jest")
+      .set("Authorization", "Bearer valid-user-token");
+
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res.body.days)).toBe(true);
+    expect(res.body.fallback).toBe(true);
+    expect(res.body.notice).toMatch(/unexpected format/i);
+  });
 });

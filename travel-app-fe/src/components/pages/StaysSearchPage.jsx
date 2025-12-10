@@ -65,11 +65,19 @@ function StaysSearchPageBody() {
     () => (destinationDisplayName || destination || "").trim(),
     [destinationDisplayName, destination]
   );
-  const initialLat = params.get("lat")
-    ? Number(params.get("lat"))
+  const urlDest = (params.get("dest") || "").trim();
+  const urlLatRaw = params.get("lat");
+  const urlLngRaw = params.get("lng");
+  const hasUrlLocation = Boolean(urlDest || (urlLatRaw && urlLngRaw));
+  const initialLat = urlLatRaw
+    ? Number(urlLatRaw)
+    : urlDest
+    ? undefined
     : destinationLat ?? undefined;
-  const initialLng = params.get("lng")
-    ? Number(params.get("lng"))
+  const initialLng = urlLngRaw
+    ? Number(urlLngRaw)
+    : urlDest
+    ? undefined
     : destinationLng ?? undefined;
 
   const [query, setQuery] = useState({
@@ -121,6 +129,7 @@ function StaysSearchPageBody() {
   }, [page, view, loading, items.length]);
 
   useEffect(() => {
+    if (hasUrlLocation) return; // URL takes precedence; do not override with stale context
     if (!contextDestination && !destinationLat && !destinationLng) return;
     setQuery((prev) => {
       const sameDestination =
@@ -150,7 +159,30 @@ function StaysSearchPageBody() {
             : prev.lng,
       };
     });
-  }, [contextDestination, destinationLat, destinationLng]);
+  }, [contextDestination, destinationLat, destinationLng, hasUrlLocation]);
+
+  // When URL includes a destination/coords (e.g., deep link from other modules), push it into shared context
+  useEffect(() => {
+    if (!hasUrlLocation) return;
+    const latFromUrl = urlLatRaw ? Number(urlLatRaw) : undefined;
+    const lngFromUrl = urlLngRaw ? Number(urlLngRaw) : undefined;
+    const nextDisplay =
+      urlDest ||
+      (latFromUrl && lngFromUrl ? "Selected area" : contextDestination || "");
+    setDestinationContext(nextDisplay, {
+      display: nextDisplay,
+      lat: latFromUrl,
+      lng: lngFromUrl,
+      source: "stays-url",
+    });
+  }, [
+    hasUrlLocation,
+    urlDest,
+    urlLatRaw,
+    urlLngRaw,
+    contextDestination,
+    setDestinationContext,
+  ]);
 
   const normalizeSearchQuery = (base = {}) => {
     const dest = typeof base.dest === "string" ? base.dest.trim() : "";

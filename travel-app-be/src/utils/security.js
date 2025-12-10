@@ -324,7 +324,7 @@ function securityLogging(options = {}) {
         // Check for unusual patterns
         const isUnusualRequest =
           responseTime > 5000 || // Response time is unusually long
-          (res.statusCode >= 400 && res.statusCode < 500) || // Client error
+          (res.statusCode >= 400 && res.statusCode < 500 && res.statusCode !== 429) || // Client error (skip expected rate limits)
           res.statusCode >= 500; // Server error
 
         if (isUnusualRequest) {

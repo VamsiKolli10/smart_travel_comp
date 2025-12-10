@@ -540,32 +540,60 @@ async function generateItinerary(req, res) {
       throw aiErr;
     }
 
-    let payload;
+    let payload = null;
     try {
       payload = JSON.parse(raw);
     } catch {
-      const match = raw.match(/\{[\s\S]*\}$/);
-      payload = match ? JSON.parse(match[0]) : null;
+      const match = raw?.match(/\{[\s\S]*\}$/);
+      if (match) {
+        try {
+          payload = JSON.parse(match[0]);
+        } catch (_parseErr) {
+          payload = null;
+        }
+      }
     }
 
     if (!payload || !Array.isArray(payload.days)) {
-      // Soft-fallback to sample on unexpected format
-      const sample = sampleItinerary({ destination, days, budget, pace, season, interests });
-      setCachedItinerary(cacheKey, sample);
-      return res.json(sample);
+      // Soft-fallback to POI-backed itinerary when AI response is malformed
+      const sample = await poiBackedItinerary({
+        destination,
+        days,
+        budget,
+        pace,
+        season,
+        interests,
+        lang,
+      });
+      const payload = {
+        ...sample,
+        fallback: true,
+        notice: "AI itinerary returned an unexpected format. Showing POI-backed plan instead.",
+      };
+      setCachedItinerary(cacheKey, payload);
+      return res.json(payload);
     }
 
     setCachedItinerary(cacheKey, payload);
     return res.json(payload);
   } catch (e) {
-    // Gracefully handle OpenRouter billing errors by falling back to a sample
+    // Gracefully handle OpenRouter billing errors by falling back to a POI-backed plan
     if (e?.response?.status === 402) {
-      const sample = sampleItinerary({ destination, days, budget, pace, season, interests });
+      const sample = await poiBackedItinerary({
+        destination,
+        days,
+        budget,
+        pace,
+        season,
+        interests,
+        lang,
+      });
       logError(e, { endpoint: "/api/itinerary/generate", code: 402 });
       const payload = {
         ...sample,
         fallback: true,
-        warning: "Itinerary generation requires OpenRouter credits. Showing a sample plan instead.",
+        warning:
+          "Itinerary generation requires OpenRouter credits. Showing a POI-backed plan instead.",
       };
       const cacheKey = makeCacheKey({
         placeId,

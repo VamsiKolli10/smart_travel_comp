@@ -88,11 +88,26 @@ export default function useTravelContext() {
         return;
       }
       const normalized = normalizeDestinationInput(value, overrides);
+
+      // If destination changes but no coordinates were supplied, clear stale coords
+      const destChanged =
+        (normalized.destination || "").toLowerCase() !==
+          (context.destination || "").toLowerCase() ||
+        (normalized.destinationDisplayName || "").toLowerCase() !==
+          (context.destinationDisplayName || "").toLowerCase();
+      const coordsMissing =
+        normalized.destinationLat === undefined &&
+        normalized.destinationLng === undefined;
+      if (destChanged && coordsMissing && options.preserveCoords !== true) {
+        normalized.destinationLat = null;
+        normalized.destinationLng = null;
+      }
+
       updateTravelContext(normalized, {
         source: options.source || overrides.source,
       });
     },
-    [updateTravelContext]
+    [updateTravelContext, context.destination, context.destinationDisplayName, context.destinationLat, context.destinationLng]
   );
 
   return {
