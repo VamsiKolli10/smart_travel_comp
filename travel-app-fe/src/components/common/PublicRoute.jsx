@@ -5,7 +5,9 @@ import FullScreenLoader from "./FullScreenLoader";
 export default function PublicRoute({ children, redirectTo = "/home" }) {
   const { user, loading } = useAuth();
 
-  if (loading) {
+  // Only block with loader if we already have a user and we're resolving state;
+  // otherwise let the public page render so local error state (e.g., unverified email) stays visible.
+  if (loading && user) {
     return <FullScreenLoader message="Preparing your workspace…" />;
   }
 

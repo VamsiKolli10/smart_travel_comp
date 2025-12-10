@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { signOut } from "firebase/auth";
 import { useAuthState } from "react-firebase-hooks/auth";
+import { useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { auth } from "../firebase";
 import { setUser, clearUser, setLoading } from "../store/slices/authSlice";
@@ -12,10 +13,23 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const dispatch = useDispatch();
   const authState = useSelector((state) => state.auth);
+  const location = useLocation();
   const [statusMessage, setStatusMessage] = useState("Securing your session…");
   const [isEmailVerificationInProgress, setIsEmailVerificationInProgress] =
     useState(false);
   const [firebaseUser, firebaseLoading, firebaseError] = useAuthState(auth);
+
+  const isPublicRoute = useMemo(() => {
+    const path = location.pathname;
+    return (
+      path === "/" ||
+      path === "/login" ||
+      path === "/register" ||
+      path === "/forgot-password" ||
+      path.startsWith("/reset-password") ||
+      path.startsWith("/verify-email")
+    );
+  }, [location.pathname]);
 
   useEffect(() => {
     dispatch(setLoading(true));
@@ -136,11 +150,10 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={contextValue}>
-      {authState.loading ? (
+      {authState.loading && !isPublicRoute && (
         <FullScreenLoader message={statusMessage} />
-      ) : (
-        children
       )}
+      {children}
     </AuthContext.Provider>
   );
 }

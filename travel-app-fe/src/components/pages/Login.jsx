@@ -22,6 +22,7 @@ import {
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import { auth } from "../../firebase";
+import { signOut } from "firebase/auth";
 import Button from "../common/Button";
 import AuthShell from "../layout/AuthShell";
 import useNotification from "../../hooks/useNotification";
@@ -91,12 +92,37 @@ export default function Login() {
   const [focusedField, setFocusedField] = useState(null);
   const [verificationEmail, setVerificationEmail] = useState(null);
   const [resendingVerification, setResendingVerification] = useState(false);
+  const [resendCooldownUntil, setResendCooldownUntil] = useState(null);
+  const [nowTick, setNowTick] = useState(Date.now());
+
+  // Refresh "now" every second to update cooldown timer
+  useEffect(() => {
+    const interval = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Load persisted cooldown for the current verification email
+  useEffect(() => {
+    if (!verificationEmail) {
+      setResendCooldownUntil(null);
+      return;
+    }
+    const key = `verifyResendUntil:${verificationEmail}`;
+    const stored = localStorage.getItem(key);
+    const asNumber = stored ? Number(stored) : null;
+    if (asNumber && asNumber > Date.now()) {
+      setResendCooldownUntil(asNumber);
+    } else {
+      localStorage.removeItem(key);
+      setResendCooldownUntil(null);
+    }
+  }, [verificationEmail]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (error) setError("");
-    if (infoMessage) setInfoMessage("");
+    // Don't clear infoMessage here - it might contain important verification info
   };
 
   useEffect(() => {
@@ -144,17 +170,44 @@ export default function Login() {
     setError("");
     try {
       await loginWithEmail(formData.email, formData.password);
-      showNotification("Login successful! Redirecting…", "success");
-    } catch (err) {
-      const codeLabel = err?.code || "unknown";
-      if (err?.code === "auth/email-not-verified") {
-        const email = err?.email || formData.email;
+
+      // Extra guard: if for any reason loginWithEmail resolves but the user is still unverified
+      if (auth.currentUser && !auth.currentUser.emailVerified) {
+        const email = auth.currentUser?.email || formData.email;
         setError("Please verify your email before continuing.");
         setVerificationEmail(email);
+        setResendCooldownUntil(null);
         setInfoMessage(
           `Your account isn't verified yet. Check ${email} for the verification email, or resend it below.`
         );
         showNotification("Verify your email to continue.", "warning");
+        await signOut(auth);
+        return;
+      }
+
+      showNotification("Login successful! Redirecting…", "success");
+    } catch (err) {
+      const codeLabel = err?.code || "unknown";
+      const isUnverified =
+        err?.code === "auth/email-not-verified" ||
+        err?.name === "EmailNotVerifiedError" ||
+        String(err?.message || "")
+          .toLowerCase()
+          .includes("not verified") ||
+        String(err?.message || "")
+          .toLowerCase()
+          .includes("email not verified");
+
+      if (isUnverified) {
+        const email = err?.email || formData.email || verificationEmail;
+        setError("Please verify your email before continuing.");
+        setVerificationEmail(email);
+        setResendCooldownUntil(null);
+        setInfoMessage(
+          `Your account isn't verified yet. Check ${email} for the verification email, or resend it below.`
+        );
+        showNotification("Verify your email to continue.", "warning");
+        // The loginWithEmail function already handles signing out the user
       } else {
         setError(
           `Login failed. Please check your credentials and try again. (code: ${codeLabel})`
@@ -168,6 +221,13 @@ export default function Login() {
 
   const handleResendVerification = async () => {
     if (!verificationEmail) return;
+
+    const cooldownRemainingMs = resendCooldownUntil
+      ? Math.max(0, resendCooldownUntil - nowTick)
+      : 0;
+    if (cooldownRemainingMs > 0) {
+      return;
+    }
 
     if (!formData.password) {
       showNotification(
@@ -184,6 +244,13 @@ export default function Login() {
         email: verificationEmail,
         password: formData.password,
       });
+
+      const nextAllowed = Date.now() + 5 * 60 * 1000; // 5 minutes
+      setResendCooldownUntil(nextAllowed);
+      localStorage.setItem(
+        `verifyResendUntil:${verificationEmail}`,
+        String(nextAllowed)
+      );
 
       showNotification(
         "Verification email sent! Please check your inbox.",
@@ -241,7 +308,6 @@ export default function Login() {
                   <Button
                     size="small"
                     onClick={handleResendVerification}
-                    disabled={resendingVerification}
                     startIcon={
                       resendingVerification ? (
                         <CircularProgress size={16} color="inherit" />
@@ -249,29 +315,23 @@ export default function Login() {
                         <EmailIcon fontSize="small" />
                       )
                     }
+                    disabled={
+                      resendingVerification ||
+                      (resendCooldownUntil
+                        ? resendCooldownUntil - nowTick > 0
+                        : false)
+                    }
                   >
                     {resendingVerification
                       ? "Resending..."
+                      : resendCooldownUntil && resendCooldownUntil - nowTick > 0
+                      ? `Resend in ${Math.ceil(
+                          (resendCooldownUntil - nowTick) / 1000 / 60
+                        )}m`
                       : "Resend verification email"}
                   </Button>
                 </Box>
               )}
-            </Alert>
-          )}
-          {infoMessage && (
-            <Alert
-              severity="info"
-              onClose={() => setInfoMessage("")}
-              sx={{
-                borderRadius: 2,
-                animation: "fadeIn 0.3s ease",
-                "@keyframes fadeIn": {
-                  "0%": { opacity: 0, transform: "translateY(-10px)" },
-                  "100%": { opacity: 1, transform: "translateY(0)" },
-                },
-              }}
-            >
-              {infoMessage}
             </Alert>
           )}
 
@@ -355,6 +415,7 @@ export default function Login() {
             fullWidth
             size="large"
             disabled={loading}
+            onClick={() => console.log("Login button clicked")}
             sx={{
               py: 1.5,
               borderRadius: 2,
