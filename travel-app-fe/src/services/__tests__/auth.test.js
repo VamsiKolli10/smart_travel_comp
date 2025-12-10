@@ -88,7 +88,10 @@ describe("auth service", () => {
       "user@test.dev",
       "secret"
     );
-    expect(sendEmailVerification).toHaveBeenCalledWith(mockUser);
+    expect(sendEmailVerification).toHaveBeenCalledWith(mockUser, {
+      url: `${window.location.origin}/verify-email`,
+      handleCodeInApp: true,
+    });
     expect(signOut).toHaveBeenCalledWith(auth);
   });
 
@@ -99,7 +102,10 @@ describe("auth service", () => {
     await resendEmailVerification({ user: inlineUser });
 
     expect(signInWithEmailAndPassword).not.toHaveBeenCalled();
-    expect(sendEmailVerification).toHaveBeenCalledWith(inlineUser);
+    expect(sendEmailVerification).toHaveBeenCalledWith(inlineUser, {
+      url: `${window.location.origin}/verify-email`,
+      handleCodeInApp: true,
+    });
     expect(signOut).not.toHaveBeenCalled();
   });
 });

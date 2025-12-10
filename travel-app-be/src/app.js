@@ -207,7 +207,10 @@ function createApp() {
     const originalEnd = res.end;
     res.end = function patchedEnd(chunk, encoding, callback) {
       const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
-      res.setHeader("X-Response-Time-ms", durationMs.toFixed(1));
+      // Guard against late calls where headers are already sent
+      if (!res.headersSent) {
+        res.setHeader("X-Response-Time-ms", durationMs.toFixed(1));
+      }
       res.requestDurationMs = durationMs;
       const routeKey = `${req.method} ${
         req.route?.path || req.originalUrl.split("?")[0] || req.path

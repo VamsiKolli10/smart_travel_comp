@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { listSavedPhrases, addSavedPhrase, removeSavedPhrase } from "../savedPhrases";
+import {
+  listSavedPhrases,
+  addSavedPhrase,
+  removeSavedPhrase,
+} from "../savedPhrases";
 import api from "../api";
 
 vi.mock("../api", () => ({
@@ -47,5 +51,65 @@ describe("saved phrases service", () => {
     const err = new Error("boom");
     api.delete.mockRejectedValue(err);
     await expect(removeSavedPhrase("abc")).rejects.toBe(err);
+  });
+
+  it("handles empty saved phrases list", async () => {
+    api.get.mockResolvedValue({ data: { items: [] } });
+
+    const items = await listSavedPhrases();
+
+    expect(items).toEqual([]);
+    expect(api.get).toHaveBeenCalledWith("/saved-phrases");
+  });
+
+  it("handles API errors when listing phrases", async () => {
+    const error = {
+      response: {
+        status: 500,
+        data: { error: { code: "INTERNAL_ERROR", message: "Server error" } },
+      },
+    };
+    api.get.mockRejectedValue(error);
+
+    await expect(listSavedPhrases()).rejects.toEqual(error);
+  });
+
+  it("handles validation errors when adding phrase", async () => {
+    const error = {
+      response: {
+        status: 400,
+        data: {
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Missing required fields",
+            details: { issues: [{ path: ["phrase"] }] },
+          },
+        },
+      },
+    };
+    api.post.mockRejectedValue(error);
+
+    await expect(addSavedPhrase({})).rejects.toEqual(error);
+  });
+
+  it("handles network errors", async () => {
+    const networkError = new Error("Network request failed");
+    api.get.mockRejectedValue(networkError);
+
+    await expect(listSavedPhrases()).rejects.toEqual(networkError);
+  });
+
+  it("handles unauthorized errors", async () => {
+    const error = {
+      response: {
+        status: 401,
+        data: {
+          error: { code: "UNAUTHORIZED", message: "Authentication required" },
+        },
+      },
+    };
+    api.get.mockRejectedValue(error);
+
+    await expect(listSavedPhrases()).rejects.toEqual(error);
   });
 });

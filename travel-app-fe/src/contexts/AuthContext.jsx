@@ -1,10 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import {
-  onAuthStateChanged,
-  onIdTokenChanged,
-  isSignInWithEmailLink,
-  signOut,
-} from "firebase/auth";
+import { signOut } from "firebase/auth";
+import { useAuthState } from "react-firebase-hooks/auth";
 import { useDispatch, useSelector } from "react-redux";
 import { auth } from "../firebase";
 import { setUser, clearUser, setLoading } from "../store/slices/authSlice";
@@ -19,70 +15,73 @@ export function AuthProvider({ children }) {
   const [statusMessage, setStatusMessage] = useState("Securing your session…");
   const [isEmailVerificationInProgress, setIsEmailVerificationInProgress] =
     useState(false);
+  const [firebaseUser, firebaseLoading, firebaseError] = useAuthState(auth);
 
   useEffect(() => {
     dispatch(setLoading(true));
+  }, [dispatch]);
 
-    // Check if this is a password reset or email verification link
-    const checkEmailVerification = async () => {
-      if (isSignInWithEmailLink(auth, window.location.href)) {
-        setIsEmailVerificationInProgress(true);
-        setStatusMessage("Verifying your email…");
+  useEffect(() => {
+    const maybeHandleEmailVerificationLink = async () => {
+      const url = new URL(window.location.href);
+      const mode = url.searchParams.get("mode");
+      const oobCode = url.searchParams.get("oobCode");
+      const linkApiKey = url.searchParams.get("apiKey");
+      const clientApiKey = import.meta.env.VITE_FIREBASE_API_KEY;
 
-        // Get the email from local storage if it was stored
-        let email = window.localStorage.getItem("emailForSignIn");
-        if (!email) {
-          // Get the email from query parameters
-          email = window.prompt("Please provide your email for confirmation");
-        }
+      // Some environments send mode=action; treat that as verify email too.
+      if (!oobCode) return;
+      const isVerifyEmailMode =
+        !mode || mode === "verifyEmail" || mode === "action";
+      if (!isVerifyEmailMode) return;
 
-        if (email) {
-          // Complete the sign-in process
-          try {
-            // The link automatically signed in the user
-            if (auth.currentUser) {
-              await auth.currentUser.reload();
-              if (auth.currentUser.emailVerified) {
-                dispatch(
-                  setUser({
-                    uid: auth.currentUser.uid,
-                    email: auth.currentUser.email,
-                    displayName: auth.currentUser.displayName,
-                    emailVerified: auth.currentUser.emailVerified,
-                  })
-                );
-                setStatusMessage("Email verified! Redirecting…");
-              } else {
-                setStatusMessage(
-                  "Email verification pending. Please check your email."
-                );
-              }
-            }
-          } catch (error) {
-            console.error("Email verification error:", error);
-            setStatusMessage("Email verification failed. Please try again.");
-          } finally {
-            setIsEmailVerificationInProgress(false);
-            dispatch(setLoading(false));
-          }
-        } else {
-          setIsEmailVerificationInProgress(false);
-          dispatch(setLoading(false));
-        }
+      setIsEmailVerificationInProgress(true);
+      setStatusMessage("Verifying your email…");
+
+      if (linkApiKey && clientApiKey && linkApiKey !== clientApiKey) {
+        setStatusMessage(
+          "This verification link belongs to a different environment. Open it from the same app that sent it."
+        );
+        setIsEmailVerificationInProgress(false);
+        return;
       }
+
+      const ok = await handleEmailVerification(oobCode);
+      if (ok) {
+        setStatusMessage("Email verified! Redirecting…");
+        // Prevent re-processing on reload
+        window.history.replaceState({}, document.title, url.pathname);
+      } else {
+        setStatusMessage(
+          "Verification link is invalid or has expired. Request a new one from Login."
+        );
+      }
+
+      setIsEmailVerificationInProgress(false);
+      dispatch(setLoading(false));
     };
 
-    checkEmailVerification();
+    maybeHandleEmailVerificationLink();
+  }, [dispatch, isEmailVerificationInProgress]);
 
-    // Set up the auth state listener
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+  useEffect(() => {
+    const syncUser = async () => {
+      if (isEmailVerificationInProgress) return;
+
+      if (firebaseLoading) {
+        dispatch(setLoading(true));
+        return;
+      }
+
+      dispatch(setLoading(true));
       try {
-        if (isEmailVerificationInProgress) {
-          return; // Skip auth state change while email verification is in progress
+        if (firebaseError) {
+          console.error("Auth subscription error", firebaseError);
+          dispatch(clearUser());
+          return;
         }
 
         if (firebaseUser) {
-          // Ensure user data is fully loaded
           await firebaseUser.reload();
           try {
             // Force-refresh token to detect revocation (e.g., password reset elsewhere)
@@ -112,31 +111,21 @@ export function AuthProvider({ children }) {
           dispatch(clearUser());
         }
       } catch (error) {
-        console.error("Auth subscription error", error);
+        console.error("Auth sync error", error);
         dispatch(clearUser());
       } finally {
         dispatch(setLoading(false));
       }
-    });
-
-    // Watch token changes to catch revocation mid-session
-    const unsubscribeToken = onIdTokenChanged(auth, async (firebaseUser) => {
-      if (!firebaseUser) return;
-      try {
-        await firebaseUser.getIdToken(true);
-      } catch (tokenError) {
-        console.warn("Token refresh failed mid-session, forcing logout", tokenError);
-        await signOut(auth);
-        dispatch(clearUser());
-        setStatusMessage("Session expired. Please sign in again.");
-      }
-    });
-
-    return () => {
-      unsubscribeAuth();
-      unsubscribeToken();
     };
-  }, [dispatch, isEmailVerificationInProgress]);
+
+    syncUser();
+  }, [
+    dispatch,
+    firebaseError,
+    firebaseLoading,
+    firebaseUser,
+    isEmailVerificationInProgress,
+  ]);
 
   const contextValue = useMemo(
     () => ({

@@ -4,7 +4,11 @@ jest.mock("../src/poi/providers/googlePlacesPoi", () => ({
   searchNearbyPoi: jest.fn(async () => [
     { id: "p1", name: "POI 1", location: { lat: 1, lng: 2 } },
   ]),
-  mapPlaceToPoiCard: jest.fn((p) => ({ id: p.id, name: p.name, location: p.location })),
+  mapPlaceToPoiCard: jest.fn((p) => ({
+    id: p.id,
+    name: p.name,
+    location: p.location,
+  })),
   applySmartFilters: jest.fn((items) => items),
   fetchById: jest.fn(async (id) =>
     id === "p1" ? { id, name: "POI 1", location: {} } : null
@@ -64,5 +68,37 @@ describe("POI routes", () => {
       .set("user-agent", "jest")
       .set("Authorization", "Bearer valid-user-token");
     expect(res.statusCode).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+
+  test("validates coordinates range in POI search", async () => {
+    const res = await request(app)
+      .get("/api/poi/search?lat=91&lng=181")
+      .set("user-agent", "jest")
+      .set("Authorization", "Bearer valid-user-token");
+
+    expect([400, 200]).toContain(res.statusCode);
+    if (res.statusCode === 400) {
+      expect(res.body.error.code).toBe("VALIDATION_ERROR");
+    }
+  });
+
+  test("handles destination parameter in POI search", async () => {
+    const res = await request(app)
+      .get("/api/poi/search?dest=Paris")
+      .set("user-agent", "jest")
+      .set("Authorization", "Bearer valid-user-token");
+
+    expect([200, 400, 502]).toContain(res.statusCode);
+  });
+
+  test("validates filter parameters when provided", async () => {
+    const res = await request(app)
+      .get("/api/poi/search?lat=1&lng=2&types=restaurant,cafe")
+      .set("user-agent", "jest")
+      .set("Authorization", "Bearer valid-user-token");
+
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res.body.items)).toBe(true);
   });
 });

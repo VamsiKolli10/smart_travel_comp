@@ -35,4 +35,12 @@ function enforceQuota({
   };
 }
 
-module.exports = { enforceQuota };
+function resetQuotaState({ identifier, key } = {}) {
+  if (identifier && key) {
+    windows.delete(buildKey(identifier, key));
+    return;
+  }
+  windows.clear();
+}
+
+module.exports = { enforceQuota, resetQuotaState };

@@ -111,6 +111,31 @@ describe("Translation routes", () => {
       .send({ text: "hello", langPair: "en-es" });
 
     expect([200, 500]).toContain(res.statusCode);
+    if (res.statusCode === 500) {
+      expect(res.body.error).toBeDefined();
+      expect(res.body.error.code).toBeDefined();
+    }
+  });
+
+  test("validates langPair format", async () => {
+    const res = await request(app)
+      .post("/api/translate")
+      .set("user-agent", "jest")
+      .set("Authorization", "Bearer valid-user-token")
+      .send({ text: "hello", langPair: "invalid-format" });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  test("rejects requests without user-agent header", async () => {
+    const res = await request(app)
+      .post("/api/translate")
+      .set("Authorization", "Bearer valid-user-token")
+      .send({ text: "hello", langPair: "en-es" });
+
+    // Should either reject or require user-agent based on security middleware
+    expect([400, 401, 403]).toContain(res.statusCode);
   });
 
   test("returns 500 when warmup fails", async () => {

@@ -35,6 +35,68 @@ describe("AppearanceProvider", () => {
     expect(screen.getByTestId("mode").textContent).toBe("light");
     fireEvent.click(screen.getByText("toggle"));
     expect(screen.getByTestId("mode").textContent).toBe("dark");
-    expect(Storage.prototype.setItem).toHaveBeenCalledWith("stc:appearance", "dark");
+    expect(Storage.prototype.setItem).toHaveBeenCalledWith(
+      "stc:appearance",
+      "dark"
+    );
+  });
+
+  it("restores mode from localStorage on mount", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockReturnValue("dark");
+
+    render(
+      <AppearanceProvider>
+        <Harness />
+      </AppearanceProvider>
+    );
+
+    expect(screen.getByTestId("mode").textContent).toBe("dark");
+  });
+
+  it("toggles back to light mode", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockReturnValue("dark");
+
+    render(
+      <AppearanceProvider>
+        <Harness />
+      </AppearanceProvider>
+    );
+
+    expect(screen.getByTestId("mode").textContent).toBe("dark");
+    fireEvent.click(screen.getByText("toggle"));
+    expect(screen.getByTestId("mode").textContent).toBe("light");
+    expect(Storage.prototype.setItem).toHaveBeenCalledWith(
+      "stc:appearance",
+      "light"
+    );
+  });
+
+  it("handles invalid localStorage values gracefully", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockReturnValue("invalid-mode");
+
+    render(
+      <AppearanceProvider>
+        <Harness />
+      </AppearanceProvider>
+    );
+
+    // Should default to light mode when invalid value is stored
+    expect(screen.getByTestId("mode").textContent).toBe("light");
+  });
+
+  it("handles localStorage errors gracefully", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("Storage quota exceeded");
+    });
+
+    render(
+      <AppearanceProvider>
+        <Harness />
+      </AppearanceProvider>
+    );
+
+    // Should still toggle mode even if localStorage fails
+    fireEvent.click(screen.getByText("toggle"));
+    expect(screen.getByTestId("mode").textContent).toBe("dark");
   });
 });

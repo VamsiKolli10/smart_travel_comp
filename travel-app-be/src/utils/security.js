@@ -385,17 +385,8 @@ function enhancedAuthorization(options = {}) {
     const hasAuth =
       req.headers.authorization &&
       req.headers.authorization.startsWith("Bearer ");
-    if (hasAuth) {
-      // Only log the request but don't block it
-      console.log(
-        `[${new Date().toISOString()}] ${req.method} ${
-          req.originalUrl
-        } auth:${hasAuth}`
-      );
-      return next();
-    }
 
-    // Check for required headers for non-authenticated requests
+    // Check for required headers for all requests when strict mode is on
     const requiredHeaders = ["user-agent"];
     const missingHeaders = requiredHeaders.filter(
       (header) => !req.headers[header]
@@ -412,12 +403,14 @@ function enhancedAuthorization(options = {}) {
 
       // Block non-authenticated requests with missing headers in strict mode
       if (strictMode) {
+        const status = hasAuth ? 400 : 403;
+        const code = hasAuth ? ERROR_CODES.BAD_REQUEST : ERROR_CODES.FORBIDDEN;
         return res
-          .status(403)
+          .status(status)
           .json(
             createErrorResponse(
-              403,
-              ERROR_CODES.FORBIDDEN,
+              status,
+              code,
               "Missing required security headers"
             )
           );
@@ -450,6 +443,16 @@ function enhancedAuthorization(options = {}) {
             "Suspicious user agent"
           )
         );
+    }
+
+    if (hasAuth) {
+      // Log authenticated traffic after header validation
+      console.log(
+        `[${new Date().toISOString()}] ${req.method} ${
+          req.originalUrl
+        } auth:${hasAuth}`
+      );
+      return next();
     }
 
     // Check for IP-based restrictions if needed

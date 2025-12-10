@@ -12,8 +12,7 @@ function createWrapper() {
       travelContext: travelContextReducer,
     },
   });
-  return ({ children }) =>
-    React.createElement(Provider, { store }, children);
+  return ({ children }) => React.createElement(Provider, { store }, children);
 }
 
 describe("useTravelContext", () => {
@@ -30,5 +29,47 @@ describe("useTravelContext", () => {
 
     expect(result.current.sourceLanguageCode).toBe("fr");
     expect(result.current.targetLanguageCode).toBe("de");
+  });
+
+  it("initializes with default language pair", () => {
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useTravelContext(), { wrapper });
+
+    expect(result.current.sourceLanguageCode).toBeDefined();
+    expect(result.current.targetLanguageCode).toBeDefined();
+    expect(typeof result.current.sourceLanguageCode).toBe("string");
+    expect(typeof result.current.targetLanguageCode).toBe("string");
+  });
+
+  it("handles multiple language pair updates", () => {
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useTravelContext(), { wrapper });
+
+    act(() => {
+      result.current.setLanguagePair(
+        { sourceLanguageCode: "en", targetLanguageCode: "es" },
+        { source: "test" }
+      );
+    });
+
+    expect(result.current.sourceLanguageCode).toBe("en");
+    expect(result.current.targetLanguageCode).toBe("es");
+
+    act(() => {
+      result.current.setLanguagePair(
+        { sourceLanguageCode: "fr", targetLanguageCode: "de" },
+        { source: "test" }
+      );
+    });
+
+    expect(result.current.sourceLanguageCode).toBe("fr");
+    expect(result.current.targetLanguageCode).toBe("de");
+  });
+
+  it("provides setLanguagePair function", () => {
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useTravelContext(), { wrapper });
+
+    expect(typeof result.current.setLanguagePair).toBe("function");
   });
 });

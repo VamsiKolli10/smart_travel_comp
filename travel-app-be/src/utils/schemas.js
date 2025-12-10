@@ -232,7 +232,12 @@ const poiSearchSchema = z
         z.number().positive().max(200)
       )
       .optional(),
-    category: limitedString("category", 120).optional(),
+    category: z
+      .preprocess((value) => {
+        if (value === undefined || value === null) return undefined;
+        const trimmed = String(value).trim();
+        return trimmed.length ? trimmed : undefined; // treat empty query param as not provided
+      }, limitedString("category", 120).optional()),
     kidFriendly: z.preprocess(
       (v) => (v === undefined ? undefined : String(v) === "true"),
       z.boolean().optional()

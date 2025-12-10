@@ -15,7 +15,9 @@ export function AppearanceProvider({ children }) {
     if (typeof window === "undefined") return "light";
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored === "light" || stored === "dark") return stored;
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    ).matches;
     return prefersDark ? "dark" : "light";
   });
 
@@ -25,7 +27,15 @@ export function AppearanceProvider({ children }) {
     root.classList.remove("light", "dark");
     root.classList.add(mode);
     root.dataset.theme = mode;
-    window.localStorage.setItem(STORAGE_KEY, mode);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, mode);
+    } catch (error) {
+      // Silently handle localStorage errors (e.g., quota exceeded)
+      console.warn(
+        "Failed to save appearance preference to localStorage:",
+        error
+      );
+    }
   }, [mode]);
 
   useEffect(() => {
@@ -46,7 +56,8 @@ export function AppearanceProvider({ children }) {
     () => ({
       mode,
       setMode,
-      toggleMode: () => setMode((prev) => (prev === "light" ? "dark" : "light")),
+      toggleMode: () =>
+        setMode((prev) => (prev === "light" ? "dark" : "light")),
     }),
     [mode]
   );

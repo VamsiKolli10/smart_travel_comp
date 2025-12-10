@@ -14,6 +14,7 @@ import Login from "./components/pages/Login";
 import Register from "./components/pages/Register";
 import ForgotPassword from "./components/pages/ForgotPassword";
 import ResetPassword from "./components/pages/ResetPassword";
+import VerifyEmail from "./components/pages/VerifyEmail";
 
 // Protected pages
 import Home from "./components/pages/Home.jsx";
@@ -43,6 +44,7 @@ export default function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
               </Route>
 
               {/* 🔒 Protected routes (require auth) */}

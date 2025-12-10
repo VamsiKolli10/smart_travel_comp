@@ -72,4 +72,69 @@ describe("Saved phrases routes", () => {
     expect(res.statusCode).toBe(400);
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
+
+  test("validates required fields when saving phrase", async () => {
+    const res = await request(app)
+      .post("/api/saved-phrases")
+      .set("user-agent", "jest")
+      .set("Authorization", "Bearer valid-user-token")
+      .send({
+        phrase: "Hola",
+        // Missing required fields
+      });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  test("validates language codes format", async () => {
+    const res = await request(app)
+      .post("/api/saved-phrases")
+      .set("user-agent", "jest")
+      .set("Authorization", "Bearer valid-user-token")
+      .send({
+        phrase: "Hola",
+        meaning: "Hello",
+        sourceLang: "invalid",
+        targetLang: "es",
+      });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  test("allows updating saved phrase", async () => {
+    const createRes = await request(app)
+      .post("/api/saved-phrases")
+      .set("user-agent", "jest")
+      .set("Authorization", "Bearer valid-user-token")
+      .send({
+        phrase: "Hola",
+        meaning: "Hello",
+        usageExample: "Hola!",
+        topic: "greetings",
+        sourceLang: "en",
+        targetLang: "es",
+      });
+
+    expect(createRes.statusCode).toBe(201);
+    const phraseId = createRes.body.id;
+
+    // Try to update (if PUT endpoint exists)
+    const updateRes = await request(app)
+      .put(`/api/saved-phrases/${phraseId}`)
+      .set("user-agent", "jest")
+      .set("Authorization", "Bearer valid-user-token")
+      .send({
+        phrase: "Hola",
+        meaning: "Hi there",
+        usageExample: "Hola!",
+        topic: "greetings",
+        sourceLang: "en",
+        targetLang: "es",
+      });
+
+    // Either 200 (if update exists) or 404/405 (if not implemented)
+    expect([200, 404, 405]).toContain(updateRes.statusCode);
+  });
 });

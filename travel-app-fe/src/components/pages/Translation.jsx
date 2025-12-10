@@ -381,10 +381,18 @@ function TranslationBody() {
       });
     } catch (error) {
       const status = error?.response?.status;
-      const message =
-        status === 401
-          ? "Please sign in to save phrases."
-          : error?.response?.data?.error || error?.message || "Failed to save.";
+      let message = "Failed to save.";
+      if (status === 401) {
+        message = "Please sign in to save phrases.";
+      } else if (error?.response?.data?.error) {
+        const errorData = error.response.data.error;
+        message =
+          typeof errorData === "string"
+            ? errorData
+            : errorData?.message || "Failed to save.";
+      } else if (error?.message) {
+        message = error.message;
+      }
       setSaveFeedback({
         open: true,
         severity: "error",

@@ -122,9 +122,7 @@ export default function DiscoverPage() {
 
   const normalizeDiscoverQuery = (base = {}) => {
     const dest =
-      typeof base.dest === "string" && base.dest.trim()
-        ? base.dest.trim()
-        : "";
+      typeof base.dest === "string" && base.dest.trim() ? base.dest.trim() : "";
     const normalized = {
       dest,
       lat: Number.isFinite(base.lat) ? base.lat : undefined,
@@ -211,9 +209,9 @@ export default function DiscoverPage() {
         const label =
           normalizedQuery.dest?.trim() ||
           (normalizedQuery.lat && normalizedQuery.lng
-            ? `Lat ${normalizedQuery.lat.toFixed(2)}, Lng ${normalizedQuery.lng.toFixed(
+            ? `Lat ${normalizedQuery.lat.toFixed(
                 2
-              )}`
+              )}, Lng ${normalizedQuery.lng.toFixed(2)}`
             : "");
         if (label) {
           setDestinationContext(
@@ -571,6 +569,7 @@ export default function DiscoverPage() {
             <TextField
               fullWidth
               label="Search city, country, or attraction"
+              placeholder="Press enter to search"
               value={query.dest}
               onChange={(e) => {
                 const val = e.target.value;
@@ -843,7 +842,9 @@ export default function DiscoverPage() {
                 if (itineraryMode && filters.category?.length === 1)
                   params.set("interests", filters.category[0]);
                 const suffix = params.toString() ? `?${params.toString()}` : "";
-                navigate(`/destinations/${encodeURIComponent(item.id)}${suffix}`);
+                navigate(
+                  `/destinations/${encodeURIComponent(item.id)}${suffix}`
+                );
               }}
               sx={{
                 cursor: "pointer",
@@ -915,11 +916,7 @@ export default function DiscoverPage() {
                   sx={{ flexWrap: "wrap", mt: "auto" }}
                 >
                   {item.categories?.slice(0, 4).map((t) => (
-                    <Chip
-                      key={t}
-                      label={t.replaceAll("_", " ")}
-                      size="small"
-                    />
+                    <Chip key={t} label={t.replaceAll("_", " ")} size="small" />
                   ))}
                   {item.openNow && (
                     <Chip color="success" label="Open now" size="small" />

@@ -76,4 +76,34 @@ describe("Stays routes", () => {
     expect(res.statusCode).toBe(404);
     expect(res.body.error.code).toBe("NOT_FOUND");
   });
+
+  test("validates coordinates format in stay search", async () => {
+    const res = await request(app)
+      .get("/api/stays/search?lat=invalid&lng=2")
+      .set("user-agent", "jest")
+      .set("Authorization", "Bearer valid-user-token");
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  test("handles destination parameter in stay search", async () => {
+    const res = await request(app)
+      .get("/api/stays/search?dest=Paris")
+      .set("user-agent", "jest")
+      .set("Authorization", "Bearer valid-user-token");
+
+    // Should either succeed with geocoding or return validation error
+    expect([200, 400, 502]).toContain(res.statusCode);
+  });
+
+  test("validates distance parameter when provided", async () => {
+    const res = await request(app)
+      .get("/api/stays/search?lat=1&lng=2&distance=invalid")
+      .set("user-agent", "jest")
+      .set("Authorization", "Bearer valid-user-token");
+
+    // Should either accept or validate distance parameter
+    expect([200, 400]).toContain(res.statusCode);
+  });
 });

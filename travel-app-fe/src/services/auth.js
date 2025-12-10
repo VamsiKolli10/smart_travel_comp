@@ -7,7 +7,6 @@ import {
   signInWithPopup,
   signOut,
   sendEmailVerification,
-  isSignInWithEmailLink,
   checkActionCode,
   applyActionCode,
   sendPasswordResetEmail,
@@ -22,6 +21,13 @@ export class EmailNotVerifiedError extends Error {
     this.code = "auth/email-not-verified";
     this.email = email;
   }
+}
+
+function getEmailVerificationSettings() {
+  return {
+    url: `${window.location.origin}/verify-email`,
+    handleCodeInApp: true,
+  };
 }
 
 export async function loginWithEmail(email, password) {
@@ -48,7 +54,7 @@ export async function registerWithEmail({
   await updateProfile(cred.user, {
     displayName: `${firstName} ${lastName}`,
   });
-  await sendEmailVerification(cred.user);
+  await sendEmailVerification(cred.user, getEmailVerificationSettings());
   await signOut(auth);
   return cred;
 }
@@ -100,7 +106,7 @@ export async function resendEmailVerification({ user, email, password } = {}) {
       signedInForResend = true;
     }
 
-    await sendEmailVerification(targetUser);
+    await sendEmailVerification(targetUser, getEmailVerificationSettings());
 
     if (signedInForResend) {
       await signOut(auth);
