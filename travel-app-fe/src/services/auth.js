@@ -31,16 +31,39 @@ function getEmailVerificationSettings() {
 }
 
 export async function loginWithEmail(email, password) {
+  console.log("loginWithEmail: Starting login for", email);
   const credential = await signInWithEmailAndPassword(auth, email, password);
+  console.log("loginWithEmail: signInWithEmailAndPassword successful", {
+    uid: credential.user.uid,
+    email: credential.user.email,
+    emailVerified: credential.user.emailVerified,
+  });
 
   // Ensure the user is fully loaded before returning
-  await credential.user.reload();
-
-  if (!credential.user.emailVerified) {
-    await signOut(auth);
-    throw new EmailNotVerifiedError(credential.user.email);
+  try {
+    await credential.user.reload();
+    console.log("loginWithEmail: User reloaded", {
+      emailVerified: credential.user.emailVerified,
+    });
+  } catch (error) {
+    console.warn("loginWithEmail: Failed to reload user:", error);
   }
 
+  // Check if email is verified after reload
+  const isEmailVerified = credential.user.emailVerified;
+  console.log("loginWithEmail: Final emailVerified check", isEmailVerified);
+
+  if (!isEmailVerified) {
+    console.log(
+      "loginWithEmail: Email not verified, signing out and throwing error"
+    );
+    await signOut(auth);
+    const error = new EmailNotVerifiedError(credential.user.email || email);
+    console.log("loginWithEmail: Throwing EmailNotVerifiedError", error);
+    throw error;
+  }
+
+  console.log("loginWithEmail: Email verified, returning credential");
   return credential;
 }
 
