@@ -41,6 +41,7 @@ const makeCacheKey = ({
   season,
   interests,
   lang,
+  provider,
 }) =>
   JSON.stringify({
     placeId: placeId || null,
@@ -53,6 +54,7 @@ const makeCacheKey = ({
     season,
     interests,
     lang,
+    provider: provider || "openrouter",
   });
 
 const getCachedItinerary = (key) => {
@@ -374,6 +376,8 @@ async function generateItinerary(req, res) {
       };
     }
 
+    const hasOpenRouter = Boolean(process.env.OPENROUTER_API_KEY);
+
     const cacheKey = makeCacheKey({
       placeId,
       dest,
@@ -385,13 +389,12 @@ async function generateItinerary(req, res) {
       season,
       interests,
       lang,
+      provider: hasOpenRouter ? "openrouter" : "offline",
     });
     const cached = getCachedItinerary(cacheKey);
     if (cached) {
       return res.json({ ...cached, cached: true });
     }
-
-    const hasOpenRouter = Boolean(process.env.OPENROUTER_API_KEY);
 
     if (!hasOpenRouter) {
       // Fallback local sample for environments without AI key
@@ -606,6 +609,7 @@ async function generateItinerary(req, res) {
         season,
         interests,
         lang,
+        provider: Boolean(process.env.OPENROUTER_API_KEY) ? "openrouter" : "offline",
       });
       setCachedItinerary(cacheKey, payload);
       return res.status(200).json(payload);

@@ -13,6 +13,12 @@ export default defineConfig({
     testTimeout: 10000,
     hookTimeout: 10000,
     teardownTimeout: 5000,
+    // Run tests in a single worker to prevent EMFILE errors on Windows when many icon files are opened at once.
+    poolOptions: {
+      threads: {
+        singleThread: true,
+      },
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
@@ -28,13 +34,16 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: {
+    alias: [
       // Mock CSS imports
-      "maplibre-gl/dist/maplibre-gl.css": "/src/test/mockStyles.js",
-      "./Landing.css": "/src/test/mockStyles.js",
-      "@/styles/global.css": "/src/test/mockStyles.js",
+      { find: "maplibre-gl/dist/maplibre-gl.css", replacement: "/src/test/mockStyles.js" },
+      { find: "./Landing.css", replacement: "/src/test/mockStyles.js" },
+      { find: "@/styles/global.css", replacement: "/src/test/mockStyles.js" },
+      // Mock MUI icons to reduce file handle usage on Windows
+      { find: /^@mui\/icons-material\/.*$/, replacement: "/src/test/mockMuiIcons.js" },
+      { find: "@mui/icons-material", replacement: "/src/test/mockMuiIcons.js" },
       // Mock MapLibre GL JS
-      "maplibre-gl": "/src/test/mockMapLibre.js",
-    },
+      { find: "maplibre-gl", replacement: "/src/test/mockMapLibre.js" },
+    ],
   },
 });
