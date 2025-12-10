@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Box,
@@ -94,11 +94,17 @@ function StaysSearchPageBody() {
   const [totalResults, setTotalResults] = useState(0);
   const [destinationMeta, setDestinationMeta] = useState(null);
   const [error, setError] = useState("");
+  const resultsTopRef = useRef(null);
   const { trackModuleView, trackEvent } = useAnalytics();
   const appliedFiltersCount =
     (filters.type?.length || 0) +
     (filters.amenities?.length || 0) +
     (filters.rating ? 1 : 0);
+
+  const scrollResultsToTop = () => {
+    // Scroll the full page to the very top after pagination changes
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   useEffect(() => {
     setFiltersVisible(!isMobile);
@@ -107,6 +113,12 @@ function StaysSearchPageBody() {
   useEffect(() => {
     trackModuleView("stays");
   }, [trackModuleView]);
+
+  useEffect(() => {
+    if (!loading && items.length) {
+      scrollResultsToTop();
+    }
+  }, [page, view, loading, items.length]);
 
   useEffect(() => {
     if (!contextDestination && !destinationLat && !destinationLng) return;
@@ -186,7 +198,8 @@ function StaysSearchPageBody() {
     nextPage,
     sourceItems = allItems,
     currentQuery = query,
-    currentFilters = filters
+    currentFilters = filters,
+    options = {}
   ) => {
     const total = sourceItems.length;
     const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -196,6 +209,9 @@ function StaysSearchPageBody() {
     setPage(clamped);
     setTotalPages(maxPage);
     syncUrl(currentQuery, currentFilters, { page: clamped });
+    if (options.scrollToTop) {
+      scrollResultsToTop();
+    }
   };
 
   const performSearch = async (
@@ -724,7 +740,7 @@ function StaysSearchPageBody() {
               )}
 
               {/* Content */}
-              <Box sx={{ minHeight: "500px", overflow: "hidden" }}>
+              <Box sx={{ minHeight: "500px", overflow: "hidden" }} ref={resultsTopRef}>
                 {view === "map" && (
                   <Card>
                     <Box sx={{ height: { xs: 400, sm: 500, md: 600 } }}>
@@ -788,7 +804,7 @@ function StaysSearchPageBody() {
                     disabled={page === 1}
                     onClick={() => {
                       const newPage = Math.max(1, page - 1);
-                      applyPage(newPage);
+                      applyPage(newPage, allItems, query, filters, { scrollToTop: true });
                     }}
                   >
                     Previous
@@ -803,7 +819,7 @@ function StaysSearchPageBody() {
                     disabled={page >= totalPages}
                     onClick={() => {
                       const newPage = page + 1;
-                      applyPage(newPage);
+                      applyPage(newPage, allItems, query, filters, { scrollToTop: true });
                     }}
                   >
                     Next

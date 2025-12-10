@@ -6,8 +6,7 @@ const {
 } = require("../utils/errorHandler");
 const { enforceQuota } = require("../utils/quota");
 const { trackExternalCall } = require("../utils/monitoring");
-const { getCached, setCached } = require("../utils/cache");
-const { getCacheStats } = require("../utils/cache");
+const { getCached, setCached, getCacheStats } = require("../utils/cache");
 
 const phrasebookLimit = Number(
   process.env.PHRASEBOOK_MAX_REQUESTS_PER_HOUR || 25
@@ -18,13 +17,52 @@ const phrasebookWindow = Number(
 const PHRASEBOOK_CACHE_TTL_MS = Number(
   process.env.PHRASEBOOK_CACHE_TTL_MS || 15 * 60 * 1000
 );
+const RAW_SNIPPET_LIMIT = 1200;
 
 function sanitizeStr(s) {
   return typeof s === "string" ? s.trim() : "";
 }
+
 function clamp(n, lo, hi) {
   const v = Number.parseInt(n ?? 10, 10);
   return Math.min(Math.max(v, lo), hi);
+}
+
+function safeParseJson(raw) {
+  if (!raw || typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  const candidates = [];
+
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced?.[1]) {
+    candidates.push(fenced[1].trim());
+  }
+
+  const firstBrace = trimmed.indexOf("{");
+  const lastBrace = trimmed.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    candidates.push(trimmed.slice(firstBrace, lastBrace + 1));
+  }
+
+  candidates.push(trimmed);
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // try the next candidate
+    }
+  }
+  return null;
+}
+
+function extractPhrases(payload) {
+  if (!payload) return [];
+  if (Array.isArray(payload.phrases)) return payload.phrases;
+  if (Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload.items)) return payload.items;
+  if (Array.isArray(payload)) return payload;
+  return [];
 }
 
 function getPhrasebookCacheKey({ topic, sourceLang, targetLang, count }) {
@@ -41,7 +79,6 @@ async function generatePhrases(req, res) {
     const topic = sanitizeStr(req.body?.topic);
     const sourceLang = sanitizeStr(req.body?.sourceLang);
     const targetLang = sanitizeStr(req.body?.targetLang);
-    // const n = 3;
     const n = clamp(req.body?.count, 5, 25);
 
     if (!topic || !sourceLang || !targetLang) {
@@ -56,6 +93,7 @@ async function generatePhrases(req, res) {
           )
         );
     }
+
     if (sourceLang.toLowerCase() === targetLang.toLowerCase()) {
       return res
         .status(400)
@@ -64,11 +102,11 @@ async function generatePhrases(req, res) {
             400,
             ERROR_CODES.VALIDATION_ERROR,
             "sourceLang and targetLang must be different"
-      )
-    );
-  }
+          )
+        );
+    }
 
-  const system = [
+    const system = [
       "You generate compact travel phrasebooks as STRICT JSON.",
       "Output ONLY valid JSON (no markdown or extra text).",
       "Return phrases in the TARGET language.",
@@ -78,7 +116,6 @@ async function generatePhrases(req, res) {
       "Use safe, polite, travel-relevant language. Keep phrases short and practical.",
     ].join(" ");
 
-    // Schema the model should follow
     const user = JSON.stringify({
       instruction: "Create a phrase list for travelers.",
       topic,
@@ -124,7 +161,6 @@ async function generatePhrases(req, res) {
       },
     });
 
-    // Ask the model for JSON output; client normalizes response_format for providers
     const quotaResult = enforceQuota({
       identifier: req.user?.uid || req.ip,
       key: "phrasebook:generate",
@@ -141,7 +177,7 @@ async function generatePhrases(req, res) {
             "Phrasebook generation quota exceeded",
             { resetAt: quotaResult.resetAt }
           )
-      );
+        );
     }
 
     const cacheKey = getPhrasebookCacheKey({
@@ -167,15 +203,16 @@ async function generatePhrases(req, res) {
       metadata: { topic, sourceLang, targetLang },
     });
 
-    let payload;
-    try {
-      payload = JSON.parse(raw);
-    } catch {
-      const match = raw.match(/\{[\s\S]*\}$/);
-      payload = match ? JSON.parse(match[0]) : null;
-    }
+    const payload = safeParseJson(raw);
+    const phraseList = extractPhrases(payload);
 
-    if (!payload || !Array.isArray(payload.phrases)) {
+    if (!payload || !phraseList.length) {
+      const rawSnippet =
+        typeof raw === "string" ? raw.slice(0, RAW_SNIPPET_LIMIT) : raw;
+      logError(new Error("Unexpected phrasebook payload"), {
+        endpoint: "/api/phrasebook/generate",
+        rawSnippet,
+      });
       return res
         .status(502)
         .json(
@@ -183,26 +220,58 @@ async function generatePhrases(req, res) {
             502,
             ERROR_CODES.EXTERNAL_SERVICE_ERROR,
             "Upstream returned an unexpected format",
-            { raw }
+            { raw: rawSnippet }
           )
         );
     }
 
-    // Normalize output to your stable response shape
     const normalized = {
       topic: payload.topic || topic,
       sourceLang: payload.sourceLang || sourceLang,
       targetLang: payload.targetLang || targetLang,
-      phrases: payload.phrases
+      phrases: phraseList
         .map((p) => {
-          const phrase = sanitizeStr(p.targetPhrase);
-          const transliteration = sanitizeStr(p.transliteration);
-          const meaning = sanitizeStr(p.sourceTranslation);
-          const usageExample = sanitizeStr(p.usageExample);
+          const phrase =
+            sanitizeStr(p.targetPhrase) ||
+            sanitizeStr(p.phrase) ||
+            sanitizeStr(p.target);
+          const transliteration =
+            sanitizeStr(p.transliteration) ||
+            sanitizeStr(p.romanization) ||
+            sanitizeStr(p.pronunciation);
+          const meaning =
+            sanitizeStr(p.sourceTranslation) ||
+            sanitizeStr(p.translation) ||
+            sanitizeStr(p.meaning);
+          const usageExample =
+            sanitizeStr(p.usageExample) ||
+            sanitizeStr(p.example) ||
+            sanitizeStr(p.exampleSentence) ||
+            sanitizeStr(p.context);
           return { phrase, transliteration, meaning, usageExample };
         })
-        .filter((p) => p.phrase && p.meaning && p.usageExample),
+        .filter((p) => p.phrase && p.meaning && p.usageExample)
+        .slice(0, n),
     };
+
+    if (!normalized.phrases.length) {
+      const rawSnippet =
+        typeof raw === "string" ? raw.slice(0, RAW_SNIPPET_LIMIT) : raw;
+      logError(new Error("No valid phrases after normalization"), {
+        endpoint: "/api/phrasebook/generate",
+        rawSnippet,
+      });
+      return res
+        .status(502)
+        .json(
+          createErrorResponse(
+            502,
+            ERROR_CODES.EXTERNAL_SERVICE_ERROR,
+            "Upstream returned phrases we could not use",
+            { raw: rawSnippet }
+          )
+        );
+    }
 
     setCached("phrasebook", cacheKey, normalized, PHRASEBOOK_CACHE_TTL_MS);
     return res.status(200).json({
