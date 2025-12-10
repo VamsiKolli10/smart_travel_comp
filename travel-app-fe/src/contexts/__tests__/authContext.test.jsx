@@ -11,15 +11,22 @@ import {
   isSignInWithEmailLink,
 } from "firebase/auth";
 
+const firebaseMocks = vi.hoisted(() => ({
+  onAuthStateChanged: vi.fn(),
+  onIdTokenChanged: vi.fn(),
+}));
+
 vi.mock("../../firebase", () => ({
   auth: {
     currentUser: null,
+    onAuthStateChanged: firebaseMocks.onAuthStateChanged,
+    onIdTokenChanged: firebaseMocks.onIdTokenChanged,
   },
 }));
 
 vi.mock("firebase/auth", () => ({
-  onAuthStateChanged: vi.fn(),
-  onIdTokenChanged: vi.fn(),
+  onAuthStateChanged: firebaseMocks.onAuthStateChanged,
+  onIdTokenChanged: firebaseMocks.onIdTokenChanged,
   isSignInWithEmailLink: vi.fn(() => false),
   signOut: vi.fn(),
 }));
