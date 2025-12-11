@@ -57,6 +57,17 @@ describe("Stays routes", () => {
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  test("accepts lat/lng when dest is empty", async () => {
+    const res = await request(app)
+      .get("/api/stays/search?dest=&lat=1&lng=2")
+      .set("user-agent", "jest")
+      .set("Authorization", "Bearer valid-user-token");
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.items).toHaveLength(3);
+    expect(res.body.resolvedDestination).toBeNull();
+  });
+
   test("returns stay detail when found", async () => {
     const res = await request(app)
       .get("/api/stays/stay-1")

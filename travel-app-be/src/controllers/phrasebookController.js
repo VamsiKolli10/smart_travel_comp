@@ -29,26 +29,60 @@ function clamp(n, lo, hi) {
 }
 
 function safeParseJson(raw) {
-  if (!raw || typeof raw !== "string") return null;
+  if (!raw) return null;
+  if (typeof raw === "object") return raw;
+  if (typeof raw !== "string") return null;
+
   const trimmed = raw.trim();
   const candidates = [];
+  const push = (value) => {
+    if (value && !candidates.includes(value)) {
+      candidates.push(value);
+    }
+  };
 
+  // Extract fenced code block (```json ... ```)
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenced?.[1]) {
-    candidates.push(fenced[1].trim());
-  }
+  if (fenced?.[1]) push(fenced[1].trim());
 
+  // Slice from first to last brace to drop extra chatter
   const firstBrace = trimmed.indexOf("{");
   const lastBrace = trimmed.lastIndexOf("}");
   if (firstBrace !== -1 && lastBrace > firstBrace) {
-    candidates.push(trimmed.slice(firstBrace, lastBrace + 1));
+    push(trimmed.slice(firstBrace, lastBrace + 1));
   }
 
-  candidates.push(trimmed);
+  // Raw as-is
+  push(trimmed);
+
+  // If payload was double-encoded or heavily escaped, unescape once
+  if (/\\["[{]/.test(trimmed)) {
+    const unescaped = trimmed
+      .replace(/\\n/g, " ")
+      .replace(/\\t/g, " ")
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, "\\");
+    push(unescaped);
+    if (
+      (unescaped.startsWith('"') && unescaped.endsWith('"')) ||
+      (unescaped.startsWith("'") && unescaped.endsWith("'"))
+    ) {
+      push(unescaped.slice(1, -1));
+    }
+  }
 
   for (const candidate of candidates) {
     try {
-      return JSON.parse(candidate);
+      const parsed = JSON.parse(candidate);
+      // Occasionally the model returns a stringified JSON string
+      if (typeof parsed === "string") {
+        try {
+          return JSON.parse(parsed);
+        } catch {
+          // fall through
+        }
+      }
+      return parsed;
     } catch {
       // try the next candidate
     }

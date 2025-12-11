@@ -103,6 +103,57 @@ function validateBriefCategories(categories) {
   }
 }
 
+// Provide a safety-first fallback when the culture brief model is unavailable.
+function buildFallbackBrief({ destination, culture, language }) {
+  const place = destination || culture || "your destination";
+  const now = new Date().toISOString();
+
+  return {
+    destination: destination || culture || "Unknown destination",
+    culture: culture || destination || "local",
+    language: language || "en",
+    categories: {
+      greetings: [
+        `Lead with a polite hello and a smile; mirror the formality locals use in ${place}.`,
+        "Use names or honorifics only after they are offered; avoid pet names with strangers.",
+        "If unsure whether to shake hands, bow, or wave, let the other person set the tone.",
+      ],
+      dining: [
+        "Wait to be seated and follow the host's cues before eating or drinking.",
+        "Keep voices moderate at the table; silence phones and step away for calls.",
+        "Use serving utensils for shared dishes when available and avoid reaching across others.",
+        "Ask before taking photos of staff or other guests, and follow any house rules.",
+      ],
+      dress_code: [
+        "Smart-casual clothing and clean shoes are welcomed in most settings.",
+        "Carry a light layer or scarf to cover shoulders or knees in sacred or formal sites.",
+        "Choose comfortable closed-toe shoes for walking and public transit.",
+      ],
+      gestures: [
+        "Use an open hand to point or beckon; avoid sudden or aggressive gestures.",
+        "Respect personal space in queues and on transit; let people exit before boarding.",
+        "Offer or receive items with care and avoid touching strangers unless invited.",
+      ],
+      taboos: [
+        "Avoid loud debates about politics, religion, or history until you know the audience.",
+        "Ask permission before photographing people, homes, or places of worship.",
+        "Follow posted rules on smoking, alcohol, quiet hours, and protected areas.",
+      ],
+      safety_basics: [
+        "Keep valuables zipped and front-facing in crowds; use hotel safes for passports when possible.",
+        "Use licensed taxis or reputable ride-hail options and agree on fares before departing.",
+        "Save local emergency numbers and a nearby embassy or consulate address.",
+      ],
+    },
+    generatedAt: now,
+    fallback: true,
+    fallbackReason: "model_unavailable",
+    notice:
+      "Served a safety-first fallback while the culture brief service is unavailable.",
+    cacheStatus: "fallback",
+  };
+}
+
 /**
  * Build system prompt for culture brief generation.
  */
@@ -252,15 +303,13 @@ async function getBrief(req, res) {
         });
       }
 
-      return res
-        .status(502)
-        .json(
-          createErrorResponse(
-            502,
-            ERROR_CODES.EXTERNAL_SERVICE_ERROR,
-            "Culture brief service temporarily unavailable"
-          )
-        );
+      const fallbackBrief = buildFallbackBrief({
+        destination,
+        culture,
+        language,
+      });
+
+      return res.status(200).json(fallbackBrief);
     }
 
     let parsed;

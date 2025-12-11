@@ -19,6 +19,13 @@ const limitedString = (label, max = 120) =>
     .min(1, `${label} cannot be empty`)
     .max(max, `${label} must be <= ${max} characters`);
 
+const optionalNonEmptyString = (label, max = 120) =>
+  z.preprocess((value) => {
+    if (value === undefined || value === null) return undefined;
+    const trimmed = String(value).trim();
+    return trimmed.length ? trimmed : undefined;
+  }, limitedString(label, max).optional());
+
 const translationSchema = z.object({
   text: z
     .string({
@@ -56,7 +63,7 @@ const itineraryQuerySchema = z
       .trim()
       .max(200, "placeId must be <= 200 characters")
       .optional(),
-    dest: z.string().trim().max(200).optional(),
+    dest: optionalNonEmptyString("dest", 200),
     lat: z
       .preprocess(
         (value) => (value === undefined ? undefined : Number(value)),
@@ -152,7 +159,7 @@ const userWriteSchema = z
 
 const staysSearchSchema = z
   .object({
-    dest: limitedString("dest", 200).optional(),
+    dest: optionalNonEmptyString("dest", 200),
     lat: z
       .preprocess(
         (value) => (value === undefined ? undefined : Number(value)),
@@ -213,7 +220,7 @@ const staysSearchSchema = z
 
 const poiSearchSchema = z
   .object({
-    dest: limitedString("dest", 200).optional(),
+    dest: optionalNonEmptyString("dest", 200),
     lat: z
       .preprocess(
         (value) => (value === undefined ? undefined : Number(value)),

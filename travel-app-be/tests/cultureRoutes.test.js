@@ -66,15 +66,20 @@ describe("Culture intelligence routes", () => {
     expect(res.body.error.code).toBe("EXTERNAL_SERVICE_ERROR");
   });
 
-  test("returns 502 when culture model call fails and no cache available", async () => {
+  test("returns a fallback brief when culture model call fails and no cache available", async () => {
     chatComplete.mockRejectedValueOnce(new Error("provider down"));
 
     const res = await request(app)
       .get("/api/culture/brief?destination=Paris")
       .set("user-agent", "jest");
 
-    expect(res.statusCode).toBe(502);
-    expect(res.body.error.code).toBe("EXTERNAL_SERVICE_ERROR");
+    expect(res.statusCode).toBe(200);
+    expect(res.body.fallback).toBe(true);
+    expect(res.body.fallbackReason).toBe("model_unavailable");
+    expect(Array.isArray(res.body.categories?.greetings)).toBe(true);
+    expect(res.body.categories.greetings.length).toBeGreaterThanOrEqual(3);
+    const cacheStore = mockFirestore.__cultureBriefsStore || {};
+    expect(Object.keys(cacheStore).length).toBe(0);
   });
 
   test("serves stale cache when model fails", async () => {
