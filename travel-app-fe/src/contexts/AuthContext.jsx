@@ -10,6 +10,26 @@ import { handleEmailVerification } from "../services/auth";
 
 const AuthContext = createContext();
 
+function extractActionParams(urlString) {
+  try {
+    const url = new URL(urlString);
+    const params = new URLSearchParams(url.search || "");
+    // Fallback: some providers return action params in the hash fragment
+    if ((!params.get("oobCode") || !params.get("mode")) && url.hash) {
+      const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+      hashParams.forEach((value, key) => {
+        if (!params.has(key)) params.set(key, value);
+      });
+    }
+    const mode = params.get("mode");
+    const oobCode = params.get("oobCode");
+    const apiKey = params.get("apiKey");
+    return { mode, oobCode, apiKey };
+  } catch (e) {
+    return { mode: null, oobCode: null, apiKey: null };
+  }
+}
+
 export function AuthProvider({ children }) {
   const dispatch = useDispatch();
   const authState = useSelector((state) => state.auth);
@@ -37,10 +57,9 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const maybeHandleEmailVerificationLink = async () => {
-      const url = new URL(window.location.href);
-      const mode = url.searchParams.get("mode");
-      const oobCode = url.searchParams.get("oobCode");
-      const linkApiKey = url.searchParams.get("apiKey");
+      const { mode, oobCode, apiKey: linkApiKey } = extractActionParams(
+        window.location.href
+      );
       const clientApiKey = import.meta.env.VITE_FIREBASE_API_KEY;
 
       // Some environments send mode=action; treat that as verify email too.

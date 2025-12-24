@@ -1,10 +1,35 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, CircularProgress, Stack, Typography } from "@mui/material";
 import AuthShell from "../layout/AuthShell";
 import Button from "../common/Button";
 import useNotification from "../../hooks/useNotification";
 import { handleEmailVerification } from "../../services/auth";
+
+function extractActionParams(searchParams) {
+  const searchMode = searchParams.get("mode");
+  const searchOob = searchParams.get("oobCode");
+  const searchApiKey = searchParams.get("apiKey");
+
+  // Fallback to hash fragment if query params are missing (some flows return #mode=...&oobCode=...)
+  let hashMode = null;
+  let hashOob = null;
+  let hashApiKey = null;
+  if (typeof window !== "undefined" && window.location.hash) {
+    const hashParams = new URLSearchParams(
+      window.location.hash.replace(/^#/, "")
+    );
+    hashMode = hashParams.get("mode");
+    hashOob = hashParams.get("oobCode");
+    hashApiKey = hashParams.get("apiKey");
+  }
+
+  return {
+    mode: searchMode || hashMode,
+    oobCode: searchOob || hashOob,
+    apiKey: searchApiKey || hashApiKey,
+  };
+}
 
 export default function VerifyEmail() {
   const navigate = useNavigate();
@@ -16,13 +41,15 @@ export default function VerifyEmail() {
   const [error, setError] = useState("");
   const [verifiedEmail, setVerifiedEmail] = useState("");
 
+  const { mode, oobCode, apiKey: linkApiKey } = useMemo(
+    () => extractActionParams(searchParams),
+    [searchParams]
+  );
+
   useEffect(() => {
     let isMounted = true;
 
     const verify = async () => {
-      const mode = searchParams.get("mode");
-      const oobCode = searchParams.get("oobCode");
-      const linkApiKey = searchParams.get("apiKey");
       const clientApiKey = import.meta.env.VITE_FIREBASE_API_KEY;
 
       const isVerifyEmailMode =
@@ -47,7 +74,13 @@ export default function VerifyEmail() {
         return;
       }
 
-      const emailFromLink = searchParams.get("email");
+      const emailFromLink =
+        searchParams.get("email") ||
+        (typeof window !== "undefined" && window.location.hash
+          ? new URLSearchParams(window.location.hash.replace(/^#/, "")).get(
+              "email"
+            )
+          : null);
       if (emailFromLink && isMounted) {
         setVerifiedEmail(emailFromLink);
       }

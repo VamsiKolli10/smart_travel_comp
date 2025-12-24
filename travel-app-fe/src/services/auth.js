@@ -23,9 +23,9 @@ export class EmailNotVerifiedError extends Error {
   }
 }
 
-function getEmailVerificationSettings() {
+function getEmailVerificationSettings(redirectUrl) {
   return {
-    url: `${window.location.origin}/verify-email`,
+    url: redirectUrl || `${window.location.origin}/verify-email`,
     handleCodeInApp: true,
   };
 }
@@ -72,12 +72,16 @@ export async function registerWithEmail({
   lastName,
   email,
   password,
+  verificationRedirectUrl,
 }) {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(cred.user, {
     displayName: `${firstName} ${lastName}`,
   });
-  await sendEmailVerification(cred.user, getEmailVerificationSettings());
+  await sendEmailVerification(
+    cred.user,
+    getEmailVerificationSettings(verificationRedirectUrl)
+  );
   await signOut(auth);
   return cred;
 }
@@ -108,7 +112,12 @@ export async function handleEmailVerification(actionCode) {
   }
 }
 
-export async function resendEmailVerification({ user, email, password } = {}) {
+export async function resendEmailVerification({
+  user,
+  email,
+  password,
+  verificationRedirectUrl,
+} = {}) {
   try {
     let targetUser = user;
     let signedInForResend = false;
@@ -129,7 +138,10 @@ export async function resendEmailVerification({ user, email, password } = {}) {
       signedInForResend = true;
     }
 
-    await sendEmailVerification(targetUser, getEmailVerificationSettings());
+    await sendEmailVerification(
+      targetUser,
+      getEmailVerificationSettings(verificationRedirectUrl)
+    );
 
     if (signedInForResend) {
       await signOut(auth);

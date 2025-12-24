@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Link,
   useLocation,
@@ -28,6 +28,22 @@ import {
   verifyPasswordReset,
 } from "../../services/auth";
 
+function extractActionParams(searchParams, hashString) {
+  const base = new URLSearchParams(searchParams);
+
+  if (hashString) {
+    const hashParams = new URLSearchParams(hashString.replace(/^#/, ""));
+    hashParams.forEach((val, key) => {
+      if (!base.has(key)) base.set(key, val);
+    });
+  }
+
+  return {
+    oobCode: base.get("oobCode"),
+    apiKey: base.get("apiKey"),
+  };
+}
+
 export default function ResetPassword() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,7 +51,6 @@ export default function ResetPassword() {
   const [searchParams] = useSearchParams();
 
   const clientApiKey = import.meta.env.VITE_FIREBASE_API_KEY;
-  const linkApiKey = searchParams.get("apiKey");
   const [formData, setFormData] = useState({
     password: "",
     confirmPassword: "",
@@ -50,19 +65,21 @@ export default function ResetPassword() {
   );
   const [verifyingLink, setVerifyingLink] = useState(true);
 
-  const oobCode = searchParams.get("oobCode");
+  const { oobCode, apiKey: linkApiKey } = useMemo(
+    () => extractActionParams(searchParams, location.hash),
+    [location.hash, searchParams]
+  );
 
   useEffect(() => {
     let isMounted = true;
     const verifyLink = async () => {
       if (!oobCode) {
-        navigate("/");
-        // if (isMounted) {
-        //   setError(
-        //     "Reset link is missing or invalid. Please request a new link."
-        //   );
-        //   setVerifyingLink(false);
-        // }
+        if (isMounted) {
+          setError(
+            "Reset link is missing or invalid. Please request a new link."
+          );
+          setVerifyingLink(false);
+        }
         return;
       }
 
