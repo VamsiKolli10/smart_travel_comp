@@ -1,0 +1,6 @@
+#.gitignore
+.DS_Store
+.env
+.env.*
+!**/.env.example
+serviceAccountKey.json

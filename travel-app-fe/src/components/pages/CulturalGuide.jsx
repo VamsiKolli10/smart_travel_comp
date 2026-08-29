@@ -1,265 +1,527 @@
-import { useState } from "react";
-import Button from "../common/Button";
-import "./CulturalGuide.css";
+import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Grid,
+  Stack,
+  TextField,
+  Typography,
+  Divider,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+} from "@mui/material";
+import PublicIcon from "@mui/icons-material/Public";
+import InsightsIcon from "@mui/icons-material/Insights";
+import ShieldMoonIcon from "@mui/icons-material/ShieldMoon";
+import RefreshIcon from "@mui/icons-material/Autorenew";
+import PageContainer from "../layout/PageContainer";
+import CulturalEtiquette from "./CulturalEtiquette";
+import useTravelContext from "../../hooks/useTravelContext";
+import { TRANSLATION_LANGUAGES } from "../../constants/languages";
 
+const featuredDestinations = [
+  { destination: "Tokyo", culture: "Japanese", language: "ja" },
+  { destination: "Paris", culture: "French", language: "fr" },
+  { destination: "Mexico City", culture: "Mexican", language: "es" },
+  { destination: "Cairo", culture: "Egyptian", language: "ar" },
+];
+
+const HERO_CALLOUTS = [
+  { icon: <PublicIcon fontSize="small" />, label: "150+ regions" },
+  { icon: <InsightsIcon fontSize="small" />, label: "Live etiquette intel" },
+  { icon: <ShieldMoonIcon fontSize="small" />, label: "Safety coaching" },
+];
+
+const RECENT_STORAGE_KEY = "stc:culture:recent";
+
+/**
+ * Cultural Guide landing experience.
+ *
+ * Reuses the unified Culture Intelligence stack so changes made to the backend
+ * (culture briefs, Q&A, contextual tips) are surfaced immediately here.
+ */
 export default function CulturalGuide() {
-  const [activeSection, setActiveSection] = useState("greetings");
+  const {
+    destination,
+    culture,
+    language,
+    updateTravelContext,
+    setDestinationContext,
+  } = useTravelContext();
 
-  const culturalSections = [
-    {
-      id: "greetings",
-      title: "Greetings & Etiquette",
-      icon: "👋",
-      content: [
-        {
-          title: "Common Greetings",
-          items: [
-            { phrase: "Hello", translation: "Hola", pronunciation: "OH-lah" },
-            {
-              phrase: "Good morning",
-              translation: "Buenos días",
-              pronunciation: "BWAY-nos DEE-ahs",
-            },
-            {
-              phrase: "Good afternoon",
-              translation: "Buenas tardes",
-              pronunciation: "BWAY-nas TAR-des",
-            },
-            {
-              phrase: "Good evening",
-              translation: "Buenas noches",
-              pronunciation: "BWAY-nas NO-ches",
-            },
-          ],
-        },
-        {
-          title: "Polite Expressions",
-          items: [
-            {
-              phrase: "Please",
-              translation: "Por favor",
-              pronunciation: "por fa-VOR",
-            },
-            {
-              phrase: "Thank you",
-              translation: "Gracias",
-              pronunciation: "GRAH-see-ahs",
-            },
-            {
-              phrase: "You're welcome",
-              translation: "De nada",
-              pronunciation: "deh NAH-dah",
-            },
-            {
-              phrase: "Excuse me",
-              translation: "Disculpe",
-              pronunciation: "dis-KOOL-peh",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: "dining",
-      title: "Dining & Food",
-      icon: "🍽️",
-      content: [
-        {
-          title: "Dining Etiquette",
-          items: [
-            {
-              phrase: "Table for two",
-              translation: "Mesa para dos",
-              pronunciation: "MEH-sah PAH-rah dos",
-            },
-            {
-              phrase: "The menu, please",
-              translation: "La carta, por favor",
-              pronunciation: "lah KAR-tah por fa-VOR",
-            },
-            {
-              phrase: "I'm vegetarian",
-              translation: "Soy vegetariano/a",
-              pronunciation: "soy veh-heh-tah-ree-AH-no/ah",
-            },
-            {
-              phrase: "The check, please",
-              translation: "La cuenta, por favor",
-              pronunciation: "lah KWEN-tah por fa-VOR",
-            },
-          ],
-        },
-        {
-          title: "Tipping Culture",
-          items: [
-            {
-              phrase: "Tip included",
-              translation: "Propina incluida",
-              pronunciation: "pro-PEE-nah in-kloo-EE-dah",
-            },
-            {
-              phrase: "Keep the change",
-              translation: "Quede con el cambio",
-              pronunciation: "KEH-deh kon el KAHM-bee-oh",
-            },
-            {
-              phrase: "Service charge",
-              translation: "Cargo por servicio",
-              pronunciation: "KAR-goh por ser-VEE-see-oh",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: "customs",
-      title: "Local Customs",
-      icon: "🏛️",
-      content: [
-        {
-          title: "Cultural Norms",
-          items: [
-            {
-              phrase: "Business hours",
-              translation: "Horario comercial",
-              pronunciation: "oh-RAH-ree-oh ko-mer-see-AHL",
-            },
-            {
-              phrase: "Closed on Sunday",
-              translation: "Cerrado los domingos",
-              pronunciation: "seh-RAH-doh los doh-MEEN-gos",
-            },
-            {
-              phrase: "Public holiday",
-              translation: "Día festivo",
-              pronunciation: "DEE-ah fes-TEE-voh",
-            },
-          ],
-        },
-        {
-          title: "Social Customs",
-          items: [
-            {
-              phrase: "Personal space",
-              translation: "Espacio personal",
-              pronunciation: "es-PAH-see-oh per-soh-NAHL",
-            },
-            {
-              phrase: "Eye contact",
-              translation: "Contacto visual",
-              pronunciation: "kon-TAHK-toh vee-SWAHL",
-            },
-            {
-              phrase: "Handshake",
-              translation: "Apretón de manos",
-              pronunciation: "ah-preh-TOHN deh MAH-nos",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: "emergency",
-      title: "Emergency Situations",
-      icon: "🚨",
-      content: [
-        {
-          title: "Emergency Phrases",
-          items: [
-            {
-              phrase: "Help!",
-              translation: "¡Ayuda!",
-              pronunciation: "ah-YOO-dah",
-            },
-            {
-              phrase: "Call the police",
-              translation: "Llame a la policía",
-              pronunciation: "YAH-meh ah lah po-lee-SEE-ah",
-            },
-            {
-              phrase: "I need a doctor",
-              translation: "Necesito un médico",
-              pronunciation: "neh-seh-SEE-toh oon MEH-dee-koh",
-            },
-            {
-              phrase: "Where is the hospital?",
-              translation: "¿Dónde está el hospital?",
-              pronunciation: "DOHN-deh es-TAH el os-pee-TAHL",
-            },
-          ],
-        },
-      ],
-    },
-  ];
+  const [destinationInput, setDestinationInput] = useState(destination || "");
+  const [cultureInput, setCultureInput] = useState(culture || "");
+  const [languageInput, setLanguageInput] = useState(language || "en");
+  const [recentDestinations, setRecentDestinations] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(RECENT_STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.slice(0, 5);
+      }
+    } catch (error) {
+      console.warn("Failed to parse cultural recents", error);
+    }
+    return [];
+  });
 
-  const currentSection = culturalSections.find(
-    (section) => section.id === activeSection
+  // Keep local inputs in sync when global context changes elsewhere
+  useEffect(() => {
+    if (destination !== undefined && destination !== destinationInput) {
+      setDestinationInput(destination || "");
+    }
+  }, [destination]);
+
+  useEffect(() => {
+    if (culture !== undefined && culture !== cultureInput) {
+      setCultureInput(culture || "");
+    }
+  }, [culture]);
+
+  useEffect(() => {
+    if (language !== undefined && language !== languageInput) {
+      setLanguageInput(language || "en");
+    }
+  }, [language]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        RECENT_STORAGE_KEY,
+        JSON.stringify(recentDestinations)
+      );
+    } catch (error) {
+      console.warn("Unable to persist cultural recents", error);
+    }
+  }, [recentDestinations]);
+
+  const recordRecent = useCallback(
+    (nextDestination, nextCulture, nextLanguage) => {
+      if (!nextDestination) return;
+      setRecentDestinations((prev) => {
+        const deduped = prev.filter(
+          (item) =>
+            item.destination.toLowerCase() !== nextDestination.toLowerCase() ||
+            item.language !== nextLanguage
+        );
+        const updated = [
+          {
+            destination: nextDestination,
+            culture: nextCulture,
+            language: nextLanguage,
+            timestamp: Date.now(),
+          },
+          ...deduped,
+        ];
+        return updated.slice(0, 5);
+      });
+    },
+    []
   );
 
+  // If context is empty, seed from most recent selection (if any) so the brief can load
+  useEffect(() => {
+    if (!destination && recentDestinations.length > 0) {
+      const mostRecent = recentDestinations[0];
+      setDestinationInput(mostRecent.destination || "");
+      setCultureInput(mostRecent.culture || "");
+      setLanguageInput(mostRecent.language || "en");
+      if (mostRecent.destination) {
+        setDestinationContext(
+          mostRecent.destination,
+          { display: mostRecent.destination },
+          { source: "cultural-guide-restore" }
+        );
+        updateTravelContext(
+          {
+            culture: mostRecent.culture || "",
+            language: mostRecent.language || "en",
+          },
+          { source: "cultural-guide-restore" }
+        );
+      }
+    }
+  }, [
+    destination,
+    recentDestinations,
+    setDestinationContext,
+    updateTravelContext,
+  ]);
+
+  const handleApply = (event) => {
+    event.preventDefault();
+    const nextDestination = destinationInput.trim();
+    if (!nextDestination) {
+      return;
+    }
+    setDestinationContext(
+      nextDestination,
+      { display: nextDestination },
+      { source: "cultural-guide" }
+    );
+    updateTravelContext(
+      {
+        culture: cultureInput.trim(),
+        language: languageInput.trim() || "en",
+        source: "cultural-guide",
+      },
+      { source: "cultural-guide" }
+    );
+    const nextCulture = cultureInput.trim();
+    const nextLanguage = languageInput.trim() || "en";
+    recordRecent(nextDestination, nextCulture, nextLanguage);
+  };
+
+  const handleRefresh = () => {
+    const nextDestination = (destinationInput || destination || "").trim();
+    if (!nextDestination) return;
+    setDestinationContext(
+      nextDestination,
+      { display: nextDestination },
+      { source: "cultural-guide-refresh" }
+    );
+    updateTravelContext(
+      {
+        culture: cultureInput.trim(),
+        language: languageInput.trim() || "en",
+        source: "cultural-guide-refresh",
+      },
+      { source: "cultural-guide-refresh" }
+    );
+    const nextCulture = cultureInput.trim();
+    const nextLanguage = languageInput.trim() || "en";
+    recordRecent(nextDestination, nextCulture, nextLanguage);
+  };
+
   return (
-    <section className="cultural-guide">
-      <div className="cultural-guide-header">
-        <h1>Cultural Guide</h1>
-        <p>
-          Learn greetings, etiquette, tipping, and local customs to avoid faux
-          pas.
-        </p>
-      </div>
+    <PageContainer
+      title="Culture Intelligence"
+      subtitle="Generate up-to-date etiquette briefs, safety norms, and coaching for any destination."
+      maxWidth="xl"
+    >
+      <Grid
+        container
+        justifyContent="space-between"
+        spacing={{ xs: 2, md: 3 }}
+        columnSpacing={{ xs: 2, md: 3 }}
+        rowSpacing={{ xs: 2, md: 3 }}
+      >
+        <Grid
+          item
+          xs={12}
+          md={4}
+          lg={4}
+          sx={{
+            flexBasis: { md: "33%", lg: "33%" },
+            maxWidth: { md: "33%", lg: "33%" },
+          }}
+        >
+          <Stack spacing={2} sx={{ height: "100%" }}>
+            <Card
+              sx={{
+                background:
+                  "linear-gradient(135deg, rgba(16,57,85,0.9) 0%, rgba(22,96,136,0.85) 100%)",
+                color: "common.white",
+                borderRadius: 3,
+                boxShadow: "0 18px 45px rgba(22, 96, 136, 0.25)",
+              }}
+            >
+              <CardContent>
+                <Stack spacing={2}>
+                  <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                    Travel with cultural confidence
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                    Curated etiquette briefs, safety cues, and practical tips
+                    adapt to every destination you explore.
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {HERO_CALLOUTS.map((callout) => (
+                      <Chip
+                        key={callout.label}
+                        icon={callout.icon}
+                        label={callout.label}
+                        sx={{
+                          color: "common.white",
+                          borderColor: "rgba(255,255,255,0.4)",
+                          backgroundColor: "rgba(255,255,255,0.12)",
+                        }}
+                        variant="outlined"
+                      />
+                    ))}
+                  </Stack>
+                </Stack>
+              </CardContent>
+            </Card>
 
-      <div className="cultural-sections">
-        {culturalSections.map((section) => (
-          <button
-            key={section.id}
-            className={`cultural-section-tab ${
-              activeSection === section.id ? "active" : ""
-            }`}
-            onClick={() => setActiveSection(section.id)}
-          >
-            <span className="section-icon">{section.icon}</span>
-            <span className="section-title">{section.title}</span>
-          </button>
-        ))}
-      </div>
+            <Card component="form" onSubmit={handleApply}>
+              <CardContent>
+                <Stack spacing={2}>
+                  <Box>
+                    <Typography variant="h6">
+                      Choose your destination
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Update the fields below to pull the latest etiquette
+                      brief, localized phrases, and safety tips from the Culture
+                      Intelligence service.
+                    </Typography>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      sx={{ mt: 1 }}
+                      alignItems="center"
+                      flexWrap="wrap"
+                    >
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<RefreshIcon />}
+                        onClick={handleRefresh}
+                        disabled={!destinationInput.trim()}
+                      >
+                        Refresh brief
+                      </Button>
+                    </Stack>
+                  </Box>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="Destination"
+                        placeholder="e.g., Lima"
+                        value={destinationInput}
+                        onChange={(e) => setDestinationInput(e.target.value)}
+                        fullWidth
+                        required
+                      />
+                    </Grid>
+                    {/* <Grid item xs={12} md={6}>
+                      <TextField
+                        label="Culture focus"
+                        placeholder="optional"
+                        value={cultureInput}
+                        onChange={(e) => setCultureInput(e.target.value)}
+                        fullWidth
+                      />
+                    </Grid> */}
+                    <Grid item xs={12} md={6}>
+                      <FormControl fullWidth>
+                        <InputLabel>Language</InputLabel>
+                        <Select
+                          value={languageInput}
+                          label="Language"
+                          onChange={(e) => setLanguageInput(e.target.value)}
+                        >
+                          {TRANSLATION_LANGUAGES.map((lang) => (
+                            <MenuItem key={lang.code} value={lang.code}>
+                              {lang.label}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid
+                      item
+                      xs={12}
+                      md={6}
+                      sx={{ display: "flex", alignItems: "stretch" }}
+                    >
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        color="primary"
+                        fullWidth
+                        disabled={!destinationInput.trim()}
+                      >
+                        Load brief
+                      </Button>
+                    </Grid>
+                  </Grid>
+                </Stack>
+              </CardContent>
+            </Card>
 
-      <div className="cultural-content">
-        {currentSection && (
-          <div className="content-section">
-            <h2 className="content-title">
-              <span className="title-icon">{currentSection.icon}</span>
-              {currentSection.title}
-            </h2>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle2" gutterBottom>
+                  What you’ll get
+                </Typography>
+                <Stack component="ul" spacing={1} sx={{ pl: 2, mb: 0 }}>
+                  <Typography
+                    component="li"
+                    variant="body2"
+                    color="text.secondary"
+                  >
+                    Fresh etiquette briefs cached for only 24 hours with manual
+                    refresh control.
+                  </Typography>
+                  <Typography
+                    component="li"
+                    variant="body2"
+                    color="text.secondary"
+                  >
+                    Inline Culture Coach Q&A for nuanced scenarios and follow-up
+                    questions.
+                  </Typography>
+                  <Typography
+                    component="li"
+                    variant="body2"
+                    color="text.secondary"
+                  >
+                    Optional language + culture focus to tailor phrasing and
+                    emphasis.
+                  </Typography>
+                </Stack>
+              </CardContent>
+            </Card>
 
-            {currentSection.content.map((category, index) => (
-              <div key={index} className="cultural-category">
-                <h3 className="category-title">{category.title}</h3>
-                <div className="cultural-phrases">
-                  {category.items.map((item, itemIndex) => (
-                    <div key={itemIndex} className="cultural-phrase">
-                      <div className="phrase-content">
-                        <div className="phrase-english">{item.phrase}</div>
-                        <div className="phrase-translation">
-                          {item.translation}
-                        </div>
-                        <div className="phrase-pronunciation">
-                          {item.pronunciation}
-                        </div>
-                      </div>
-                      <div className="phrase-actions">
-                        <Button size="sm" variant="outline">
-                          Play
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          Copy
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
+            <Card>
+              <CardContent>
+                <Stack spacing={2}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Quick picks
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {featuredDestinations.map((item) => (
+                      <Button
+                        key={item.destination}
+                        variant="outlined"
+                        size="small"
+                        onClick={() => {
+                          setDestinationInput(item.destination);
+                          setCultureInput(item.culture);
+                          setLanguageInput(item.language);
+                          setDestinationContext(
+                            item.destination,
+                            { display: item.destination },
+                            { source: "cultural-guide-quick-pick" }
+                          );
+                          updateTravelContext(
+                            {
+                              culture: item.culture,
+                              language: item.language,
+                            },
+                            { source: "cultural-guide-quick-pick" }
+                          );
+                          recordRecent(
+                            item.destination,
+                            item.culture,
+                            item.language
+                          );
+                        }}
+                      >
+                        {item.destination}
+                      </Button>
+                    ))}
+                  </Stack>
+                </Stack>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent>
+                <Stack spacing={2}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Recently explored
+                  </Typography>
+                  {recentDestinations.length ? (
+                    <Stack spacing={1.5}>
+                      {recentDestinations.map((item) => (
+                        <Card
+                          key={`${item.destination}-${item.language}`}
+                          variant="outlined"
+                          sx={{
+                            borderRadius: 2,
+                            cursor: "pointer",
+                            transition: "transform 0.2s ease, box-shadow 0.2s",
+                            "&:hover": {
+                              transform: "translateY(-2px)",
+                              boxShadow: (theme) => theme.shadows[4],
+                            },
+                          }}
+                          onClick={() => {
+                            setDestinationInput(item.destination);
+                            setCultureInput(item.culture || "");
+                            setLanguageInput(item.language || "en");
+                            setDestinationContext(
+                              item.destination,
+                              { display: item.destination },
+                              { source: "cultural-guide-recent" }
+                            );
+                            updateTravelContext(
+                              {
+                                culture: item.culture,
+                                language: item.language,
+                              },
+                              { source: "cultural-guide-recent" }
+                            );
+                          }}
+                        >
+                          <CardContent
+                            sx={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <Box>
+                              <Typography sx={{ fontWeight: 600 }}>
+                                {item.destination}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                {item.language?.toUpperCase()} ·{" "}
+                                {item.culture || "General brief"}
+                              </Typography>
+                            </Box>
+                            <Chip
+                              size="small"
+                              label="Load"
+                              color="primary"
+                              variant="outlined"
+                            />
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Explore a destination to see it appear here for quick
+                      access later.
+                    </Typography>
+                  )}
+                </Stack>
+              </CardContent>
+            </Card>
+          </Stack>
+        </Grid>
+        <Grid
+          item
+          xs={12}
+          md={8}
+          lg={8}
+          sx={{
+            flexBasis: { md: "65%", lg: "65%" },
+            maxWidth: { md: "65%", lg: "65%" },
+          }}
+        >
+          <CulturalEtiquette
+            destination={destination}
+            culture={culture}
+            language={language}
+            sx={{ mt: 0 }}
+          />
+        </Grid>
+      </Grid>
+    </PageContainer>
   );
 }

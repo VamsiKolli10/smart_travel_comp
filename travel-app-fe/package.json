@@ -7,24 +7,42 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "test": "vitest run --config vitest.config.js",
+    "test:watch": "vitest --config vitest.config.js",
+    "test:coverage": "vitest run --config vitest.config.js --coverage"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^7.3.2",
+    "@mui/icons-material": "^7.3.4",
     "@mui/lab": "^7.0.0-beta.17",
-    "@mui/material": "^7.3.2",
+    "@mui/material": "^7.3.4",
     "@reduxjs/toolkit": "^2.9.0",
+    "axios": "^1.12.2",
+    "express-validator": "^7.2.1",
+    "firebase": "^12.3.0",
+    "framer-motion": "^12.23.24",
+    "maplibre-gl": "^5.10.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-firebase-hooks": "^5.1.1",
     "react-redux": "^9.2.0",
-    "react-router-dom": "^6.30.1"
+    "react-router-dom": "^6.30.1",
+    "redux-persist": "^6.0.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.21",
+    "baseline-browser-mapping": "^2.8.28",
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.34.1",
-    "vite": "^5.4.0"
+    "jsdom": "^27.2.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.18",
+    "vite": "^5.4.0",
+    "vitest": "^4.0.9"
   }
 }
