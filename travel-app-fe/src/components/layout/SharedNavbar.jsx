@@ -37,8 +37,8 @@ const NAV_LINKS = [
 const StyledLink = styled(Link)(({ theme }) => ({
   color: theme.palette.text.primary,
   textDecoration: "none",
-  fontSize: "18px",
-  fontWeight: 700,
+  fontSize: "17px",
+  fontWeight: 800,
   position: "relative",
   paddingRight: theme.spacing(2),
   "&::after": {
@@ -62,9 +62,10 @@ const StyledLink = styled(Link)(({ theme }) => ({
 const StyledNavLink = styled(NavLink)(({ theme }) => ({
   color: theme.palette.text.primary,
   textDecoration: "none",
-  fontWeight: 500,
-  padding: "8px 16px",
-  borderRadius: "4px",
+  fontWeight: 600,
+  fontSize: "0.88rem",
+  padding: "9px 13px",
+  borderRadius: "10px",
   position: "relative",
   transition: "color 150ms ease",
   "&::after": {
@@ -138,7 +139,7 @@ export default function SharedNavbar({ isLanding = false }) {
         component="div"
         role="navigation"
         aria-label="Main site controls"
-        sx={{ gap: 2 }}
+        sx={{ gap: { xs: 1, md: 2 }, minHeight: { xs: 64, md: 72 } }}
       >
         <StyledLink
           to={user ? "/home" : "/"}
@@ -147,23 +148,24 @@ export default function SharedNavbar({ isLanding = false }) {
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Box
               sx={{
-                width: 32,
-                height: 32,
-                borderRadius: 1.5,
-                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                width: 36,
+                height: 36,
+                borderRadius: 2.5,
+                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <PlaneIcon fontSize="small" color="primary" />
+              <PlaneIcon fontSize="small" sx={{ color: "#fff" }} />
             </Box>
             <Typography
               variant="h6"
               component="span"
               sx={{
                 fontWeight: 800,
-                background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                letterSpacing: "-0.04em",
+                background: `linear-gradient(90deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main})`,
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
               }}

@@ -15,7 +15,7 @@ export default function PageContainer({
       sx={{
         width: "100%",
         position: "relative",
-        py: { xs: 6, md: 8 },
+        py: { xs: 4, md: 6 },
         px: { xs: 0, md: 0 },
         overflow: "hidden",
         "&::before": {
@@ -24,12 +24,8 @@ export default function PageContainer({
           inset: 0,
           background: (theme) =>
             theme.palette.mode === "dark"
-              ? `radial-gradient(circle at 10% 10%, rgba(50,184,198,0.12) 0%, transparent 45%),
-                 radial-gradient(circle at 85% 0%, rgba(94,82,64,0.12) 0%, transparent 55%),
-                 ${theme.palette.background.default}`
-              : `radial-gradient(circle at 10% 10%, rgba(50,184,198,0.12) 0%, transparent 45%),
-                 radial-gradient(circle at 85% 0%, rgba(94,82,64,0.1) 0%, transparent 55%),
-                 ${theme.palette.background.default}`,
+              ? `radial-gradient(circle at 12% 0%, rgba(50,184,198,0.12), transparent 34%), ${theme.palette.background.default}`
+              : `radial-gradient(circle at 12% 0%, rgba(33,128,141,0.09), transparent 34%), ${theme.palette.background.default}`,
           zIndex: 0,
         },
       }}
@@ -67,7 +63,7 @@ export default function PageContainer({
                   <Typography
                     component="h1"
                     variant="h4"
-                    sx={{ fontWeight: 600, mb: subtitle ? 0.5 : 0 }}
+                    sx={{ fontWeight: 800, mb: subtitle ? 0.5 : 0, maxWidth: 720 }}
                   >
                     {title}
                   </Typography>

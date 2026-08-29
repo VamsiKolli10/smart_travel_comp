@@ -128,7 +128,9 @@ async function chatComplete({
     try {
       const { data } = await axios.post(OPENROUTER_API_URL, body, {
         headers,
-        timeout: 60000, // 60 second timeout
+        timeout: Number(process.env.OPENROUTER_TIMEOUT_MS || 30000),
+        maxContentLength: 256 * 1024,
+        maxBodyLength: 256 * 1024,
       });
 
       const text = data?.choices?.[0]?.message?.content || "";

@@ -328,16 +328,17 @@ async function poiBackedItinerary({
 
 async function generateItinerary(req, res) {
   try {
-    const placeId = sanitizeStr(req.query.placeId);
-    const dest = sanitizeStr(req.query.dest);
-    const latQ = req.query.lat != null ? Number(req.query.lat) : undefined;
-    const lngQ = req.query.lng != null ? Number(req.query.lng) : undefined;
-    const days = toInt(req.query.days || 3, 3);
-    const budget = sanitizeStr(req.query.budget || "mid"); // low | mid | high
-    const pace = sanitizeStr(req.query.pace || "balanced"); // relaxed | balanced | packed
-    const season = sanitizeStr(req.query.season || "any");
-    const interests = sanitizeStr(req.query.interests || "food, culture, landmarks");
-    const lang = sanitizeStr(req.query.lang || "en");
+    const input = req.method === "POST" ? req.body || {} : req.query || {};
+    const placeId = sanitizeStr(input.placeId);
+    const dest = sanitizeStr(input.dest);
+    const latQ = input.lat != null ? Number(input.lat) : undefined;
+    const lngQ = input.lng != null ? Number(input.lng) : undefined;
+    const days = toInt(input.days || 3, 3);
+    const budget = sanitizeStr(input.budget || "mid");
+    const pace = sanitizeStr(input.pace || "balanced");
+    const season = sanitizeStr(input.season || "any");
+    const interests = sanitizeStr(input.interests || "food, culture, landmarks");
+    const lang = sanitizeStr(input.lang || "en");
 
     if (!placeId && !dest && !(Number.isFinite(latQ) && Number.isFinite(lngQ))) {
       return res

@@ -60,7 +60,7 @@ export default function AppLayout() {
         component="main"
         sx={{
           flex: 1,
-          padding: { xs: 2, sm: 3 },
+          padding: { xs: 1.25, sm: 2.5, md: 3 },
           paddingBottom: isMobile ? "100px" : 3,
           minHeight: "calc(100vh - 64px)",
           width: "100%",
@@ -75,12 +75,12 @@ export default function AppLayout() {
           elevation={0}
           sx={{
             flex: 1,
-            borderRadius: 3,
+            borderRadius: { xs: 2.5, md: 4 },
             overflow: "hidden",
-            backgroundColor: alpha(theme.palette.background.paper, 0.6),
-            backdropFilter: "blur(6px)",
-            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            boxShadow: `0 10px 30px ${alpha(theme.palette.common.black, 0.08)}`,
+            backgroundColor: alpha(theme.palette.background.paper, 0.78),
+            backdropFilter: "blur(14px)",
+            border: `1px solid ${alpha(theme.palette.divider, 0.55)}`,
+            boxShadow: `0 20px 60px ${alpha(theme.palette.common.black, 0.07)}`,
             transition: "all 0.3s ease",
             "&:hover": {
               boxShadow: `0 15px 40px ${alpha(

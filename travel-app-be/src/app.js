@@ -37,6 +37,7 @@ const {
 const { recordTiming, getPerformanceSnapshot } = require("./utils/performance");
 const { validateBody } = require("./middleware/validate");
 const { userWriteSchema } = require("./utils/schemas");
+const { requestContext } = require("./middleware/requestContext");
 
 const defaultAllowedOrigins = [
   "http://localhost",
@@ -117,6 +118,8 @@ const methodLimits = {
 function createApp() {
   const app = express();
   app.disable("x-powered-by");
+  app.set("trust proxy", 1);
+  app.use(requestContext);
 
   app.use(
     cors({
@@ -158,6 +161,12 @@ function createApp() {
 
   app.use(express.json({ limit: requestBodyLimit }));
   app.use(express.urlencoded({ extended: true, limit: requestBodyLimit }));
+
+  app.get("/healthz", (_req, res) => res.status(200).json({ status: "ok" }));
+  app.get("/readyz", (_req, res) => {
+    const ready = Boolean(process.env.REQUEST_SIGNING_SECRET);
+    res.status(ready ? 200 : 503).json({ status: ready ? "ready" : "not_ready" });
+  });
 
   // Hydrate user context (if any) before applying role-based rate limits
   app.use(attachUserContext);

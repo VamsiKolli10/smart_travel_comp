@@ -324,6 +324,10 @@ if [[ ${SKIP_TESTS} -eq 0 ]]; then
       log_success "Frontend tests passed"
     else
       log_warn "Frontend tests failed or not configured."
+      if [[ -n "${CI:-}" ]]; then
+        log_error "Frontend tests are required in CI; refusing deployment."
+        exit 1
+      fi
       if [[ ${FORCE} -eq 0 ]] && [[ -z "${CI:-}" ]]; then
         read -p "Continue with deployment anyway? (y/N) " -n 1 -r
         echo
@@ -345,6 +349,10 @@ if [[ ${SKIP_TESTS} -eq 0 ]]; then
         log_success "Backend tests passed"
       else
         log_warn "Backend tests failed or not configured."
+        if [[ -n "${CI:-}" ]]; then
+          log_error "Backend tests are required in CI; refusing deployment."
+          exit 1
+        fi
         if [[ ${FORCE} -eq 0 ]] && [[ -z "${CI:-}" ]]; then
           read -p "Continue with deployment anyway? (y/N) " -n 1 -r
           echo

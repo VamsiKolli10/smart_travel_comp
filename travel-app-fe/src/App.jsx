@@ -16,6 +16,7 @@ import ForgotPassword from "./components/pages/ForgotPassword";
 import ResetPassword from "./components/pages/ResetPassword";
 import AuthAction from "./components/pages/AuthAction";
 import VerifyEmail from "./components/pages/VerifyEmail";
+import LegalPage from "./components/pages/LegalPage";
 
 // Protected pages
 import Home from "./components/pages/Home.jsx";
@@ -47,6 +48,8 @@ export default function App() {
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/auth-action" element={<AuthAction />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
+                <Route path="/terms" element={<LegalPage kind="terms" />} />
+                <Route path="/privacy" element={<LegalPage kind="privacy" />} />
               </Route>
 
               {/* 🔒 Protected routes (require auth) */}

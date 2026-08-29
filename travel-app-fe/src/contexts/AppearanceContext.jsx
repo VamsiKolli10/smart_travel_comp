@@ -4,6 +4,19 @@ import { createAppTheme } from "../theme";
 
 const STORAGE_KEY = "stc:appearance";
 
+function readAppearancePreference() {
+  try {
+    const storage = window.localStorage;
+    if (typeof storage?.getItem === "function") return storage.getItem(STORAGE_KEY);
+    if (typeof Storage?.prototype?.getItem === "function") {
+      return Storage.prototype.getItem.call(storage, STORAGE_KEY);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 const AppearanceContext = createContext({
   mode: "light",
   setMode: () => {},
@@ -13,7 +26,7 @@ const AppearanceContext = createContext({
 export function AppearanceProvider({ children }) {
   const [mode, setMode] = useState(() => {
     if (typeof window === "undefined") return "light";
-    const stored = window.localStorage.getItem(STORAGE_KEY);
+    const stored = readAppearancePreference();
     if (stored === "light" || stored === "dark") return stored;
     const prefersDark = window.matchMedia(
       "(prefers-color-scheme: dark)"
@@ -28,7 +41,10 @@ export function AppearanceProvider({ children }) {
     root.classList.add(mode);
     root.dataset.theme = mode;
     try {
-      window.localStorage.setItem(STORAGE_KEY, mode);
+        const storage = window.localStorage;
+        if (typeof storage?.setItem === "function") storage.setItem(STORAGE_KEY, mode);
+        else if (typeof Storage?.prototype?.setItem === "function")
+          Storage.prototype.setItem.call(storage, STORAGE_KEY, mode);
     } catch (error) {
       // Silently handle localStorage errors (e.g., quota exceeded)
       console.warn(

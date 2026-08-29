@@ -108,12 +108,24 @@ export default function Login() {
       return;
     }
     const key = `verifyResendUntil:${verificationEmail}`;
-    const stored = localStorage.getItem(key);
+    const storage = typeof window !== "undefined" ? window.localStorage : null;
+    let stored = null;
+    try {
+      const getItem = storage?.getItem || Storage?.prototype?.getItem;
+      stored = typeof getItem === "function" ? getItem.call(storage, key) : null;
+    } catch {
+      stored = null;
+    }
     const asNumber = stored ? Number(stored) : null;
     if (asNumber && asNumber > Date.now()) {
       setResendCooldownUntil(asNumber);
     } else {
-      localStorage.removeItem(key);
+      try {
+        const removeItem = storage?.removeItem || Storage?.prototype?.removeItem;
+        if (typeof removeItem === "function") removeItem.call(storage, key);
+      } catch {
+        // Ignore unavailable storage in private/restricted browser contexts.
+      }
       setResendCooldownUntil(null);
     }
   }, [verificationEmail]);
@@ -247,10 +259,17 @@ export default function Login() {
 
       const nextAllowed = Date.now() + 5 * 60 * 1000; // 5 minutes
       setResendCooldownUntil(nextAllowed);
-      localStorage.setItem(
-        `verifyResendUntil:${verificationEmail}`,
-        String(nextAllowed)
-      );
+      try {
+        const storage = window.localStorage;
+        if (typeof storage?.setItem === "function") {
+          storage.setItem(
+            `verifyResendUntil:${verificationEmail}`,
+            String(nextAllowed)
+          );
+        }
+      } catch {
+        // Verification still succeeds when browser storage is unavailable.
+      }
 
       showNotification(
         "Verification email sent! Please check your inbox.",

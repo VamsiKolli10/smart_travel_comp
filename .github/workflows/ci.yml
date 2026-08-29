@@ -52,6 +52,10 @@ jobs:
         working-directory: travel-app-fe
         run: npm test
 
+      - name: Frontend production dependency audit
+        working-directory: travel-app-fe
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Frontend build
         working-directory: travel-app-fe
         run: npm run build
@@ -64,6 +68,10 @@ jobs:
         working-directory: travel-app-be
         run: npm test
 
+      - name: Backend production dependency audit
+        working-directory: travel-app-be
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Install functions dependencies
         working-directory: travel-app-be/functions
         run: npm ci
@@ -71,3 +79,7 @@ jobs:
       - name: Functions lint
         working-directory: travel-app-be/functions
         run: npm run lint
+
+      - name: Functions production dependency audit
+        working-directory: travel-app-be/functions
+        run: npm audit --omit=dev --audit-level=high

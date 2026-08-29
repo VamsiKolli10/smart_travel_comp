@@ -18,7 +18,13 @@ const STORAGE_KEY = "stc:feature-flags";
 const readStoredFlags = () => {
   if (typeof window === "undefined") return defaultFlags;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const storage = window.localStorage;
+    const raw =
+      typeof storage?.getItem === "function"
+        ? storage.getItem(STORAGE_KEY)
+        : typeof Storage?.prototype?.getItem === "function"
+        ? Storage.prototype.getItem.call(storage, STORAGE_KEY)
+        : null;
     if (!raw) return defaultFlags;
     const parsed = JSON.parse(raw);
     return { ...defaultFlags, ...parsed };
@@ -31,7 +37,11 @@ const readStoredFlags = () => {
 const persistFlags = (flags) => {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(flags));
+    const storage = window.localStorage;
+    if (typeof storage?.setItem === "function")
+      storage.setItem(STORAGE_KEY, JSON.stringify(flags));
+    else if (typeof Storage?.prototype?.setItem === "function")
+      Storage.prototype.setItem.call(storage, STORAGE_KEY, JSON.stringify(flags));
   } catch (error) {
     console.warn("Failed to persist feature flags", error);
   }

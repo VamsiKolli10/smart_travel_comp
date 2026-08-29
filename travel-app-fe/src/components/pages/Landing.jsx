@@ -87,21 +87,21 @@ export default function Landing() {
         icon: <ActivityIcon color="primary" />,
         title: "Phrasebook Studio",
         description:
-          "Generate etiquette notes and usage examples via `/phrasebook/generate`, then curate and share with your crew.",
+          "Build etiquette notes and useful examples, then curate and share them with your crew.",
         badge: "Studio",
       },
       {
         icon: <HotelIcon color="primary" />,
         title: "Stays with Context",
         description:
-          "Search `/stays/search` with destination or coords; every result ships with neighborhood signals and arrival briefs.",
+          "Search by destination or map area; every result comes with neighborhood context and an arrival brief.",
         badge: "Stays",
       },
       {
         icon: <TravelExploreIcon color="primary" />,
         title: "POI & Discover",
         description:
-          "Map-ready POIs from `/poi/search`, curated guides, and itinerary generation that honors your travel context.",
+          "Explore map-ready places, curated guides, and itineraries that honor your travel context.",
         badge: "Discovery",
       },
       {
@@ -171,7 +171,7 @@ export default function Landing() {
       {
         title: "Create your workspace",
         description:
-          "Sign in, invite your crew, and lean on Firebase auth, role-based access, and standardized responses.",
+          "Sign in, invite your crew, and create a shared space for everything your trip needs.",
         icon: <GroupsIcon fontSize="small" />,
         accent: "#32B8C6",
         meta: "Setup",
@@ -187,7 +187,7 @@ export default function Landing() {
       {
         title: "Translate & build phrasebooks",
         description:
-          "Use `/translate` and `/phrasebook/generate` to prep etiquette, allergy, and transit cards—then share as tiles.",
+          "Prep etiquette, allergy, and transit cards—then save and share them as handy tiles.",
         icon: <LanguageIcon fontSize="small" />,
         accent: "#F59E0B",
         meta: "Language",
@@ -195,7 +195,7 @@ export default function Landing() {
       {
         title: "Search stays & POIs",
         description:
-          "Call `/stays/search` and `/poi/search` for vetted results with map-friendly details and safety signals.",
+          "Find stays and places with map-friendly details, local context, and useful safety signals.",
         icon: <TravelExploreIcon fontSize="small" />,
         accent: "#64B5F6",
         meta: "Discovery",
@@ -217,7 +217,7 @@ export default function Landing() {
       {
         title: "Multi-layer protection",
         description:
-          "Role-based rate limits (20/60/120 per min), JWT auth, and security headers keep calls predictable.",
+          "Thoughtful privacy and security controls help keep your travel workspace dependable.",
         icon: <AccessTimeIcon fontSize="small" />,
       },
       {
@@ -235,7 +235,7 @@ export default function Landing() {
       {
         title: "Production ready",
         description:
-          "Standardized errors, monitoring, logging, and deployment via Firebase Hosting + Functions.",
+          "A dependable foundation keeps the experience quick, stable, and ready for real trips.",
         icon: <SecurityIcon fontSize="small" />,
       },
     ],

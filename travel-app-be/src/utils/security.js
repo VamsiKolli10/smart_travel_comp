@@ -51,9 +51,12 @@ function verifySignature(data, signature, secret) {
 
   try {
     const expectedSignature = createSignature(data, secret);
+    const provided = Buffer.from(signature, "hex");
+    const expected = Buffer.from(expectedSignature, "hex");
+    if (provided.length !== expected.length) return false;
     return crypto.timingSafeEqual(
-      Buffer.from(signature, "hex"),
-      Buffer.from(expectedSignature, "hex")
+      provided,
+      expected
     );
   } catch (_err) {
     return false;

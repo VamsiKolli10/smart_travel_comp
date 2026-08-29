@@ -2,37 +2,37 @@ import { alpha, createTheme } from "@mui/material/styles";
 
 const typography = {
   fontFamily:
-    '"FKGroteskNeue", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    '"DM Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   h1: {
     fontSize: "2.75rem",
-    fontWeight: 600,
+    fontWeight: 800,
     lineHeight: 1.15,
-    letterSpacing: "-0.02em",
+    letterSpacing: "-0.045em",
   },
   h2: {
     fontSize: "2.25rem",
-    fontWeight: 600,
+    fontWeight: 800,
     lineHeight: 1.2,
-    letterSpacing: "-0.015em",
+    letterSpacing: "-0.035em",
   },
   h3: {
     fontSize: "1.75rem",
-    fontWeight: 600,
+    fontWeight: 700,
     lineHeight: 1.25,
   },
   h4: {
     fontSize: "1.5rem",
-    fontWeight: 600,
+    fontWeight: 700,
     lineHeight: 1.3,
   },
   h5: {
     fontSize: "1.25rem",
-    fontWeight: 600,
+    fontWeight: 700,
     lineHeight: 1.35,
   },
   h6: {
     fontSize: "1.125rem",
-    fontWeight: 600,
+    fontWeight: 700,
     lineHeight: 1.4,
   },
   body1: {
@@ -111,7 +111,7 @@ export function createAppTheme(mode = "light") {
     palette,
     typography,
     shape: {
-      borderRadius: 12,
+      borderRadius: 16,
     },
     spacing: 8,
     components: {
@@ -129,14 +129,14 @@ export function createAppTheme(mode = "light") {
         styleOverrides: {
           root: {
             textTransform: "none",
-            fontWeight: 500,
+            fontWeight: 700,
             borderRadius: 999,
-            padding: "10px 20px",
+            padding: "11px 20px",
             transition: "all 250ms cubic-bezier(0.16, 1, 0.3, 1)",
             fontFamily: typography.fontFamily,
           },
           contained: {
-            boxShadow: "0 20px 40px -18px rgba(33, 128, 141, 0.55)",
+            boxShadow: "0 12px 24px -14px rgba(33, 128, 141, 0.8)",
             "&:hover": {
               boxShadow: "0 22px 45px -18px rgba(33, 128, 141, 0.65)",
             },
