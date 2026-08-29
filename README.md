@@ -1,261 +1,162 @@
 # VoxTrail
 
-An AI-assisted travel assistant that combines realtime translation, curated phrasebooks, cultural guidance, safety tooling, and accommodation discovery. This repository hosts both the React front-end (`travel-app-fe`) and the Node/Express backend (`travel-app-be`).
+> A context-aware travel companion for translating, discovering, planning, and staying prepared.
 
----
+VoxTrail brings the tools travelers usually spread across several apps into one workspace. Set a destination and language pair once, then use that context across translation, phrasebooks, stays, places, cultural guidance, itineraries, and emergency utilities.
 
-## Repository Layout
+## Features
 
+- **Translation workspace** — Text translation with optional speech input, playback, and save actions.
+- **AI phrasebooks** — Generate useful phrases for airports, dining, directions, emergencies, and more.
+- **Saved phrases** — Keep a personal, Firestore-backed collection of favorites.
+- **Stays search** — Find accommodations with ratings, amenities, photos, filters, and map context.
+- **Discover** — Explore destinations and points of interest with rich detail pages and maps.
+- **Itinerary planner** — Build context-aware itineraries from destinations, interests, pace, and budget.
+- **Cultural guidance** — Learn local etiquette and get destination-aware travel tips.
+- **Emergency utilities** — Quickly find local emergency numbers and safety guidance.
+- **Responsive experience** — Polished light/dark themes, mobile navigation, and offline-friendly saved content.
+
+## Architecture
+
+```text
+VoxTrail
+├── travel-app-fe/              React + Vite + Material UI frontend
+├── travel-app-be/              Express API + Firebase Admin backend
+├── travel-app-be/functions/    Firebase Functions entry points
+└── scripts/                    Deployment and release helpers
 ```
-smart_travel_comp/
-├── travel-app-fe/   # Vite + React + MUI front-end
-├── travel-app-be/   # Express API (Firebase Auth, OpenRouter, Google Places)
-└── LICENSE
-```
 
----
+### Technology
 
-## Feature Highlights
+| Layer | Stack |
+| --- | --- |
+| Frontend | React 18, Vite, React Router, Redux Toolkit, Material UI, MapLibre |
+| Backend | Node.js, Express, Firebase Admin, Firestore, Zod |
+| Services | Firebase Auth, Google Places, OpenRouter, Xenova Transformers |
+| Delivery | Firebase Hosting, Firebase Functions, GitHub Actions |
 
-- **Authentication** – Firebase email/password with Google sign-in, protected routes, theme-aware UI shell.
-- **Translation workspace** – Two-pane translator backed by `@xenova/transformers` models running on the API.
-- **AI Phrasebooks** – Topic-based phrase suggestions generated via OpenRouter LLMs with the ability to save favorites.
-- **Saved phrases** – User-scoped Firestore collections persisted via secure backend routes.
-- **Stays search** – Google Places powered lodging search with filtering, amenity tags, details pages, and photo proxying.
-- **Destinations & POIs** – Discover points of interest with rich cards, details pages, etiquette guidance, and map/context sharing.
-- **Itinerary planner (beta)** – Natural-language and form-based trip planner on the Discover page that uses the backend itinerary API and fully aligns with the MUI design system.
-- **Cultural intelligence & etiquette** – Country/destination-specific guidance surfaced contextually in destination details.
-- **Emergency utilities** – Quick access to structured emergency contacts and guidance.
+## Run locally
 
----
-
-## Technology Stack
-
-| Layer     | Technologies                                                                                             |
-| --------- | -------------------------------------------------------------------------------------------------------- |
-| Front-end | Vite, React 18, React Router 6, Redux Toolkit, MUI, Tailwind (utility classes), MapLibre GL (maps)       |
-| Back-end  | Node.js 20+, Express 5, Firebase Admin SDK, Axios, OpenRouter API, Google Places API, express-rate-limit |
-| Data/Auth | Firebase Authentication, Firestore (per-user saved data)                                                 |
-| Infra     | Firebase service account for admin access, optional Firebase Functions scaffold                          |
-
----
-
-## Environment Configuration
-
-1. **Firebase**
-   - Create a Firebase project.
-   - Enable Email/Password and Google OAuth providers.
-   - Generate a Web App (copy the config for the front-end) and a service account (JSON) for the backend.
-2. **OpenRouter**
-   - Create an API key and set `OPENROUTER_MODEL` (templates use `x-ai/grok-4.1-fast:free`; the backend falls back to `gpt-4o-mini` if unset).
-3. **Google Places API**
-   - Enable the Places API (new) and Maps Places API (legacy photo endpoint) and create an API key.
-
-Copy the provided `.env.example` files and fill them with your secrets:
+### 1. Install dependencies
 
 ```bash
-cp travel-app-be/.env.example travel-app-be/.env
+cd travel-app-fe && npm ci
+cd ../travel-app-be && npm ci
+```
+
+### 2. Configure environment
+
+```bash
 cp travel-app-fe/.env.example travel-app-fe/.env
+cp travel-app-be/.env.example travel-app-be/.env
 ```
 
-| Variable (backend)                                                                                                           | Purpose                                                                                                         |
-| ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `APP_PORT`                                                                                                                   | Express port for local dev (default `8000`)                                                                     |
-| `FIRESTORE_PREFER_REST`                                                                                                      | Prefer Firestore REST client (set `true` in containers)                                                         |
-| `FB_ADMIN_CREDENTIALS`                                                                                                       | **Required.** Base64-encoded Firebase service-account JSON injected via your secrets manager. No file fallback. |
-| `GOOGLE_PLACES_API_KEY`                                                                                                      | Enables stays search/photo proxy                                                                                |
-| `OPENROUTER_API_KEY`                                                                                                         | Token for phrasebook & itinerary generation                                                                     |
-| `OPENROUTER_MODEL`                                                                                                           | Optional default model (env templates use `x-ai/grok-4.1-fast:free`; code defaults to `gpt-4o-mini`)            |
-| `ITINERARY_MODEL`                                                                                                            | Optional dedicated model just for itinerary generation                                                          |
-| `ITINERARY_ENABLE_FALLBACK`                                                                                                  | Enable static/sample itinerary fallback (default `true`)                                                        |
-| `REQUEST_SIGNING_SECRET`                                                                                                     | HMAC secret required for all non-authenticated API clients                                                      |
-| `REQUEST_BODY_LIMIT`                                                                                                         | Override JSON payload size (default `256kb`)                                                                    |
-| `MAX_TRANSLATION_CHARS`                                                                                                      | Translation character ceiling (default `500`)                                                                   |
-| `TRANSLATION_WARM_PAIRS`                                                                                                     | Comma-separated lang pairs to pre-warm on boot (e.g., `en-es,es-en`)                                            |
-| `TRANSFORMERS_CACHE`                                                                                                         | Cache directory for @xenova/transformers models                                                                 |
-| `STAYS_PER_USER_PER_HOUR` / `POI_PER_USER_PER_HOUR` / `PHRASEBOOK_MAX_REQUESTS_PER_HOUR` / `ITINERARY_MAX_REQUESTS_PER_HOUR` | Per-user quota knobs for external API usage                                                                     |
-| `STAYS_SEARCH_MAX_PER_IP`                                                                                                    | Per-IP throttle for `/api/stays/search`                                                                         |
-| `USAGE_ALERT_FALLBACK`                                                                                                       | Default threshold before emitting external usage alerts                                                         |
-| `FBAPP_*`                                                                                                                    | Firebase JS SDK config (if using client SDK server-side)                                                        |
+Configure the Firebase values, `VITE_API_URL`, backend `FB_ADMIN_CREDENTIALS`, `REQUEST_SIGNING_SECRET`, and provider keys for Google Places and OpenRouter. Never commit `.env` files, API keys, service-account JSON, or other secrets.
 
-| Variable (frontend)             | Purpose                                                          |
-| ------------------------------- | ---------------------------------------------------------------- |
-| `VITE_API_URL`                  | Base API URL, include `/api` (e.g., `http://localhost:8000/api`) |
-| `VITE_API_TIMEOUT`              | Optional axios timeout (ms)                                      |
-| `VITE_FIREBASE_*`               | Firebase Web App configuration                                   |
-| `VITE_ENABLE_ITINERARY_PLANNER` | Toggle Discover itinerary planner UI                             |
-| `VITE_ENABLE_OFFLINE_MODE`      | Enable optional offline caching helpers                          |
-| `VITE_ANALYTICS_WRITE_KEY`      | External analytics key (when analytics is on)                    |
+### 3. Start both apps with one command
 
-> 🔐 **Secret storage**: The backend now _only_ reads credentials from `FB_ADMIN_CREDENTIALS` (formerly `FIREBASE_ADMIN_CREDENTIALS`). Encode the raw service-account JSON (or paste the JSON directly) into the env var provided by your hosting platform or local `.env`. The legacy `serviceAccountKey.json` file has been removed to avoid accidental leaks.
-
----
-
-## Local Development
-
-### Backend
+From the repository root on macOS/Linux:
 
 ```bash
-cd travel-app-be
-npm install
-npm run dev          # nodemon server.js
+(cd travel-app-be && npm run dev) & (cd travel-app-fe && npm run dev) & wait
 ```
 
-The API will be reachable on `http://localhost:8000`. Core routes (see `API_Documentation.md` for full reference):
+Open the frontend at [http://localhost:5173](http://localhost:5173). The API runs at [http://localhost:8000](http://localhost:8000).
 
-| Endpoint                        | Description                                                    |
-| ------------------------------- | -------------------------------------------------------------- |
-| `POST /api/translate`           | Text translation (`text`, `langPair`)                          |
-| `POST /api/phrasebook/generate` | Topic-based phrase suggestions                                 |
-| `GET /api/saved-phrases`        | List user phrases (auth required)                              |
-| `POST /api/saved-phrases`       | Save phrase (auth required)                                    |
-| `DELETE /api/saved-phrases/:id` | Remove phrase (auth required)                                  |
-| `GET /api/stays/search`         | Search lodging (dest/lat/lng filters)                          |
-| `GET /api/stays/:id`            | Detailed stay info                                             |
-| `GET /api/stays/photo`          | Proxy Google Places photos                                     |
-| `GET /api/poi/search`           | Search points of interest                                      |
-| `GET /api/poi/:id`              | Detailed POI information                                       |
-| `GET /api/culture/brief`        | Cultural intelligence brief (cached Firestore handoff)         |
-| `POST /api/culture/qa`          | Conversational culture coach                                   |
-| `POST /api/culture/contextual`  | Micro-tips for translation/POI/stay contexts                   |
-| `GET /api/cultural-etiquette`   | Legacy alias for the culture brief                             |
-| `GET /api/itinerary/generate`   | Generate itineraries (used by Discover Itinerary planner beta) |
-
-Rate limits in dev mirror production defaults: 20 requests/min (anonymous), 60/min (authenticated), and 120/min (admin), plus endpoint quotas driven by `STAYS_PER_USER_PER_HOUR`, `STAYS_SEARCH_MAX_PER_IP`, `POI_PER_USER_PER_HOUR`, `PHRASEBOOK_MAX_REQUESTS_PER_HOUR`, and `ITINERARY_MAX_REQUESTS_PER_HOUR`. Adjust these envs if you hit throttles during local testing.
-
-### Firestore Rules
-
-Security rules that mirror the backend authorization live in `travel-app-be/firestore.rules`. Deploy them alongside backend changes so direct Firestore access stays tenant-scoped:
+Or use two terminals:
 
 ```bash
-cd travel-app-be
-firebase deploy --only firestore
+# Terminal 1
+cd travel-app-be && npm run dev
+
+# Terminal 2
+cd travel-app-fe && npm run dev
 ```
 
-The rules enforce `request.auth.uid` ownership for `/users/{uid}` documents and the nested `/saved_phrases` collection.
-
-### Front-end
+## Useful commands
 
 ```bash
+# Frontend
 cd travel-app-fe
-npm install
-npm run dev          # Vite dev server on http://localhost:5173
+npm run dev
+npm run build
+npm test
+
+# Backend
+cd travel-app-be
+npm run dev
+npm start
+npm test
 ```
 
-By default the React app points to `VITE_API_URL`. Ensure CORS on the backend allows this origin.
-
-Key UX modules:
-
-- **Discover** – Unified search for POIs with filters, plus an **Itinerary planner (beta)**:
-  - Users can toggle the “Itinerary” chip.
-  - Configure trip via MUI-styled controls (days, budget, pace, season, interests).
-  - Planner calls the backend itinerary generator (`/api/itinerary/generate`).
-- **Destinations** – Curated destination cards and a **Destination Details** view:
-  - Details pages integrate map, photos, reviews, etiquette, and a “Plan itinerary” button that deep-links into Discover with context.
-- **Stays, Translation, Phrasebook, Emergency** – Accessible via the shared layout and aligned with the same MUI/Tailwind design tokens.
-
-### Shared Travel Context & Cultural Signals
-
-A dedicated Redux slice (`travel-app-fe/src/store/slices/travelContextSlice.js`) keeps destination metadata, coordinates, and language pairs synchronized across surfaces through the `useTravelContext` hook. Any screen can call `setDestinationContext`, `setLanguagePair`, or `resetTravelContext` to participate in the global travel state without duplicating logic.
-
-- **State persistence**: The travel context is persisted with `redux-persist` (whitelisting the `travelContext` slice), so language/destination choices survive page refreshes. Wrapped in `PersistGate` in `src/main.jsx`.
-- **Discover, Destinations, and Destination Details** push geocoded payloads from `/api/poi/search` or POI cards into the context so `StaysSearchPage` automatically pre-fills the search box, query params, and map viewport when you navigate back.
-- **Stays search** writes every `resolvedDestination` returned by `/api/stays/search` (display label + lat/lng) into the context and analytics log so Emergency, Discover, and Cultural flows reuse the canonical location even when the traveler typed free-form text.
-- **Emergency.jsx** consumes the context to auto-select contacts and, when the traveler manually searches a country/alias (backed by `travel-app-fe/src/data/emergencyLocationAliases.js`), feeds normalized city/country data back through `setDestinationContext` to keep Stays/Destinations aligned.
-- **Translation, Phrasebook, Cultural Guide/Etiquette, and Discover** surfaces call `setLanguagePair`, ensuring `/api/translate`, `/api/phrasebook/generate`, and the `/api/culture/*` endpoints run with the same language preferences. Culture briefs are cached in Firestore (`cultureIntelligenceBriefs`) for 24 hours per destination/culture/language combo—bump `CULTURE_BRIEF_CACHE_VERSION` to invalidate stale advice.
-
----
-
-## Deployment Notes
-
-- **Backend**: Deploy the Express app to your preferred host (Render, Fly.io, Firebase Cloud Run, etc.). Inject the base64-encoded service-account JSON via the `FB_ADMIN_CREDENTIALS` env var—never ship credential files with the image. Enforce HTTPS, add production CORS origins, and consider containerizing the service.
-- **Front-end**: `npm run build` produces a static bundle in `travel-app-fe/dist`. Deploy to Firebase Hosting, Vercel, Netlify, or S3/CloudFront.
-- **Scheduled warmups**: The translation pipeline uses on-demand `@xenova/transformers` models. Consider provisioning a background job (cron) to hit `/api/translate/warmup` to keep models cached.
-
-### Firebase Hosting + Functions Automation
-
-Use `scripts/firebase-deploy.sh` to build the React frontend, copy the output into `travel-app-be/public`, and deploy both Hosting + backend Functions with a single command:
+Health checks:
 
 ```bash
-./scripts/firebase-deploy.sh --project your-firebase-project
+curl http://localhost:8000/healthz
+curl http://localhost:8000/readyz
 ```
 
-Prerequisites:
+## API overview
 
-1. Install the Firebase CLI (`npm install -g firebase-tools`) and run `firebase login` once.
-2. Configure `.firebaserc` or supply `--project` / `FIREBASE_DEPLOY_PROJECT` to point at the right Firebase project.
-3. Ensure your backend secrets are set via `.env` or the `travel-app-be/scripts/set-firebase-secrets.sh` helper.
+```text
+POST   /api/translate
+POST   /api/phrasebook/generate
+GET    /api/saved-phrases
+POST   /api/saved-phrases
+DELETE /api/saved-phrases/:id
+GET    /api/stays/search
+GET    /api/stays/:id
+GET    /api/poi/search
+GET    /api/poi/:id
+GET    /api/culture/brief
+POST   /api/culture/qa
+POST   /api/culture/contextual
+POST   /api/itinerary/generate
+```
 
-Flags:
+See [API_Documentation.md](API_Documentation.md) for request and response details.
 
-- `--skip-frontend` &mdash; reuses the last `travel-app-fe/dist` build.
-- `--project` &mdash; overrides the Firebase project passed to `firebase deploy` (falls back to `.firebaserc` otherwise).
+## Deploy
 
----
+The repository includes a Firebase helper that builds the frontend, syncs it into the hosting directory, and deploys Hosting plus the backend Functions codebase:
 
-## Testing
+```bash
+./scripts/firebase-deploy.sh --project YOUR_FIREBASE_PROJECT_ID
+```
 
-- **Backend** (`travel-app-be`): `npm test` runs Jest + Supertest integration coverage for request signing, auth gates, and critical API flows.
-- **Frontend** (`travel-app-fe`): `npm run test` runs Vitest + Testing Library suites for auth services, feature-flag gating, and future UI hooks.
+You need the Firebase CLI, an authenticated Firebase account, configured production secrets, and verified Firestore rules/indexes.
 
-Both commands automatically provision mocked Firebase/OpenRouter/Google dependencies so they can run locally or in CI without external keys.
+GitHub Actions workflows are available in `.github/workflows/`:
 
-## CI/CD (GitHub Actions)
+- `ci.yml` runs frontend tests/build, backend tests, Functions lint, and dependency audits.
+- `deploy.yml` deploys the Firebase stack from `main`.
 
-- **CI checks**: `.github/workflows/ci.yml` runs on PRs and pushes to `main` using Node 20. It installs deps, runs frontend tests + build, backend tests, and Cloud Functions lint. Dummy keys are injected so tests/builds run without external secrets.
-- **Deploy**: `.github/workflows/deploy.yml` runs on `main` pushes (or manual dispatch) and calls `scripts/firebase-deploy.sh` to build the Vite frontend, sync it into `travel-app-be/public`, and deploy Firebase Hosting + the `backend` Functions codebase.
-- **Required GitHub secrets for deploy**:
-  - `FIREBASE_SERVICE_ACCOUNT`: JSON for a service account with Firebase Hosting + Functions deploy perms.
-  - `FIREBASE_PROJECT_ID`
-  - Frontend build vars: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`, `VITE_API_URL`.
+## Security
 
----
+VoxTrail includes Firebase token verification, role-aware access control, request validation, CORS allowlisting, Helmet headers, request IDs, HMAC validation for unsigned sensitive requests, endpoint throttles, and durable production quotas for AI generation.
 
-## Observability & Quality Checklist
+Review [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md) and [travel-app-be/firestore.rules](travel-app-be/firestore.rules) before production configuration.
 
-- Keep unit/integration tests (Jest/Supertest for APIs, Vitest + Testing Library for UI/services) green in CI.
-- Configure linting (`eslint`, `prettier`) and type checking (TypeScript or JSDoc) as pre-commit checks.
-- Introduce structured logging (pino/winston) plus request IDs in the backend.
-- Provision error monitoring (Sentry, Firebase Crashlytics) and performance tracing (OpenTelemetry) for end-to-end visibility.
-- Automate CI (GitHub Actions or GitLab CI) for lint/test/build plus deploy previews.
-- Keep `API_Documentation.md`, `ENVIRONMENT_VARIABLES.md`, and `MONITORING_LOGGING.md` in sync with any new routes or env vars (including itinerary and POI features).
+## Production status
 
----
+The project is actively hardening toward production. The current readiness assessment is **conditional NO-GO for unrestricted public launch** while the full frontend suite, backend CI execution, dependency audit, provider quotas, staging observability, and legal-policy verification are completed.
 
-## Production Readiness Checklist
+Read the full assessment in [PRODUCTION_READINESS_REPORT.md](PRODUCTION_READINESS_REPORT.md).
 
-1. **Security & Auth**
-   - Enforce HTTPS everywhere and manage Firebase tokens via secure storage.
-   - Ensure _all_ API routes that read/write user data require authentication. Stays/POI/itinerary/phrasebook endpoints now enforce Firebase auth + quotas—mirror the same pattern for future routes.
-   - Rotate API keys regularly and store them in a secrets manager (Vault, SSM, Secrets Manager).
-2. **Data & Storage**
-   - Define Firestore security rules for per-user data.
-   - Add schema validation (zod/Joi) on both client and server sides.
-   - Implement rate limiting/bot protection beyond the basic global limiter.
-3. **Resilience**
-   - Add retries/backoff for upstream APIs (OpenRouter, Google Places).
-   - Cache expensive responses (translation results, stays search) using Redis or Firestore.
-   - Provide graceful fallbacks/offline modes for critical data (saved phrases, emergency numbers).
-4. **UX & Accessibility**
-   - Implement loading skeletons and optimistic UI for mutations.
-   - Add localization/i18n for the interface itself.
-   - Audit accessibility (ARIA labels, keyboard navigation, contrast).
-5. **Operations**
-   - Document deployment pipelines, rollback procedures, backup strategy, and incident runbooks.
-   - Add analytics and feature flagging for gradual rollouts.
+## Documentation
 
-Use this checklist as a living document as you harden the product.
-
----
+- [API documentation](API_Documentation.md)
+- [Environment variables](ENVIRONMENT_VARIABLES.md)
+- [Production deployment guide](travel-app-be/PRODUCTION_DEPLOYMENT.md)
+- [Monitoring and logging guide](MONITORING_LOGGING.md)
 
 ## Contributing
 
-1. Fork and create a feature branch.
-2. Keep commits small and focused; reference issues when applicable.
-3. Run lint/tests before opening a PR.
-
----
+1. Create a focused feature branch.
+2. Keep changes scoped and document API or environment changes.
+3. Run the frontend build/tests and backend tests before opening a pull request.
+4. Never commit secrets or generated deployment artifacts.
 
 ## License
 
-This project is released under the MIT License. See `LICENSE` for details.
+This project is released under the MIT License. See [LICENSE](LICENSE).
