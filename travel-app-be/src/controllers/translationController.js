@@ -26,7 +26,11 @@ const SUPPORTED_PAIRS = new Set([
 
 const translatorCache = new Map();
 const MAX_TEXT_LENGTH = Number(process.env.MAX_TRANSLATION_CHARS || 500);
-const DEFAULT_WARM_PAIRS = (process.env.TRANSLATION_WARM_PAIRS || "")
+const DEFAULT_WARM_PAIRS = (
+  process.env.FUNCTIONS_EMULATOR === "true"
+    ? ""
+    : process.env.TRANSLATION_WARM_PAIRS || ""
+)
   .split(",")
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
@@ -131,7 +135,7 @@ async function getTranslator(langPair) {
 
       try {
         console.log(`🔄 Loading translation model for ${langPair}...`);
-        const { pipeline } = await import("@xenova/transformers");
+        const { pipeline } = await import("@huggingface/transformers");
 
         // Create model loading promise
         modelPromise = pipeline("translation", `Xenova/opus-mt-${langPair}`);
